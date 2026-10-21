@@ -1591,7 +1591,7 @@
             }
           ],
           "start_event_ids": [],
-          "completion_event_ids": ["evt_ch01_end"],
+          "completion_event_ids": [],
           "optional": false
         },
         {
