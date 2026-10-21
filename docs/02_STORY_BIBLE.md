@@ -253,7 +253,7 @@
 
 [製作建議] 以明確狀態旗標保存重大選擇，例如：
 
-- `record_handling`: `sealed` / `summary_shared` / `location_only`
+- `record_handling`: `sealed` / `summary_shared` / `location_only`（第一章唯一合法列舉值；選項與事件 ID 以 `06_JSON_SCHEMA.md` 的第一章資料契約為準）
 - `evidence_policy`: `public` / `verified_first` / `location_protected`
 - `node_policy`: `limited_repair` / `isolated`
 - `ending_policy`: `distributed` / `supervised_central` / `restricted`
@@ -709,3 +709,25 @@
 5. 再製作第一章可玩原型，先測試流程，再增加圖片與視覺效果。
 
 > **狀態聲明：** 本文件是正式劇情規格，不是已完成的遊戲。第一章只有在場景、資料、互動、狀態和驗收測試實際通過後，才能標記為可玩或發布。
+
+---
+
+## 15. 第一章資料契約補充（2026-10-22）
+
+### 15.1 三種處理選擇
+
+| 選項 ID | 狀態值 | 事件 ID | 玩家回應原則 |
+|---|---|---|---|
+| `choice_ch01_archive` | `sealed` | `evt_ch01_choose_archive` | 強調保留原件與可追溯性；不宣稱已解明資料 |
+| `choice_ch01_share_summary` | `summary_shared` | `evt_ch01_choose_share_summary` | 明確註記摘要有缺漏；禾汀可補充地方脈絡，但不能替記錄背書 |
+| `choice_ch01_location_only` | `location_only` | `evt_ch01_choose_location_only` | 說明只記位置、不複製原件；仍保留本章線索簿摘要與後續查證方向 |
+
+三種選擇均寫入同一個 `record_handling` 欄位。選擇只影響本章處理註記與短回應，不刪除 CL-05／CL-06，不阻止章節完成，也不決定最終結局。
+
+### 15.2 CL-05、CL-06 與記錄碎片
+
+第一章只發放一個記錄項目／線索來源 `item_anomaly_fragment`。取得該項目時，線索簿一次性解鎖兩個獨立線索 ID：CL-05「殘響資料不完整」與 CL-06「異常日期」。兩條線索是同一份來源中的不同觀察，不是兩份可重複發放的物品。重複讀取只能顯示「已記錄」，不得再次增加物品或線索。
+
+### 15.3 結尾與角色知識範圍
+
+章末只提供可驗證的方向：尋找第二份獨立年代證據，並可透過校勘院聯絡管道詢問檔案比對方法。瑟嵐可以作為訊息、聯絡標記或後續登場伏筆；第一章不要求玩家操作完整通訊系統。禾汀只知道地方潮況與安全習慣；設備殘響只提供不完整的設備資料。

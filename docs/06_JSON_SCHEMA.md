@@ -414,7 +414,7 @@
               "event_ids": ["evt_ch01_read_anomaly_fragment"],
               "item_reward_ids": ["item_anomaly_fragment"],
               "once": true,
-              "completed_flag": "ch01_anomaly_read"
+              "completed_flag": "ch01_anomaly_record_found"
             },
             {
               "id": "maintenance_label",
@@ -739,7 +739,7 @@
           "actions": [
             { "type": "give_item", "item_id": "item_anomaly_fragment" },
             { "type": "add_clue", "item_id": "item_anomaly_fragment" },
-            { "type": "set_flag", "key": "ch01_anomaly_read", "value": true },
+            { "type": "set_flag", "key": "ch01_anomaly_record_found", "value": true },
             { "type": "show_text", "text": "殘響中出現一個與現行年表不一致的日期。欄位不完整，來源仍需獨立驗證。" }
           ],
           "once": true
@@ -759,7 +759,7 @@
           "description": "玩家選擇封存原始資料。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
             ]
           },
           "actions": [
@@ -774,7 +774,7 @@
           "description": "玩家選擇分享帶有不確定性註記的摘要。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
             ]
           },
           "actions": [
@@ -789,7 +789,7 @@
           "description": "完成第一章並開啟後續章節出口。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
             ]
           },
           "actions": [
@@ -963,7 +963,7 @@
               "text": "在下層記錄室取得異常記錄碎片。",
               "completion_conditions": {
                 "all": [
-                  { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+                  { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
                 ]
               }
             }
@@ -1292,7 +1292,7 @@
               "text": "封存原始碎片，保留來源與讀取條件。",
               "conditions": {
                 "all": [
-                  { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+                  { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
                 ]
               },
               "event_ids": ["evt_ch01_choose_archive", "evt_ch01_end"]
@@ -1302,7 +1302,7 @@
               "text": "分享附有缺漏註記的摘要。",
               "conditions": {
                 "all": [
-                  { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+                  { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
                 ]
               },
               "event_ids": ["evt_ch01_choose_share_summary", "evt_ch01_end"]
@@ -1444,7 +1444,7 @@
           "actions": [
             { "type": "give_item", "item_id": "item_anomaly_fragment" },
             { "type": "add_clue", "item_id": "item_anomaly_fragment" },
-            { "type": "set_flag", "key": "ch01_anomaly_read", "value": true },
+            { "type": "set_flag", "key": "ch01_anomaly_record_found", "value": true },
             { "type": "show_text", "text": "日期與現行年表不一致。記錄有缺漏，來源仍需獨立驗證。" }
           ],
           "once": true
@@ -1463,7 +1463,7 @@
           "description": "封存原始資料。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
             ]
           },
           "actions": [
@@ -1478,7 +1478,7 @@
           "description": "分享附有不確定性註記的摘要。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
             ]
           },
           "actions": [
@@ -1493,7 +1493,7 @@
           "description": "完成第一章。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
             ]
           },
           "actions": [
@@ -1585,7 +1585,7 @@
               "text": "在下層記錄室取得異常記錄碎片。",
               "completion_conditions": {
                 "all": [
-                  { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+                  { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
                 ]
               }
             }
@@ -1872,7 +1872,7 @@
               "event_ids": ["evt_ch01_read_anomaly_fragment"],
               "item_reward_ids": [],
               "once": true,
-              "completed_flag": "ch01_anomaly_read"
+              "completed_flag": "ch01_anomaly_record_found"
             },
             {
               "id": "maintenance_label",
@@ -1890,7 +1890,7 @@
               "type": "talk",
               "conditions": {
                 "all": [
-                  { "type": "flag", "key": "ch01_anomaly_read", "equals": true }
+                  { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
                 ]
               },
               "dialogue_id": "dlg_ch01_data_choice",
@@ -2053,3 +2053,89 @@
 - [ ] 靜音、缺圖和手機觸控情況下，主線仍可完成。
 
 **版本結論：** 06_JSON_SCHEMA.md v1.0.0 定義八份核心 JSON 的資料契約、跨檔案引用規則、事件條件白名單、常見錯誤和第一章整合測試資料。它可作為後續資料生成與驗證器開發的基準；實際遊戲仍須以程式載入、解析和逐流程測試後才能宣告可玩。
+
+---
+
+## 11. 第一章一致性修訂契約 v1.1（2026-10-22）
+
+本節是第一章選擇、旗標、線索與測試的規範性補充；若本文件較早的示例片段仍有不同名稱，應依本節修正後再建立正式資料檔。下列內容是資料契約，不代表 `data/*.json` 已建立或已通過 JSON 解析。
+
+### 11.1 三種資料處理選擇
+
+`record_handling` 型別為字串列舉，必填於第一章完成狀態，合法值只有 `sealed`、`summary_shared`、`location_only`。
+
+| 選項 ID | 顯示選項 | 寫入值 | 事件 ID | 立即回應與規則 |
+|---|---|---|---|---|
+| `choice_ch01_archive` | 封存原始碎片，暫不分享 | `sealed` | `evt_ch01_choose_archive` | 說明保留原件與來源可追溯性；保留兩條線索 |
+| `choice_ch01_share_summary` | 分享經過標註的摘要 | `summary_shared` | `evt_ch01_choose_share_summary` | 說明摘要有缺漏；禾汀可補充地方背景但不替資料背書 |
+| `choice_ch01_location_only` | 只記下位置，暫不複製 | `location_only` | `evt_ch01_choose_location_only` | 說明暫不複製；保留已觀察事實、位置及查證方向 |
+
+每個事件都必須要求 `ch01_anomaly_record_found=true`，設定同一個 `record_handling` 欄位，並只顯示符合說話者知識範圍的回應。三者都保留 CL-05／CL-06，不可清除線索、鎖死主線或阻止章節完成。玩家重複提交相同選擇不得重複發放物品。
+
+### 11.2 第一章唯一旗標表
+
+| 旗標 ID | 型別／意義 | 設定來源 | 讀取位置 | 存檔 | 驗收測試 ID |
+|---|---|---|---|---|---|
+| `ch01_tide_marker_checked` | boolean；測量牌已調查 | `evt_ch01_check_tide_marker` | `exit_to_grey_bell`、主線任務 | 是 | `QA-CH01-01` |
+| `ch01_hetin_warned` | boolean；已聽禾汀安全提醒 | `evt_ch01_hetin_warning` | `exit_to_grey_bell`、主線任務 | 是 | `QA-CH01-01` |
+| `ch01_bell_checked` | boolean；無指針鐘已調查 | `evt_ch01_check_bell` | 校準環前置條件 | 是 | `QA-CH01-02` |
+| `ch01_arc_mark_checked` | boolean；三道圓弧已調查 | `evt_ch01_check_arcs` | 校準環／隔離前置條件 | 是 | `QA-CH01-02` |
+| `ch01_ring_checked` | boolean；校準環已調查 | `evt_ch01_check_calibration_ring` | 隔離面板前置條件 | 是 | `QA-CH01-02` |
+| `ch01_isolation_ready` | boolean；已確認隔離 | `evt_ch01_prepare_isolation` | 記錄室出口、讀取事件 | 是 | `QA-CH01-03` |
+| `ch01_reader_inspected` | boolean；讀取器已檢查 | `evt_ch01_inspect_reader` | 低功率讀取事件 | 是 | `QA-CH01-04` |
+| `ch01_archive_slots_checked` | boolean；封存槽已檢查 | `evt_ch01_check_archive_slots` | 低功率讀取事件 | 是 | `QA-CH01-04` |
+| `ch01_maintenance_marks_checked` | boolean；維護刻痕已檢查 | `evt_ch01_check_maintenance_marks` | 低功率讀取事件 | 是 | `QA-CH01-04` |
+| `ch01_anomaly_record_found` | boolean；異常記錄已讀取並入簿 | `evt_ch01_read_anomaly_fragment` | 三個選擇事件、任務、`evt_ch01_end` | 是 | `QA-CH01-05` |
+| `record_handling` | enum；`sealed`／`summary_shared`／`location_only` | 三個選擇事件之一 | `evt_ch01_end`、章末回應 | 是 | `QA-CH01-06A/B/C` |
+| `chapter_01_complete` | boolean；第一章完成 | `evt_ch01_end`，僅在記錄已取得且選擇有效時設定 | 章末 UI、後續章節入口 | 是 | `QA-CH01-07` |
+
+`visitedScenes` 另以場景 ID 集合保存，不以重複布林旗標取代。不得再使用 `ch01_anomaly_read` 表示同一狀態。
+
+### 11.3 必要事件定義清單
+
+下列事件 ID 是第一章正式契約；每一個都必須在 `events.json` 中有唯一定義，且只使用本文件已列出的白名單動作：
+
+- `evt_ch01_check_tide_marker`：設定 `ch01_tide_marker_checked=true`。
+- `evt_ch01_hetin_warning`：設定 `ch01_hetin_warned=true`。
+- `evt_ch01_check_bell`：設定 `ch01_bell_checked=true`。
+- `evt_ch01_check_arcs`：設定 `ch01_arc_mark_checked=true`。
+- `evt_ch01_check_calibration_ring`：要求 `ch01_bell_checked` 或 `ch01_arc_mark_checked` 至少一項為 true，然後設定 `ch01_ring_checked=true`。
+- `evt_ch01_prepare_isolation`：要求 `ch01_ring_checked=true` 及 `ch01_arc_mark_checked=true`，然後設定 `ch01_isolation_ready=true`。
+- `evt_ch01_inspect_reader`：設定 `ch01_reader_inspected=true`。
+- `evt_ch01_check_archive_slots`：設定 `ch01_archive_slots_checked=true`。
+- `evt_ch01_check_maintenance_marks`：設定 `ch01_maintenance_marks_checked=true`。
+- `evt_ch01_read_anomaly_fragment`：必須同時驗證 `ch01_reader_inspected`、`ch01_archive_slots_checked`、`ch01_maintenance_marks_checked`、`ch01_isolation_ready` 全為 true；只發放一次 `item_anomaly_fragment`，解鎖 CL-05 與 CL-06，設定 `ch01_anomaly_record_found=true`。
+- `evt_ch01_choose_archive`：驗證記錄已取得，寫入 `record_handling="sealed"`。
+- `evt_ch01_choose_share_summary`：驗證記錄已取得，寫入 `record_handling="summary_shared"`。
+- `evt_ch01_choose_location_only`：驗證記錄已取得，寫入 `record_handling="location_only"`。
+- `evt_ch01_end`：只有在記錄已取得且 `record_handling` 為三個合法值之一時，設定 `chapter_01_complete=true`。
+
+所有一次性事件必須冪等；重複調查或讀取只顯示已記錄回饋，不重複發放道具或線索。
+
+### 11.4 CL-05／CL-06 與 `item_anomaly_fragment` 映射
+
+- `item_anomaly_fragment` 是唯一的第一章記錄碎片／來源項目。
+- CL-05「殘響資料不完整」與 CL-06「異常日期」是兩個不同的線索 ID，從同一次成功的 `evt_ch01_read_anomaly_fragment` 解鎖。
+- `items.json`／線索簿資料應以穩定 clue ID 儲存 CL-05、CL-06；不可把同一物品重複當作兩份獎勵。
+- 存檔必須保存已取得物品與線索 ID；重新載入後兩條線索各出現一次。
+- 本契約未確認正式 JSON 檔案存在；實作時需依此契約建立並驗證。
+
+### 11.5 第一章驗收案例
+
+| 測試 ID | 操作 | 通過條件 |
+|---|---|---|
+| `QA-CH01-01` | 嘗試在缺少任一潮痕灘必要條件時離開 | 出口不開放，缺少條件有提示；兩項完成後出口開放 |
+| `QA-CH01-02` | 調查灰鐘台必要構件並準備隔離 | 每項旗標由對應事件設定；錯誤順序不永久鎖死 |
+| `QA-CH01-03` | 未啟用隔離便嘗試進入／讀取 | 讀取不執行；提示先完成隔離 |
+| `QA-CH01-04` | 逐一漏做讀取器、封存槽、維護刻痕其中一項後嘗試讀取 | 每次都被拒絕；只有四項條件全 true 才可讀取 |
+| `QA-CH01-05` | 成功讀取，再重複點擊 | 只取得一個記錄碎片；CL-05、CL-06 各一條；旗標為 true |
+| `QA-CH01-06A` | 選擇封存原件 | `record_handling=sealed` 且可完成章節 |
+| `QA-CH01-06B` | 選擇分享摘要 | `record_handling=summary_shared` 且可完成章節 |
+| `QA-CH01-06C` | 選擇只記位置 | `record_handling=location_only` 且可完成章節 |
+| `QA-CH01-07` | 選擇後觸發章末事件 | `chapter_01_complete=true`；顯示第二份獨立年代證據的查證方向 |
+| `QA-CH01-08` | 刷新頁面或載入有效存檔 | 場景、旗標、線索、選擇和章節完成狀態恢復一致 |
+| `QA-CH01-09` | 存檔損壞／localStorage 寫入失敗／清除存檔 | 不白屏、不默默覆蓋有效資料；寫入失敗有警告；清除前有確認 |
+
+### 11.6 資產引用規則補充
+
+遊戲資料只填寫 `asset_*` 資產 ID；完整相對路徑只由 `data/assets.json` 的 `path` 欄位提供。規格文件中的檔名可作簡稱，但必須標示為簡稱。索引中的預定資產不代表實體檔案已存在、已獲授權或已完成載入驗收。

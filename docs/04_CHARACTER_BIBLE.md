@@ -2,7 +2,7 @@
 
 > 文件代號：04_CHARACTER_BIBLE  
 > 文件狀態：**正式角色基準 v1.0（可製作預設方案）**  
-> 依據文件：`00_PROJECT_MASTER.md`、`01_WORLD_BIBLE.md)、`02_STORY_BIBLE.md`  
+> 依據文件：`00_PROJECT_MASTER.md`、`01_WORLD_BIBLE.md`、`02_STORY_BIBLE.md`  
 > 協作文件：`03_GAMEPLAY_SPEC.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md`、`07_ART_BIBLE.md`、`08_TECH_SPEC.md`  
 > 最後更新：2026-10-21  
 > 本文件定義角色身分、資訊邊界、關係、對話和可重複生成的視覺規格；不代表角色圖片、對話或遊戲已實作。
@@ -164,11 +164,11 @@
 - 建議表情：`neutral`、`concerned`、`reassured`。
 - 可選：一張指向岸標的簡單姿勢；如果生成一致性不佳，直接不做。
 - 檔名：
-  - `art/characters/char_hetin_base.webp`
-  - `art/characters/char_hetin_neutral.webp`
-  - `art/characters/char_hetin_concerned.webp`
-  - `art/characters/char_hetin_reassured.webp`
-- 若表情變體難以生成一致，先只用 `char_hetin_base.webp)，用對話文字與標點承擔情緒差異。
+  - `assets/art/characters/char_hetin_base.webp`
+  - `assets/art/characters/char_hetin_neutral.webp`
+  - `assets/art/characters/char_hetin_concerned.webp`
+  - `assets/art/characters/char_hetin_reassured.webp`
+- 若表情變體難以生成一致，先只用 `char_hetin_base.webp`，用對話文字與標點承擔情緒差異。
 
 ---
 
@@ -202,8 +202,8 @@
 
 - 必要：一張設備局部或界文讀取面板插圖，可由場景背景重用。
 - 建議檔名：
-  - `art/characters/char_greybell_echo_panel.webp`
-  - `art/ui/echo_fragment_frame.webp`
+  - `assets/art/characters/char_greybell_echo_panel.webp`
+  - `assets/art/ui/echo_fragment_frame.webp`
 - 不需要角色立繪、表情差分、配音或動畫序列。
 
 ---
@@ -222,7 +222,7 @@
 - **對話風格**：精確、謹慎、常問「來源是什麼」「能否獨立比對」「哪些部分只是推測」。
 - **第一章出場**：章末以短訊息、聯絡標記或線索簿中的聯絡管道出現；不要求臉部立繪。
 - **視覺識別**：文件印記、校勘標記、簡潔的文字訊息介面；後續正式登場再定衣著。
-- **素材**：`art/ui/char_seran_message_icon.webp`（可選）；後續若正式出場再使用 `art/characters/char_seran_base.webp`。
+- **素材**：`assets/art/ui/char_seran_message_icon.webp`（可選）；後續若正式出場再使用 `assets/art/characters/char_seran_base.webp`。
 
 ## 5.2 瑪嶺：`char_maerin`（海岸公約會代表）
 
@@ -233,7 +233,7 @@
 - **關係**：與禾汀共享地方安全關切，但在是否允許外來研究者進入方面可能有不同看法；對校勘院要求公開來源，對定本監理局的高風險管制則要求地方監督。
 - **語氣**：行政而實際，關注誰負責、何時撤離、如何補償。
 - **首次出場建議**：第二章，於聚落會議或遺跡通行協商場景。
-- **視覺／素材**：耐用的地方公約工作服、簡潔的岸線徽記；`art/characters/char_maerin_base.webp`，正式製作時再定表情需求。
+- **視覺／素材**：耐用的地方公約工作服、簡潔的岸線徽記；`assets/art/characters/char_maerin_base.webp`，正式製作時再定表情需求。
 
 ## 5.3 伊爾文：`char_ilven`（校勘院研究者）
 
@@ -244,7 +244,7 @@
 - **關係**：與瑟嵐可設為同事，也可在控制角色數量時合併為同一角色；與禾汀需要學習如何記錄口述脈絡。
 - **語氣**：冷靜、精準，不炫耀知識；常把「已證實」「合理推測」「未知」分開。
 - **首次出場建議**：第二或第三章。若與瑟嵐合併，沿用 `char_seran`，不可在 JSON 中同時生成兩個重複職能角色。
-- **素材**：`art/characters/char_ilven_base.webp`（只有角色未合併時才製作）。
+- **素材**：`assets/art/characters/char_ilven_base.webp`（只有角色未合併時才製作）。
 
 ## 5.4 瓦列克：`char_valek`（定本監理局代表）
 
@@ -255,7 +255,7 @@
 - **關係**：與瑟嵐在公開檔案和風險管制上既合作又衝突；與工坊技師爭論何時能安全測試設備。
 - **語氣**：正式、條件明確、重視責任與程序；不以威脅取代論證。
 - **首次出場建議**：第三章，先以封存通知或正式文件出現，再安排會面。
-- **素材**：`art/characters/char_valek_base.webp`（後續章節才製作）。
+- **素材**：`assets/art/characters/char_valek_base.webp`（後續章節才製作）。
 
 ## 5.5 洛肯：`char_rokan`（裂脊工坊聯盟技師）
 
@@ -266,7 +266,7 @@
 - **關係**：與瓦列克爭論安全門檻；重視瑟嵐保存的來源資料；對商路議盟的供料限制有所不滿。
 - **語氣**：具體、略帶乾幽默、用零件和測試結果解釋問題，不用玄學詞彙替代測量。
 - **首次出場建議**：第四章，透過設備檢查與維修工作引入。
-- **素材**：`art/characters/char_rokan_base.webp`（後續章節才製作）。
+- **素材**：`assets/art/characters/char_rokan_base.webp`（後續章節才製作）。
 
 ## 5.6 賽耶爾：`char_sayel`（鏡鹽商路議盟代表）
 
@@ -277,7 +277,7 @@
 - **關係**：與海岸公約會在航路安全上合作，與監理局在通行限制上有摩擦；願意提供資料，但會關心交換條件。
 - **語氣**：務實、善於談條件，重視成本與可執行的承諾，不應寫成只會欺騙的商人。
 - **首次出場建議**：第五章，透過航路檔案或商隊紀錄出現。
-- **素材**：`art/characters/char_sayel_base.webp`（後續章節才製作）。
+- **素材**：`assets/art/characters/char_sayel_base.webp`（後續章節才製作）。
 
 ## 5.7 艾德拉：`char_eldra`（林地守徑社代表）
 
@@ -288,7 +288,7 @@
 - **關係**：與伊爾文在證據標準上互相補足又可能爭論；與瑪嶺共享地方自主的立場，但環境保護優先順序不必完全相同。
 - **語氣**：觀察細緻、用季節、路徑、植物和水土變化表達，不以神秘話語代替可驗證觀察。
 - **首次出場建議**：第五章，以環境線索與路徑調查引入。
-- **素材**：`art/characters/char_eldra_base.webp`（後續章節才製作）。
+- **素材**：`assets/art/characters/char_eldra_base.webp`（後續章節才製作）。
 
 ---
 
@@ -427,7 +427,7 @@
 
 ### 10.1 檔名規則
 
-格式：`art/characters/<character_id>_<variant>.<ext>`
+檔名簡稱格式：`<character_id>_<variant>.<ext>`。舊式 `art/...` 簡稱不得當作完整路徑；實際路徑只以 `data/assets.json` 登錄的 `path` 為準。
 
 - `base`：唯一基礎立繪。
 - `neutral`、`concerned`、`reassured`：只用於必要表情差分。
@@ -440,13 +440,13 @@
 
 | 素材 ID | 檔名 | 數量 | 必要性 | 用途 |
 |---|---|---:|---|---|
-| `AS-CHAR-001` | `art/characters/char_hetin_base.webp` | 1 | 可選但建議 | 禾汀對話立繪 |
-| `AS-CHAR-002` | `art/characters/char_hetin_neutral.webp` | 1 | 可省略 | 中性表情；可與 base 共用 |
-| `AS-CHAR-003` | `art/characters/char_hetin_concerned.webp` | 1 | 可省略 | 提醒風險時使用 |
-| `AS-CHAR-004` | `art/characters/char_hetin_reassured.webp` | 1 | 可省略 | 玩家採取謹慎做法後使用 |
-| `AS-CHAR-005` | `art/characters/char_greybell_echo_panel.webp` | 1 | 可由背景重用 | 設備殘響局部 |
-| `AS-UI-001` | `art/ui/echo_fragment_frame.webp` | 1 | 可省略 | 殘響文字框；也可用 CSS 邊框取代 |
-| `AS-UI-002` | `art/ui/char_seran_message_icon.webp` | 1 | 否 | 瑟嵐章末訊息印記；可用純文字取代 |
+| `AS-CHAR-001` | `assets/art/characters/char_hetin_base.webp` | 1 | 可選但建議 | 禾汀對話立繪 |
+| `AS-CHAR-002` | `assets/art/characters/char_hetin_neutral.webp` | 1 | 可省略 | 中性表情；可與 base 共用 |
+| `AS-CHAR-003` | `assets/art/characters/char_hetin_concerned.webp` | 1 | 可省略 | 提醒風險時使用 |
+| `AS-CHAR-004` | `assets/art/characters/char_hetin_reassured.webp` | 1 | 可省略 | 玩家採取謹慎做法後使用 |
+| `AS-CHAR-005` | `assets/art/characters/char_greybell_echo_panel.webp` | 1 | 可由背景重用 | 設備殘響局部 |
+| `AS-UI-001` | `assets/art/ui/echo_fragment_frame.webp` | 1 | 可省略 | 殘響文字框；也可用 CSS 邊框取代 |
+| `AS-UI-002` | `assets/art/ui/char_seran_message_icon.webp` | 1 | 否 | 瑟嵐章末訊息印記；可用純文字取代 |
 
 **第一章最省力版本：** 不做表情差分、不做瑟嵐頭像；只使用一張禾汀基礎圖（若可行）與場景既有設備圖。所有其餘情緒用台詞和 UI 呈現。
 
@@ -454,13 +454,13 @@
 
 | 角色 ID | 建議檔名 | 最低需求 | 備註 |
 |---|---|---|---|
-| `char_seran` | `art/characters/char_seran_base.webp` | 一張基礎立繪 | 正式會面後才需要 |
-| `char_maerin` | `art/characters/char_maerin_base.webp` | 一張基礎立繪 | 第二章或之後 |
-| `char_ilven` | `art/characters/char_ilven_base.webp` | 一張基礎立繪 | 若未與瑟嵐合併 |
-| `char_valek` | `art/characters/char_valek_base.webp` | 一張基礎立繪 | 第三章或之後 |
-| `char_rokan` | `art/characters/char_rokan_base.webp` | 一張基礎立繪 | 第四章或之後 |
-| `char_sayel` | `art/characters/char_sayel_base.webp` | 一張基礎立繪 | 第五章或之後 |
-| `char_eldra` | `art/characters/char_eldra_base.webp` | 一張基礎立繪 | 第五章或之後 |
+| `char_seran` | `assets/art/characters/char_seran_base.webp` | 一張基礎立繪 | 正式會面後才需要 |
+| `char_maerin` | `assets/art/characters/char_maerin_base.webp` | 一張基礎立繪 | 第二章或之後 |
+| `char_ilven` | `assets/art/characters/char_ilven_base.webp` | 一張基礎立繪 | 若未與瑟嵐合併 |
+| `char_valek` | `assets/art/characters/char_valek_base.webp` | 一張基礎立繪 | 第三章或之後 |
+| `char_rokan` | `assets/art/characters/char_rokan_base.webp` | 一張基礎立繪 | 第四章或之後 |
+| `char_sayel` | `assets/art/characters/char_sayel_base.webp` | 一張基礎立繪 | 第五章或之後 |
+| `char_eldra` | `assets/art/characters/char_eldra_base.webp` | 一張基礎立繪 | 第五章或之後 |
 
 不得為尚未出場的角色提前批量生成圖片。每章只製作實際會出現在可玩內容中的角色資產。
 
@@ -472,7 +472,7 @@
 
 ### 11.1 必要敘事狀態
 
-- `record_handling`：玩家對異常記錄的處理方式（例如封存原件或分享標註摘要）。實際枚舉值以 `06_JSON_SCHEMA.md` 定案。
+- `record_handling`：玩家對異常記錄的處理方式；第一章合法值固定為 `sealed`、`summary_shared`、`location_only`，詳見 `06_JSON_SCHEMA.md`。
 - `hetin_trust_tone`：若玩法需要，可用少量敘事標籤描述禾汀的回應差異；不要求獨立數值。
 - `chapter_01_complete`：第一章完成旗標；具體格式以技術文件為準。
 
@@ -597,3 +597,13 @@
 - 第一章最小素材清單、檔名規則、回退方案與檢查表。
 
 **完成本文件不代表任何角色立繪已生成，也不代表 JSON、場景、對話系統或遊戲已實作與測試。** 下一步應以第一章最小需求為範圍，將角色 ID 對齊 `05_SCENE_CATALOG.md` 與 `06_JSON_SCHEMA.md`，並只為實際可玩的第一章製作必要素材。
+
+---
+
+## 12. 第一章選擇回應與資產引用補充（2026-10-22）
+
+- `sealed`：禾汀可認為調查者謹慎，但不得因此封鎖主線或聯絡管道。
+- `summary_shared`：禾汀可補充地方背景；摘要必須標示不完整，不代表證據已獲證實。
+- `location_only`：角色應理解玩家暫不複製資料，仍保留位置與線索簿摘要。
+- 三種選擇的回應不得讓角色知道未在現場觀察、文件或工作知識中取得的資訊。
+- 本文件中的素材名稱是檔名簡稱；完整相對路徑與正式執行時資產 ID 以 `data/assets.json` 為唯一來源。資產索引列出某項素材不代表檔案已建立、授權已確認或遊戲已載入。

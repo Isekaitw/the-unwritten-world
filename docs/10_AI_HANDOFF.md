@@ -193,9 +193,10 @@ JSON 必須是標準 JSON：雙引號、沒有註解、沒有尾隨逗號、沒�
 ### 8.1 檔案命名
 
 - 檔名優先使用小寫英文字母、數字和底線；副檔名符合內容格式。
-- 規格文件放在 `docs/`，使用既定編號，例如 `docs/10_AI_HANDOFF.md`。
-- 遊戲資料放在 `data/`，以 `docs/06_JSON_SCHEMA.md` 定義的檔名為準。
-- 程式放在 `js/`；樣式放在 `css/`；網站入口為 `index.html`。若現有 `docs/08_TECH_SPEC.md` 與 repository 實際結構有差異，先確認並統一，不可在單次任務中另建平行架構。
+- GitHub Pages 唯一發布來源為 `main` 分支的 `/(root)`；遊戲入口預定為根目錄 `index.html`。
+- 規格文件放在 `docs/`，使用既定編號，例如 `docs/10_AI_HANDOFF.md`；`docs/` 不作為網站根目錄。
+- 遊戲資料放在 `data/`，程式放在 `js/`，樣式放在 `css/`，媒體資源放在 `assets/`。若實際 repository 尚未建立這些檔案，只記錄缺漏，不得在規格審查任務中自行建立。
+- `data/assets.json` 是完整資產路徑與執行時資產 ID 的唯一來源；其他文件中的檔名只作簡稱。
 - 背景素材依場景目錄和美術聖經命名，例如 `bg_ch01_tide_mark.webp`；角色、道具、前景、音效等依其所屬規格命名，不可臨時發明一套不一致的格式。
 - 避免 `final.png`、`final2.png`、`newest.js`、`test-real-final.json` 等無法辨識用途的檔名。
 - 不得把密碼、私人資訊或未授權素材放入檔名或路徑。
@@ -681,3 +682,20 @@ Repository／分支：
 - 不知道就寫不知道；沒測試就寫未測試；無權限就寫受阻。
 - 優先交付小而可驗收的成果，讓使用者能理解、檢查、保存和回退。
 - 若不確定下一步，回到 `docs/09_CONTENT_ROADMAP.md`，檢查前置條件並選擇第一個尚未完成且依賴已滿足的任務。
+
+---
+
+## 18. 第一章規格一致性檢查清單（2026-10-22）
+
+每次建立或修改第一章資料前，必須逐項核對：
+
+1. `record_handling` 只接受 `sealed`、`summary_shared`、`location_only`；每個選項都有唯一選項 ID、事件 ID、短回應及同一狀態欄位。
+2. `ch01_anomaly_record_found` 是唯一「異常記錄已取得」旗標；不得再以 `ch01_anomaly_read` 表示同一狀態。
+3. 低功率讀取必須同時驗證 `ch01_reader_inspected`、`ch01_archive_slots_checked`、`ch01_maintenance_marks_checked`、`ch01_isolation_ready`。
+4. 一次讀取只發放一個 `item_anomaly_fragment`，同時解鎖 CL-05 與 CL-06；重複互動不得重複發獎。
+5. 第一章完成事件只能在記錄已取得且 `record_handling` 合法時設定 `chapter_01_complete=true`。
+6. 所有場景出口、事件、角色、任務、對話、道具、線索和資產引用都必須存在；未來章節佔位 ID 必須標示為未定案。
+7. Pages 使用 `main/(root)`，`docs/` 只放文件；相對資源路徑須考慮 repository 子路徑。
+8. 第一章存檔測試包含新遊戲、有效讀取、刷新恢復、損壞資料、寫入失敗及清除確認；手動匯入／匯出只屬後續可選。
+9. 第一章結尾提供第二份獨立年代證據的查證方向；瑟嵐只作訊息／聯絡伏筆，不假定已有通訊系統。
+10. 報告分開標示靜態文件檢查、JSON 解析、瀏覽器測試、手機實測及 Pages 部署實測。沒有執行的項目不得標為通過。

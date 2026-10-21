@@ -262,17 +262,17 @@
 | `reader_inspect` | 檢查記錄讀取器 | 必要調查 | 無 | 說明設備狀態與低功率限制；設定 `ch01_reader_inspected` |
 | `archive_slots` | 查看封存槽 | 必要調查 | 無 | 發現部分槽位空缺或損壞；提示資料不完整；設定 `ch01_archive_slots_checked` |
 | `maintenance_marks` | 閱讀維護刻痕 | 必要調查 | 無 | 取得一段局部維護註記，不能單獨證明事故全貌；設定 `ch01_maintenance_marks_checked` |
-| `start_low_power_read` | 進行低功率讀取 | 必要操作 | 已檢查讀取器、封存槽與維護刻痕；`ch01_isolation_ready` 為真 | 顯示短而不完整的殘響文字；新增線索 CL-05／CL-06；加入「異常記錄碎片」線索簿條目；設定 `ch01_anomaly_record_found` |
-| `record_handling_choice` | 處理異常記錄 | 必要選擇 | `ch01_anomaly_record_found` 為真 | 顯示三種資料處理選擇並寫入 `record_handling`；各選擇均能完成主線 |
+| `start_low_power_read` | 進行低功率讀取 | 必要操作 | `ch01_reader_inspected`、`ch01_archive_slots_checked`、`ch01_maintenance_marks_checked`、`ch01_isolation_ready` 全為 true | 執行 `evt_ch01_read_anomaly_fragment`；只發放一次 `item_anomaly_fragment`，同時解鎖 CL-05 與 CL-06；設定 `ch01_anomaly_record_found` |
+| `record_handling_choice` | 處理異常記錄 | 必要選擇 | `ch01_anomaly_record_found` 為 true | `choice_ch01_archive`／`evt_ch01_choose_archive` 寫入 `sealed`；`choice_ch01_share_summary`／`evt_ch01_choose_share_summary` 寫入 `summary_shared`；`choice_ch01_location_only`／`evt_ch01_choose_location_only` 寫入 `location_only`。三者均保留兩條線索並完成主線 |
 | `exit_to_grey_bell` | 返回灰鐘台 | 安全出口 | 完成或明確中止讀取流程 | 切回 `ch01_grey_bell`；不得因未做可選熱點而阻止離開 |
 
 ### 第一章資料處理選擇
 
 | 值 | 玩家選項 | 本章立即後果 | 後續可用差異 | 不可造成的結果 |
 |---|---|---|---|---|
-| `preserve_original` | 封存原始碎片，暫不分享 | 線索簿記錄原件保留；禾汀認為玩家謹慎 | 後續可先以原件比對；部分角色需要更多理由才信任摘要 | 不得阻止主線繼續 |
-| `share_summary` | 分享經過標註的摘要 | 線索簿記錄已分享摘要；禾汀較願意協助 | 校勘院方向可較早出現；仍需驗證原件 | 不得讓所有人自動相信 |
-| `mark_location_only` | 只記位置，暫不複製 | 保存位置與未複製註記 | 後續可回訪重讀或走替代驗證；成本為額外短回訪 | 不得永久失去必要線索 |
+| `sealed` | 封存原始碎片，暫不分享 | 線索簿記錄原件保留；禾汀認為玩家謹慎 | 後續可先以原件比對 | 不得阻止主線繼續或移除必要線索 |
+| `summary_shared` | 分享經過標註的摘要 | 線索簿記錄已分享摘要；禾汀較願意協助 | 校勘院方向可較早出現；仍需驗證原件 | 不得讓所有人自動相信 |
+| `location_only` | 只記位置，暫不複製 | 保存位置與未複製註記；線索簿仍保留已觀察到的摘要 | 後續可回訪重讀或使用替代來源驗證 | 不得永久失去必要線索 |
 
 ### 進入、離開與完成條件
 
@@ -321,7 +321,7 @@
 - **熱點與結果：** `survey_column` 取得獨立日期刻痕；`sealed_box` 發現地方抄本殘頁；`road_map` 解鎖下一階段方向；`exit_to_missing_page` 回訪；`exit_to_scraped_archive` 在確認獨立證據後開放。
 - **可通往：** `ch02_missing_page`、`ch03_scraped_archive`。
 - **相關角色／任務／事件：** 第二章主線；CL-07。
-- **素材檔名：** `bg_ch02_old_waystation.webp)；重用海岸背景效果與共用 UI。
+- **素材檔名：** `bg_ch02_old_waystation.webp`；重用海岸背景效果與共用 UI。
 - **進入／離開條件：** 有地方路標才進入；確認第二份獨立日期證據後可前往第三章。
 - **測試標準：** 沒有取得可選對話也能找到必要證據；回訪不重複發放同一條目。
 
@@ -337,7 +337,7 @@
 - **熱點與結果：** `scraped_tablet` 記錄被刮除痕跡；`certification_seal` 解讀認證印記；`catalogue_drawer` 找到不同版本索引；`exit_to_version_vault` 在記錄兩類痕跡後開放。
 - **可通往：** `ch03_version_vault`。
 - **相關角色／任務／事件：** 第三章主線；CL-08。
-- **素材檔名：** `bg_ch03_scraped_archive.webp)；重用 `fx_dust_motes.png) 和共用 UI。
+- **素材檔名：** `bg_ch03_scraped_archive.webp`；重用 `fx_dust_motes.png` 和共用 UI。
 - **進入／離開條件：** 第二章的獨立證據已登錄；取得刮痕和認證兩項記錄後前進。
 - **測試標準：** 不直接宣布單一勢力有完整責任；必須保留制度需求與權力風險兩種解讀。
 
@@ -353,7 +353,7 @@
 - **熱點與結果：** `version_a` 讀取版本 A；`version_b` 讀取版本 B；`compare_versions` 顯示差異並要求標註來源；`exit_to_scraped_archive` 回訪；`exit_to_sync_ridge` 在完成比較後開放。
 - **可通往：** `ch03_scraped_archive`、`ch04_sync_ridge`。
 - **相關角色／任務／事件：** 第三章主線；CL-08。
-- **素材檔名：** `bg_ch03_version_vault.webp)；重用 `fx_dust_motes.png) 和共用 UI。
+- **素材檔名：** `bg_ch03_version_vault.webp`；重用 `fx_dust_motes.png` 和共用 UI。
 - **進入／離開條件：** 已記錄兩類版本痕跡；至少完成一次版本比較後前往第四章。
 - **測試標準：** 版本差異以文字或表格呈現，不要求玩家只憑顏色分辨；來源標籤不混淆。
 
@@ -385,7 +385,7 @@
 - **熱點與結果：** `maintenance_log` 取得警告時間；`burnt_contact` 檢查損傷；`power_limit_note` 讀取供能限制；`exit_to_sync_ridge` 回訪；`exit_to_witness_crossing` 在取得兩種工程證據後開放。
 - **可通往：** `ch04_sync_ridge`、`ch05_witness_crossing`。
 - **相關角色／任務／事件：** 第四章主線；CL-09。
-- **素材檔名：** `bg_ch04_maintenance_gallery.webp)；重用 `fx_dust_motes.png)、`fx_soft_glow.png)。
+- **素材檔名：** `bg_ch04_maintenance_gallery.webp)；重用 `fx_dust_motes.png`、`fx_soft_glow.png)。
 - **進入／離開條件：** 已完成同步台調查；至少取得維護警告與一項實體損傷記錄。
 - **測試標準：** 以多項證據支持因果，不以單一文字直接判定所有責任。
 
@@ -399,9 +399,9 @@
 - **前／中／遠景：** 前景貨箱與繩索；中景核對桌、契約架、交談位置；遠景鹽地商路與低矮站舍。
 - **氣氛效果：** 重用暖色漸層與輕微熱霧 CSS；不需要新的特效圖。
 - **熱點與結果：** `trade_contracts` 調查契約版本；`witness_notes` 登錄證詞；`source_board` 以 UI 比較來源可信度與利益；`exit_to_resonance_grove` 在登錄兩個不同來源後開放。
-- **可通往：** `ch05_resonance_grove)。
+- **可通往：** `ch05_resonance_grove`。
 - **相關角色／任務／事件：** 第五章主線；CL-10。
-- **素材檔名：** `bg_ch05_witness_crossing.webp)；重用共用 UI。
+- **素材檔名：** `bg_ch05_witness_crossing.webp`；重用共用 UI。
 - **進入／離開條件：** 已有工程證據；整理至少兩個來源後前進。
 - **測試標準：** 不把某個角色的立場當作自動可信或自動虛假；來源比較可讀、可回看。
 
@@ -417,7 +417,7 @@
 - **熱點與結果：** `oral_account` 聽取口述版本；`weather_box` 讀取地方保存記錄；`path_markers` 比較路徑標記；`exit_to_witness_crossing` 回訪；`exit_to_crown_node` 在形成有來源註記的綜合結論後開放。
 - **可通往：** `ch05_witness_crossing`、`ch06_crown_node`。
 - **相關角色／任務／事件：** 第五章主線；CL-10、CL-11。
-- **素材檔名：** `bg_ch05_resonance_grove.webp)；重用 `fx_coastal_mist.png`（調整色調與透明度）。
+- **素材檔名：** `bg_ch05_resonance_grove.webp`；重用 `fx_coastal_mist.png`（調整色調與透明度）。
 - **進入／離開條件：** 已完成商路來源比較；需留下至少一條有來源註記的綜合結論。
 - **測試標準：** 口述記憶不被貶低，也不被視為絕對準確；必要內容可閱讀，霧氣不妨礙熱點。
 
@@ -431,9 +431,9 @@
 - **前／中／遠景：** 前景現代安全欄與標記；中景節點核心、控制台；遠景破損城域輪廓與高牆。
 - **氣氛效果：** 重用 `FX-03` 微光與 `FX-04` 掃描線；所有狀態資訊由 UI 顯示。
 - **熱點與結果：** `node_status` 讀取節點狀態；`risk_controls` 檢查隔離與供能限制；`evidence_console` 檢視已整理的證據；`exit_to_open_record_hall` 在風險檢查完成後開放。
-- **可通往：** `ch06_open_record_hall)。
+- **可通往：** `ch06_open_record_hall`。
 - **相關角色／任務／事件：** 第六章主線；CL-11；結局條件旗標待玩法與劇情文件整合。
-- **素材檔名：** `bg_ch06_crown_node.webp)；重用 `fx_soft_glow.png)、`fx_scanline_soft.png)。
+- **素材檔名：** `bg_ch06_crown_node.webp)；重用 `fx_soft_glow.png`,`fx_scanline_soft.png)。
 - **進入／離開條件：** 有綜合結論才進入；完成風險檢查後進入結局前紀錄廳。
 - **測試標準：** 不提供無限制、零成本的節點啟動選項；風險、供能與校準條件需可理解。
 
@@ -473,7 +473,7 @@
 | `ch01_archive_slots_checked` | 調查封存槽 | 讀取前置條件 |
 | `ch01_maintenance_marks_checked` | 調查維護刻痕 | 讀取前置條件 |
 | `ch01_anomaly_record_found` | 成功完成低功率讀取 | 主線必要線索已取得 |
-| `record_handling` | 玩家確認資料處理選擇 | 值為 `preserve_original`、`share_summary` 或 `mark_location_only` |
+| `record_handling` | 玩家確認資料處理選擇 | 值為 `sealed`、`summary_shared` 或 `location_only` |
 | `chapter_01_complete` | 章末條件全數成立 | 解鎖第二章並保存完成狀態 |
 | `ch01_optional_shore_record` | 完成「找回岸標記錄」 | 可選支線回饋，不影響主線 |
 
@@ -635,3 +635,29 @@ flowchart TD
 6. `10_AI_HANDOFF.md`：每次新增場景前，要求 AI 檢查 scene ID 唯一性、所有出口有效性、素材重用和主線必要條件。
 
 本文件的優先原則是：**先讓三個場景形成穩定、完整、可回訪的第一章；之後再用相同系統逐章擴展。**
+
+---
+
+## 7. 第一章一致性補充（2026-10-22）
+
+### 7.1 必要檢查的事件對應
+
+| 場景／熱點 ID | 必須設定的旗標 | 正式事件 ID |
+|---|---|---|
+| `ch01_tide_mark`／`tide_marker` | `ch01_tide_marker_checked` | `evt_ch01_check_tide_marker` |
+| `ch01_tide_mark`／`hetin_talk` | `ch01_hetin_warned` | `evt_ch01_hetin_warning` |
+| `ch01_grey_bell`／`bell_shell` | `ch01_bell_checked` | `evt_ch01_check_bell` |
+| `ch01_grey_bell`／`arc_inscription` | `ch01_arc_mark_checked` | `evt_ch01_check_arcs` |
+| `ch01_grey_bell`／`calibration_ring` | `ch01_ring_checked` | `evt_ch01_check_calibration_ring` |
+| `ch01_grey_bell`／`isolation_panel` | `ch01_isolation_ready` | `evt_ch01_prepare_isolation` |
+| `ch01_record_room`／`reader_inspect` | `ch01_reader_inspected` | `evt_ch01_inspect_reader` |
+| `ch01_record_room`／`archive_slots` | `ch01_archive_slots_checked` | `evt_ch01_check_archive_slots` |
+| `ch01_record_room`／`maintenance_marks` | `ch01_maintenance_marks_checked` | `evt_ch01_check_maintenance_marks` |
+| `ch01_record_room`／`start_low_power_read` | `ch01_anomaly_record_found` | `evt_ch01_read_anomaly_fragment` |
+| `ch01_record_room`／`record_handling_choice` | `record_handling`、`chapter_01_complete` | 三個選擇事件之一，最後由 `evt_ch01_end` 完成章節 |
+
+讀取事件必須驗證讀取器、封存槽、維護刻痕及隔離旗標四項條件；缺少任一項都不得執行發放線索的動作。錯誤順序只顯示提示，不重置已完成檢查。
+
+### 7.2 資產命名說明
+
+本目錄中的 `bg_*.webp`、`ov_*.png`、`fx_*.png` 等是檔名簡稱，不是完整路徑或資產 ID。完整路徑與正式資產 ID 唯一以 `data/assets.json` 為準；本目錄不宣稱這些檔案已存在。
