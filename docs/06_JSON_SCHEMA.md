@@ -1525,6 +1525,22 @@
           "once": true
         },
         {
+          "id": "evt_ch01_choose_location_only",
+          "description": "只記錄異常記錄的位置，暫不複製原件。",
+          "conditions": {
+            "all": [
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
+            ]
+          },
+          "actions": [
+            { "type": "set_flag", "key": "ch01_data_archived", "value": false },
+            { "type": "set_flag", "key": "ch01_data_shared", "value": false },
+            { "type": "set_enum", "key": "record_handling", "value": "location_only" },
+            { "type": "show_text", "text": "你只記下位置，保留已觀察到的線索摘要，稍後可再讀取或尋找獨立來源。" }
+          ],
+          "once": true
+        },
+        {
           "id": "evt_ch01_end",
           "description": "完成第一章。",
           "conditions": {
