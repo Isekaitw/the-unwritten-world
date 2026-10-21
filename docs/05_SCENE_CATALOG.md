@@ -129,6 +129,7 @@
 | `ch01_grey_bell` | `exit_to_tide_mark` | `ch01_tide_mark` | 無；回訪出口常開 | 回訪 |
 | `ch01_grey_bell` | `exit_to_record_room` | `ch01_record_room` | 調查外部刻痕並啟用隔離程序 | 主線前進 |
 | `ch01_record_room` | `exit_to_grey_bell` | `ch01_grey_bell` | 完成或中止本次讀取流程 | 回訪／安全返回 |
+| `ch01_record_room` | `exit_to_ch02_missing_page` | `ch02_missing_page` | `chapter_01_complete` 為真 | 章節出口 |
 | `ch02_missing_page` | `exit_to_old_waystation` | `ch02_old_waystation` | 找到缺頁年表中的路標 | 主線前進 |
 | `ch02_old_waystation` | `exit_to_missing_page` | `ch02_missing_page` | 無；回訪出口常開 | 回訪 |
 | `ch02_old_waystation` | `exit_to_scraped_archive` | `ch03_scraped_archive` | 確認第二份獨立日期證據 | 跨章前進 |
@@ -563,7 +564,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["ch01_tide_mark"] --> B["ch01_grey_bell"] --> C["ch01_record_room"]
-    C --> D["ch02_missing_page"] --> E["ch02_old_waystation"]
+    C -->|"第一章完成"| D["ch02_missing_page"] --> E["ch02_old_waystation"]
     E --> F["ch03_scraped_archive"] --> G["ch03_version_vault"]
     G --> H["ch04_sync_ridge"] --> I["ch04_maintenance_gallery"]
     I --> J["ch05_witness_crossing"] --> K["ch05_resonance_grove"]
