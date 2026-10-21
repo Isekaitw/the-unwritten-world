@@ -196,7 +196,7 @@
 
 第一章只有在以下條件全部成立時才能標記完成：
 
-- 已訪問 `ch01_tide_mark`、`ch01_grey_bell`、`ch01_record_room)。
+- 已訪問 `ch01_tide_mark`、`ch01_grey_bell`、`ch01_record_room`）。
 - 已完成潮痕灘的必要測量互動。
 - 已完成灰鐘台的必要調查與安全進入步驟。
 - 已取得線索 `CL-06` 對應的異常記錄（實際線索 ID 以 `06_JSON_SCHEMA.md`／內容資料統一）。
