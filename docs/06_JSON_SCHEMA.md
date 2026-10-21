@@ -1503,6 +1503,7 @@
           "actions": [
             { "type": "set_flag", "key": "ch01_data_archived", "value": true },
             { "type": "set_flag", "key": "ch01_data_shared", "value": false },
+            { "type": "set_enum", "key": "record_handling", "value": "sealed" },
             { "type": "show_text", "text": "原始碎片已封存，來源和讀取條件一併保留。" }
           ],
           "once": true
@@ -1518,6 +1519,7 @@
           "actions": [
             { "type": "set_flag", "key": "ch01_data_archived", "value": false },
             { "type": "set_flag", "key": "ch01_data_shared", "value": true },
+            { "type": "set_enum", "key": "record_handling", "value": "summary_shared" },
             { "type": "show_text", "text": "摘要已標明資料缺漏與待驗證項目，尚未把推測當成定論。" }
           ],
           "once": true
