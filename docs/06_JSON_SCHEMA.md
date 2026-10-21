@@ -287,7 +287,7 @@
               "description": "石面上的短線是當代居民使用的安全記號。",
               "type": "inspect",
               "event_ids": ["evt_ch01_observe_return_lines"],
-              "item_reward_ids": ["item_return_line_note"],
+              "item_reward_ids": [],
               "once": true
             }
           ],
@@ -969,7 +969,7 @@
             }
           ],
           "start_event_ids": [],
-          "completion_event_ids": ["evt_ch01_end"],
+          "completion_event_ids": [],
           "optional": false
         },
         {
@@ -1321,7 +1321,6 @@
           "id": "evt_ch01_enter_tide_mark",
           "description": "首次進入潮痕灘時啟動主線任務。",
           "actions": [
-            { "type": "start_quest", "quest_id": "quest_ch01_tide_investigation" },
             { "type": "show_text", "text": "目標：核對沿岸測量讀數。" }
           ],
           "once": true
