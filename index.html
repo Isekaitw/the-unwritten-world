@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101923">
+  <meta name="description" content="《零界紀元：THE UNWRITTEN WORLD》最小可玩原型">
+  <title>零界紀元｜THE UNWRITTEN WORLD</title>
+  <link rel="stylesheet" href="./css/main.css">
+  <script type="module" src="./js/main.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="wordmark" href="./" aria-label="零界紀元首頁">零界紀元 <span>THE UNWRITTEN WORLD</span></a>
+      <span class="build-label">P01 · 原型</span>
+    </header>
+
+    <section id="title-screen" class="title-screen" aria-labelledby="game-title">
+      <div class="title-orb" aria-hidden="true"></div>
+      <p class="eyebrow">一段尚未被寫下的歷史</p>
+      <h1 id="game-title">零界紀元</h1>
+      <p class="subtitle">THE UNWRITTEN WORLD</p>
+      <p class="title-copy">有些記錄消失了，有些地方仍記得。</p>
+      <button id="start-button" class="primary-button" type="button">開始探索 <span aria-hidden="true">↗</span></button>
+      <p class="prototype-note">原型版本：使用 CSS 佔位場景，尚未加入正式美術。</p>
+    </section>
+
+    <section id="game-screen" class="game-screen" hidden aria-labelledby="scene-title">
+      <div class="scene-toolbar">
+        <div>
+          <p class="eyebrow">第一章 · 靜潮海岸</p>
+          <h2 id="scene-title">潮痕灘</h2>
+        </div>
+        <button id="back-to-title" class="quiet-button" type="button">返回標題</button>
+      </div>
+
+      <div id="scene" class="scene" aria-label="潮痕灘佔位場景">
+        <div class="scene-sky" aria-hidden="true"></div>
+        <div class="scene-moon" aria-hidden="true"></div>
+        <div class="scene-horizon" aria-hidden="true"></div>
+        <div class="scene-water" aria-hidden="true"></div>
+        <div class="scene-foreground" aria-hidden="true"></div>
+        <div class="scene-caption">
+          <span class="caption-mark" aria-hidden="true">◇</span>
+          <span>海風帶來了不屬於此地的微弱回聲。</span>
+        </div>
+        <button id="tide-hotspot" class="hotspot" type="button" aria-describedby="hotspot-hint">
+          <span class="hotspot-pulse" aria-hidden="true"></span>
+          <span class="hotspot-label">調查潮痕標記</span>
+        </button>
+        <p id="hotspot-hint" class="scene-hint">點擊發光標記以調查</p>
+      </div>
+
+      <div class="status-row">
+        <p id="status-message" role="status" aria-live="polite">你抵達了潮痕灘。試著調查場景中的標記。</p>
+        <span class="status-chip"><span class="status-dot" aria-hidden="true"></span> 原型運行中</span>
+      </div>
+
+      <section id="dialogue-panel" class="dialogue-panel" hidden aria-labelledby="dialogue-title">
+        <div class="dialogue-heading">
+          <span class="dialogue-symbol" aria-hidden="true">◇</span>
+          <h3 id="dialogue-title">潮痕標記</h3>
+        </div>
+        <p id="dialogue-text">石面上留著一道不自然的刻痕。</p>
+        <button id="close-dialogue" class="primary-button compact-button" type="button">明白了</button>
+      </section>
+    </section>
+
+    <footer class="footer">
+      <span>THE UNWRITTEN WORLD</span>
+      <span>原型測試版 · 不代表正式內容已完成</span>
+    </footer>
+  </main>
+</body>
+</html>
