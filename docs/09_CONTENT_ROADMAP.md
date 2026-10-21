@@ -81,7 +81,7 @@
 - **階段：** M1 最小可玩原型
 - **目標：** 建立最小可執行遊戲頁面，驗證 repository、GitHub Pages 路徑和手機瀏覽器能否跑通基本流程。
 - **前置條件：** R00 通過；已確認 repository 預定使用 `docs/` 作為網站根目錄或已確認 Pages 設定方式。
-- **輸入文件：** `00_PROJECT_MASTER.md`、`03_GAMEPLAY_SPEC.md`、`08_TECH_SPEC.md`、`09_CONTENT_ROADMAP.md)。
+- **輸入文件：** `00_PROJECT_MASTER.md`、`03_GAMEPLAY_SPEC.md`、`08_TECH_SPEC.md`、`09_CONTENT_ROADMAP.md`)。
 - **預期產出檔案：** 最小必要的 `docs/index.html`、`docs/css/main.css`、`docs/js/main.js`（或依技術規格核准的等效簡化結構）；不建立大量內容 JSON 或正式圖片。
 - **可直接交給 AI 的任務描述：**
 
@@ -101,7 +101,7 @@
 - **階段：** M2 核心引擎
 - **目標：** 將原型整理成資料驅動的場景流程，建立場景切換、互動熱點、對話、白名單事件、錯誤提示和資源路徑基礎。
 - **前置條件：** P01 在手機瀏覽器通過驗收；保留可回退的 Git commit。
-- **輸入文件：** `03_GAMEPLAY_SPEC.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md`、`08_TECH_SPEC.md)、P01 程式。
+- **輸入文件：** `03_GAMEPLAY_SPEC.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md`、`08_TECH_SPEC.md`)、P01 程式。
 - **預期產出檔案：** 在現有結構上增補／整理 `docs/js/` 中的引擎模組、`docs/data/` 中最小測試 JSON，以及必要的錯誤提示；實際檔名由 AI 先提出並遵守 08_TECH_SPEC。
 - **可直接交給 AI 的任務描述：**
 
@@ -121,7 +121,7 @@
 - **階段：** M3 第一章內容
 - **目標：** 以佔位背景和資料完成第一章三個場景的可玩流程：潮痕灘 → 灰鐘台 → 下層記錄室。
 - **前置條件：** E01 通過；場景切換、熱點、對話和資料載入已在測試場景穩定運作。
-- **輸入文件：** `01_WORLD_BIBLE.md`、`02_STORY_BIBLE.md`、`03_GAMEPLAY_SPEC.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md)、`07_ART_BIBLE.md)。
+- **輸入文件：** `01_WORLD_BIBLE.md`、`02_STORY_BIBLE.md`、`03_GAMEPLAY_SPEC.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md`)、`07_ART_BIBLE.md`)。
 - **預期產出檔案：** 第一章場景 JSON（放入核准的 `docs/data/` 結構）、必要的場景索引或資源對照表；初期背景可以使用佔位色塊／簡單 SVG。
 - **可直接交給 AI 的任務描述：**
 
@@ -140,7 +140,7 @@
 - **階段：** M3 第一章內容
 - **目標：** 將第一章所需的角色、對話、道具、異常記錄碎片及事件條件整理成可供引擎讀取的資料。
 - **前置條件：** C01 通過；E01 的對話與事件處理穩定；相關角色和劇情文件已確認有內容且沒有未決矛盾。
-- **輸入文件：** `01_WORLD_BIBLE.md`、`02_STORY_BIBLE.md`、`03_GAMEPLAY_SPEC.md`、`04_CHARACTER_BIBLE.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md)。
+- **輸入文件：** `01_WORLD_BIBLE.md`、`02_STORY_BIBLE.md`、`03_GAMEPLAY_SPEC.md`、`04_CHARACTER_BIBLE.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md`)。
 - **預期產出檔案：** 第一章所需的角色／對話／道具／記錄 JSON；必要的內容索引或 ID 清單。具體檔名依 schema 與技術規格決定。
 - **可直接交給 AI 的任務描述：**
 
@@ -159,7 +159,7 @@
 - **階段：** M4 存檔與體驗
 - **目標：** 提供本機存檔、讀檔、基本存檔驗證，以及 JSON 存檔匯出／匯入。
 - **前置條件：** E01 資料與狀態結構穩定；C01、C02 已定義需要保存的場景、旗標、道具及記錄狀態。
-- **輸入文件：** `03_GAMEPLAY_SPEC.md`、`06_JSON_SCHEMA.md`、`08_TECH_SPEC.md)、目前引擎與第一章資料。
+- **輸入文件：** `03_GAMEPLAY_SPEC.md`、`06_JSON_SCHEMA.md`、`08_TECH_SPEC.md`)、目前引擎與第一章資料。
 - **預期產出檔案：** 存檔／讀檔模組、必要的存檔版本與驗證程式、存檔介面及相關說明文件。
 - **可直接交給 AI 的任務描述：**
 
@@ -178,7 +178,7 @@
 - **階段：** M4 存檔與體驗
 - **目標：** 讓遊戲適合手機與平板操作，再以可關閉、低成本的效果增加層次。
 - **前置條件：** E01、C01 已通過；互動熱點與主要流程穩定。
-- **輸入文件：** `00_PROJECT_MASTER.md`、`03_GAMEPLAY_SPEC.md`、`07_ART_BIBLE.md`、`08_TECH_SPEC.md)。
+- **輸入文件：** `00_PROJECT_MASTER.md`、`03_GAMEPLAY_SPEC.md`、`07_ART_BIBLE.md`、`08_TECH_SPEC.md`)。
 - **預期產出檔案：** CSS 介面與響應式調整、必要的 SVG／CSS 特效模組、特效開關及介面測試紀錄。
 - **可直接交給 AI 的任務描述：**
 
@@ -197,7 +197,7 @@
 - **階段：** M4 存檔與體驗
 - **目標：** 加入可選的環境音、互動音效和背景音樂，並確保無音訊時遊戲仍完整可玩。
 - **前置條件：** 核心流程與場景切換穩定；主要介面已完成；已找到可合法使用的免費音訊或決定暫不使用音訊。
-- **輸入文件：** `00_PROJECT_MASTER.md`、`05_SCENE_CATALOG.md`、`07_ART_BIBLE.md`、`08_TECH_SPEC.md)。
+- **輸入文件：** `00_PROJECT_MASTER.md`、`05_SCENE_CATALOG.md`、`07_ART_BIBLE.md`、`08_TECH_SPEC.md`)。
 - **預期產出檔案：** 音訊資產索引、經授權確認的音訊檔（若有）、音量與靜音控制、音訊載入失敗的降級處理。
 - **可直接交給 AI 的任務描述：**
 
@@ -216,8 +216,8 @@
 - **階段：** M5 發布與品質
 - **目標：** 確認專案能由 GitHub Pages 以正確子路徑發布，並提供可供測試者開啟的網址。
 - **前置條件：** P01 可先做早期部署驗證；正式發布前需完成 E01、C01、C02、S01 及 U01 的必要驗收。A01 若未完成，必須可安全靜音運作。
-- **輸入文件：** `00_PROJECT_MASTER.md`、`08_TECH_SPEC.md)、repository 目錄結構與目前可驗收版本。
-- **預期產出檔案：** 正確的網站入口及相對資源路徑；必要時更新 Pages 設定說明或 `README.md)。不要求後端或建置輸出。
+- **輸入文件：** `00_PROJECT_MASTER.md`、`08_TECH_SPEC.md`)、repository 目錄結構與目前可驗收版本。
+- **預期產出檔案：** 正確的網站入口及相對資源路徑；必要時更新 Pages 設定說明或 `README.md`)。不要求後端或建置輸出。
 - **可直接交給 AI 的任務描述：**
 
   > 請檢查《零界紀元》repository 的 GitHub Pages 發布方式。網站檔案目前規劃放在 docs/，請確認實際 repository 設定與路徑，避免把根目錄絕對路徑寫死。請列出需要由 repository 管理者在 GitHub 設定頁手動確認的步驟，以及部署後逐一檢查的頁面、CSS、JavaScript、JSON、圖片和音訊路徑。不要宣稱已發布，除非有實際部署網址並完成瀏覽器驗證；不要要求加入秘密金鑰。
@@ -236,8 +236,8 @@
 - **階段：** 全程執行；M5 發布前必須完成
 - **目標：** 以可重複步驟驗證核心流程、資料、存檔、手機操作與發布版本，並避免新功能破壞舊功能。
 - **前置條件：** 每一個待驗收任務都有可測版本；正式發布驗收需有 D01 部署網址。
-- **輸入文件：** `03_GAMEPLAY_SPEC.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md`、`08_TECH_SPEC.md)、本路線圖，以及目前程式與測試版本。
-- **預期產出檔案：** `docs/TEST_PLAN.md) 或等效測試紀錄、缺陷清單、修正 commit 及發布前驗收紀錄。
+- **輸入文件：** `03_GAMEPLAY_SPEC.md`、`05_SCENE_CATALOG.md`、`06_JSON_SCHEMA.md`、`08_TECH_SPEC.md`)、本路線圖，以及目前程式與測試版本。
+- **預期產出檔案：** `docs/TEST_PLAN.md`) 或等效測試紀錄、缺陷清單、修正 commit 及發布前驗收紀錄。
 - **可直接交給 AI 的任務描述：**
 
   > 請依據正式規格建立可由非程式人員執行的測試清單，涵蓋頁面載入、三場景流程、熱點、對話、事件、道具／記錄、存檔讀檔、匯入匯出、手機尺寸、特效開關、靜音、缺失資源、無效 JSON 及 GitHub Pages 子路徑。每個測試要有前置狀態、操作步驟、預期結果、實際結果欄位和通過／失敗標記。請先報告問題，不要在沒有重現步驟時大幅重寫程式；修正時一次處理一個可重現缺陷並重新執行回歸測試。
@@ -256,7 +256,7 @@
 - **階段：** M6 後續擴充
 - **目標：** 在第一章穩定後，建立可重複使用的章節製作流程，逐章增加場景、角色、道具、劇情和素材。
 - **前置條件：** 第一章主流程通過 T01；E01 的資料契約穩定；S01 存檔版本策略已確認；第一章已在 Pages 部署版本驗證。
-- **輸入文件：** `00_PROJECT_MASTER.md)、`01_WORLD_BIBLE.md)、`02_STORY_BIBLE.md)、`03_GAMEPLAY_SPEC.md)、`04_CHARACTER_BIBLE.md)、`05_SCENE_CATALOG.md)、`06_JSON_SCHEMA.md)、`07_ART_BIBLE.md)、`08_TECH_SPEC.md)、本路線圖及第一章測試紀錄。
+- **輸入文件：** `00_PROJECT_MASTER.md`)、`01_WORLD_BIBLE.md`)、`02_STORY_BIBLE.md`)、`03_GAMEPLAY_SPEC.md`)、`04_CHARACTER_BIBLE.md`)、`05_SCENE_CATALOG.md`)、`06_JSON_SCHEMA.md`)、`07_ART_BIBLE.md`)、`08_TECH_SPEC.md`)、本路線圖及第一章測試紀錄。
 - **預期產出檔案：** 每個新增章節的場景／對話／道具／事件 JSON、資產清單、新增背景與角色資產（經核准後）、章節測試清單及變更紀錄。
 - **可直接交給 AI 的任務描述：**
 
