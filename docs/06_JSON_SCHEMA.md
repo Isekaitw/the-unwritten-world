@@ -87,9 +87,9 @@
 | all | array of condition | 否 | 陣列內條件全部成立；不可與 any、not 同時使用 |
 | any | array of condition | 否 | 陣列內至少一項成立；不可與 all、not 同時使用 |
 | not | condition | 否 | 反轉一項條件；不可與 all、any 同時使用 |
-| type | string | 是 | 目前支援 flag、item_owned、quest_status、scene_visited |
-| key | string | 視 type | flag 使用旗標 ID；item_owned 使用道具 ID；quest_status 使用任務 ID；scene_visited 使用場景 ID |
-| equals | boolean/string | 視 type | flag 使用布林值；quest_status 使用狀態字串 |
+| type | string | 是 | 目前支援 flag、state_value、item_owned、quest_status、scene_visited |
+| key | string | 視 type | flag 使用布林旗標 ID；state_value 使用已定義的列舉狀態 ID；item_owned 使用道具 ID；quest_status 使用任務 ID；scene_visited 使用場景 ID |
+| equals | boolean/string | 視 type | flag 使用布林值；state_value 使用列舉允許值；quest_status 使用狀態字串 |
 | status | string | quest_status 必填 | 任務狀態，使用 equals 或 status 擇一，建議使用 status |
 
 規則：
@@ -631,6 +631,7 @@
 | action.type | 必要欄位 | 效果 |
 |---|---|---|
 | set_flag | key、value | 設定布林旗標；value 只能是 true 或 false |
+| set_enum | key、value | 設定已登錄的字串列舉狀態；第一章僅允許 `record_handling`，值必須是 `sealed`、`summary_shared`、`location_only` 之一 |
 | give_item | item_id | 將道具加入玩家持有清單；item_id 必須存在 |
 | start_quest | quest_id | 將任務從 not_started 轉為 active；quest_id 必須存在 |
 | complete_quest | quest_id | 將任務設為 completed；必須存在 |
@@ -765,6 +766,7 @@
           "actions": [
             { "type": "set_flag", "key": "ch01_data_archived", "value": true },
             { "type": "set_flag", "key": "ch01_data_shared", "value": false },
+            { "type": "set_enum", "key": "record_handling", "value": "sealed" },
             { "type": "show_text", "text": "原始碎片已封存，來源和讀取條件一併保留。" }
           ],
           "once": true
@@ -780,7 +782,24 @@
           "actions": [
             { "type": "set_flag", "key": "ch01_data_archived", "value": false },
             { "type": "set_flag", "key": "ch01_data_shared", "value": true },
+            { "type": "set_enum", "key": "record_handling", "value": "summary_shared" },
             { "type": "show_text", "text": "摘要已標明資料缺漏與待驗證項目，尚未把推測當成定論。" }
+          ],
+          "once": true
+        },
+        {
+          "id": "evt_ch01_choose_location_only",
+          "description": "只記錄異常記錄的位置，暫不複製原件。",
+          "conditions": {
+            "all": [
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
+            ]
+          },
+          "actions": [
+            { "type": "set_flag", "key": "ch01_data_archived", "value": false },
+            { "type": "set_flag", "key": "ch01_data_shared", "value": false },
+            { "type": "set_enum", "key": "record_handling", "value": "location_only" },
+            { "type": "show_text", "text": "你只記下位置，保留已觀察到的線索摘要，稍後可再讀取或尋找獨立來源。" }
           ],
           "once": true
         },
@@ -789,7 +808,12 @@
           "description": "完成第一章並開啟後續章節出口。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true },
+              { "any": [
+                { "type": "state_value", "key": "record_handling", "equals": "sealed" },
+                { "type": "state_value", "key": "record_handling", "equals": "summary_shared" },
+                { "type": "state_value", "key": "record_handling", "equals": "location_only" }
+              ] }
             ]
           },
           "actions": [
@@ -1306,6 +1330,16 @@
                 ]
               },
               "event_ids": ["evt_ch01_choose_share_summary", "evt_ch01_end"]
+            },
+            {
+              "id": "choice_ch01_location_only",
+              "text": "只記下位置，暫不複製原件。",
+              "conditions": {
+                "all": [
+                  { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
+                ]
+              },
+              "event_ids": ["evt_ch01_choose_location_only", "evt_ch01_end"]
             }
           ]
         }
@@ -1493,7 +1527,12 @@
           "description": "完成第一章。",
           "conditions": {
             "all": [
-              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true }
+              { "type": "flag", "key": "ch01_anomaly_record_found", "equals": true },
+              { "any": [
+                { "type": "state_value", "key": "record_handling", "equals": "sealed" },
+                { "type": "state_value", "key": "record_handling", "equals": "summary_shared" },
+                { "type": "state_value", "key": "record_handling", "equals": "location_only" }
+              ] }
             ]
           },
           "actions": [
@@ -2136,6 +2175,13 @@
 | `QA-CH01-08` | 刷新頁面或載入有效存檔 | 場景、旗標、線索、選擇和章節完成狀態恢復一致 |
 | `QA-CH01-09` | 存檔損壞／localStorage 寫入失敗／清除存檔 | 不白屏、不默默覆蓋有效資料；寫入失敗有警告；清除前有確認 |
 
-### 11.6 資產引用規則補充
+### 11.6 存檔與列舉狀態的儲存
+
+- `record_handling` 是列舉狀態，不是布林旗標，不得放入只接受布林值的 `flags`。
+- 存檔物件必須有 `storyValues` 物件，並將選擇保存在 `storyValues.record_handling`；有效值僅為 `sealed`、`summary_shared`、`location_only`。新遊戲或尚未選擇時可省略該值；第一章完成前必須已設定。
+- `set_enum` 只允許寫入 schema 已列出的列舉欄位和值；未知欄位或非法值必須拒絕，不可默默轉成其他選項。
+- `state_value` 條件只讀取列舉狀態；`evt_ch01_end` 必須同時確認記錄旗標為 true，且 `storyValues.record_handling` 是三個合法值之一。
+
+### 11.7 資產引用規則補充
 
 遊戲資料只填寫 `asset_*` 資產 ID；完整相對路徑只由 `data/assets.json` 的 `path` 欄位提供。規格文件中的檔名可作簡稱，但必須標示為簡稱。索引中的預定資產不代表實體檔案已存在、已獲授權或已完成載入驗收。
