@@ -119,7 +119,7 @@ the-unwritten-world/
 │   ├── ui-controller.js
 │   ├── input-controller.js
 │   ├── effects-controller.js
-│   ├── import-export.js
+│   ├── import-export.js  # 後續可選，不屬第一章核心範圍
 │   └── debug.js
 ├── data/
 │   ├── game.json
@@ -131,7 +131,7 @@ the-unwritten-world/
 │   ├── quests.json
 │   └── assets.json
 ├── assets/
-│   ├── images/
+│   ├── art/
 │   │   ├── backgrounds/
 │   │   ├── layers/
 │   │   ├── characters/
@@ -181,7 +181,7 @@ the-unwritten-world/
 | `js/ui-controller.js` | 開關面板、更新文字、焦點與可見狀態 | 決定事件的世界規則 |
 | `js/input-controller.js` | 指標/觸控、鍵盤輔助、避免重複觸發 | 直接載入資料 |
 | `js/effects-controller.js` | 視差、低成本視覺特效、減少動態效果偏好 | 影響事件判定或存檔正確性 |
-| `js/import-export.js` | 存檔 JSON 匯出、讀檔、驗證與匯入 | 執行匯入檔內的程式碼 |
+| `js/import-export.js`（後續可選） | 存檔 JSON 匯出、讀檔、驗證與匯入 | 第一章核心流程不依賴此模組；不得執行匯入檔內的程式碼 |
 | `js/debug.js` | 開發訊息、資料錯誤摘要、狀態檢視開關 | 向玩家暴露機密或大量堆疊追蹤 |
 
 檔案可以在開發早期暫時合併，但合併時必須保留以上責任邊界；在拆分前不得同時出現兩份互相競爭的實作。任何新檔案都要在本文件登記責任和測試方法。
