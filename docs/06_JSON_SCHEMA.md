@@ -1,3 +1,57 @@
+<!-- SPEC REVISION ADDENDUM 2026-10-22: Proposed minimal schema for 2.5D scene gameplay. -->
+
+# 規格修訂補遺（2026-10-22）—2.5D 場景與事件資料
+
+本節為**[建議方案]**，提供角色出生、區域、碰撞、互動、謎題狀態、條件與轉場的最小模型，並非已實作介面的聲明。實作前須對照既有 schema 與現有 JS，統一命名、版本及相容策略；與本方向衝突時，以此需求為準，採最小修改。
+
+## 驗證規則
+1. 場景、區域、出生點、碰撞物、互動物件、事件及轉場均使用穩定 ID。
+2. 座標／尺寸使用一致的世界座標；投影及座標系統**[待決]**。避免過早把畫面像素當永久資料格式。
+3. 碰撞與美術分離；MVP 可先支援矩形。
+4. 條件使用可驗證的有限結構，不執行 JSON 內任意 JavaScript 字串。
+5. 明確規定一次性事件、重複互動及狀態變更。
+6. 轉場須引用存在的場景與出生點；靜態檢查可驗證所有引用。
+7. 本階段不新增戰鬥、敵人 AI、裝備、物品欄或角色成長 schema。
+
+## 建議範例（需與既有資料整合後才是正式契約）
+~~~json
+{
+  "schemaVersion": 2,
+  "sceneId": "test_ruins",
+  "title": "測試遺跡",
+  "bounds": {"x": 0, "y": 0, "width": 1600, "height": 1000},
+  "layers": [
+    {"id": "background", "kind": "background", "src": "assets/art/test_ruins_bg.webp", "zIndex": 0, "parallax": 0},
+    {"id": "ground", "kind": "ground", "src": "assets/art/test_ruins_ground.webp", "zIndex": 10, "parallax": 0}
+  ],
+  "spawnPoints": [{"id": "entry", "x": 120, "y": 180}],
+  "colliders": [{"id": "north_wall", "shape": "rect", "x": 200, "y": 120, "width": 500, "height": 40}],
+  "objects": [{"id": "power_console", "x": 420, "y": 360, "interactionRadius": 52, "prompt": "檢查控制台", "eventId": "activate_console"}],
+  "puzzles": [{"id": "restore_power", "stateKey": "power_restored", "initial": false}],
+  "events": [{
+    "id": "activate_console",
+    "once": true,
+    "conditions": [{"stateKey": "archive_clue_found", "operator": "equals", "value": true}],
+    "effects": [{"type": "setState", "stateKey": "power_restored", "value": true}],
+    "feedback": "機構重新亮起，東側通道開啟。"
+  }],
+  "transitions": [{"id": "east_exit", "x": 1500, "y": 400, "width": 60, "height": 120, "targetSceneId": "outer_path", "targetSpawnId": "west_entry"}]
+}
+~~~
+
+## 條件與效果建議
+- 條件：stateKey、operator（初期只需 equals）、value。
+- 效果：setState、discoverClue、showMessage、enableTransition 等有限型別；實際支援清單以程式實作確認。
+- 載入時驗證 JSON 語法、必要欄位、ID 唯一性、資產路徑及跨場景引用；未知效果型別應明確報錯。
+- 範例中的欄位、尺寸與 schemaVersion 是**[建議方案]**，不是最終契約。
+
+## 不在本階段定義
+戰鬥、敵人 AI、傷害、資源、裝備、物品欄、角色成長、隨機生成與雲端同步。存檔格式及完整離線行為**[待決]**；localStorage 只是候選本機方案，仍需實測。
+
+---
+
+# 原文件內容保留區（供追溯；與上方修訂衝突時以上方為準）
+
 # 《零界紀元：THE UNWRITTEN WORLD》JSON 資料標準
 
 > 文件代號：06_JSON_SCHEMA  
