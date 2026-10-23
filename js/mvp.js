@@ -133,8 +133,9 @@ function movePlayer(dx, dy) {
   if (!collides(state.x, nextY)) state.y = nextY;
 }
 function updateScene() {
-  playerEl.style.left = `${state.x - PLAYER.width / 2}px`;
-  playerEl.style.top = `${state.y}px`;
+  // Keep the player on the compositor path; updating left/top every frame can
+  // trigger repeated layout work and visible jitter on slower devices.
+  playerEl.style.transform = `translate3d(${state.x - PLAYER.width / 2}px, ${state.y}px, 0)`;
   const viewW = viewport.clientWidth;
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
