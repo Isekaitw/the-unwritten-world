@@ -150,7 +150,10 @@ function updateScene() {
   const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
   const playerX = state.x - PLAYER.width / 2;
   const playerY = state.y;
-  playerEl.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
+  // Diagnostic: position the player with layout coordinates instead of a transform.
+  playerEl.style.left = `${playerX}px`;
+  playerEl.style.top = `${playerY}px`;
+  playerEl.style.transform = "none";
   world.style.transform = `translate3d(${-snap(cameraX)}px, ${-snap(cameraY)}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
