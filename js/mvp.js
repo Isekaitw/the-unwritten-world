@@ -45,10 +45,10 @@ const objects = [
   { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 82, title: "測量機關" }
 ];
 const keyMap = {
-  // Requested custom WASD layout: W moves down, A moves left, so W+A is down-left.
-  // Arrow keys keep their conventional screen directions.
-  ArrowUp: "up", w: "down", W: "down",
-  ArrowDown: "down", s: "up", S: "up",
+  // Conventional WASD layout: W=up, A=left, S=down, D=right.
+  // Opposing directions cancel; W+A therefore moves diagonally up-left.
+  ArrowUp: "up", w: "up", W: "up",
+  ArrowDown: "down", s: "down", S: "down",
   ArrowLeft: "left", a: "left", A: "left",
   ArrowRight: "right", d: "right", D: "right"
 };
@@ -139,12 +139,13 @@ function updateScene() {
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
-  // Keep camera and player transforms in the same fractional coordinate space.
-  // Rounding them independently caused their relative screen position to jump
-  // by a pixel while the camera followed the player.
-  const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
-  const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
-  playerEl.style.transform = `translate3d(${state.x - PLAYER.width / 2}px, ${state.y}px, 0)`;
+  // Quantize the player and camera to whole CSS pixels to avoid subpixel
+  // shimmer when the browser composites the nested transforms.
+  const cameraX = Math.round(Math.max(0, Math.min(maxX, state.x - viewW / 2)));
+  const cameraY = Math.round(Math.max(0, Math.min(maxY, state.y - viewH / 2)));
+  const playerX = Math.round(state.x - PLAYER.width / 2);
+  const playerY = Math.round(state.y);
+  playerEl.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
