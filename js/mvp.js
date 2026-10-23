@@ -225,6 +225,7 @@ document.querySelectorAll(".direction").forEach((button) => {
   };
   button.addEventListener("pointerup", release);
   button.addEventListener("pointercancel", release);
+  button.addEventListener("pointerleave", release);
   button.addEventListener("lostpointercapture", release);
 });
 window.addEventListener("blur", stopInput);
