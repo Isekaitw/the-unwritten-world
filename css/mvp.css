@@ -48,7 +48,10 @@
   position:absolute;left:0;top:0;z-index:6;width:30px;height:42px;border-radius:45% 45% 35% 35%;
   background:#8bbeb2;
   border:2px solid rgba(239,255,235,.9); box-shadow:none;
-  transform:translate(0,0);
+  transform:translate3d(0,0,0);
+  will-change:transform;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
 }
 /* Temporary rendering diagnostic: remove decorative layers to isolate the body. */
 .player::before {display:none}
