@@ -46,12 +46,13 @@
 .gate.is-open { opacity:.16; transform:translateY(-24px); pointer-events:none; }
 .player {
   position:absolute;left:0;top:0;z-index:6;width:30px;height:42px;border-radius:45% 45% 35% 35%;
-  background:linear-gradient(145deg,#e1f4dd,#8bbeb2 70%,#507b7c);
-  border:2px solid rgba(239,255,235,.9); box-shadow:0 5px 12px rgba(0,0,0,.32),0 0 15px rgba(179,240,219,.22);
+  background:#8bbeb2;
+  border:2px solid rgba(239,255,235,.9); box-shadow:none;
   transform:translate(0,0);
 }
-.player::before {content:"";position:absolute;left:5px;top:-7px;width:16px;height:16px;border-radius:50%;background:#d6e7d9;border:2px solid #769d96}
-.player span {position:absolute;left:4px;right:4px;bottom:-4px;height:7px;border-radius:50%;background:rgba(4,18,22,.35)}
+/* Temporary rendering diagnostic: remove decorative layers to isolate the body. */
+.player::before {display:none}
+.player span {display:none}
 .world-object {
   position:absolute;z-index:5;min-width:48px;min-height:48px;padding:5px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
