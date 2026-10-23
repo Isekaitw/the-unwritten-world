@@ -17,6 +17,8 @@ const coordinates = $("#coordinates");
 const gate = $("#gate");
 
 const WORLD = { width: 1600, height: 1000 };
+const dpr = window.devicePixelRatio || 1;
+const snap = (value) => Math.round(value * dpr) / dpr;
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
 const state = {
   started: false,
@@ -146,8 +148,8 @@ function updateScene() {
   const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
   const playerX = state.x - PLAYER.width / 2;
   const playerY = state.y;
-  playerEl.style.transform = `translate(${playerX}px, ${playerY}px)`;
-  world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
+  playerEl.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
+  world.style.transform = `translate3d(${-snap(cameraX)}px, ${-snap(cameraY)}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
