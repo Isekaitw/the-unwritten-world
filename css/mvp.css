@@ -9,6 +9,7 @@
   left: 0; top: 0;
   width: 1600px; height: 1000px;
   overflow: hidden;
+  contain: strict;
   transform: translate3d(0,0,0);
   transform-origin: top left;
   will-change: transform;
