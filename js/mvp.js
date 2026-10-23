@@ -154,8 +154,7 @@ function updateScene() {
   playerEl.style.left = `${playerX}px`;
   playerEl.style.top = `${playerY}px`;
   playerEl.style.transform = "none";
-  // Diagnostic: temporarily disable vertical camera follow to isolate Y-axis jitter.
-  world.style.transform = `translate3d(${-snap(cameraX)}px, 0px, 0)`;
+  world.style.transform = `translate3d(${-snap(cameraX)}px, ${-snap(cameraY)}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
