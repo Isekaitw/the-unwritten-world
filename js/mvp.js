@@ -83,6 +83,8 @@ function showTitle() {
   startButton.focus();
 }
 function startExploration() {
+  if (state.frame) cancelAnimationFrame(state.frame);
+  state.frame = 0;
   stopInput();
   state.x = 180; state.y = 180;
   state.gateOpen = false;
