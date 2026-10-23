@@ -45,8 +45,6 @@ const objects = [
   { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 82, title: "測量機關" }
 ];
 const keyMap = {
-  // Conventional WASD layout: W=up, A=left, S=down, D=right.
-  // Opposing directions cancel; W+A therefore moves diagonally up-left.
   ArrowUp: "up", w: "up", W: "up",
   ArrowDown: "down", s: "down", S: "down",
   ArrowLeft: "left", a: "left", A: "left",
@@ -135,15 +133,14 @@ function movePlayer(dx, dy) {
   if (!collides(state.x, nextY)) state.y = nextY;
 }
 function updateScene() {
+  playerEl.style.left = `${state.x - PLAYER.width / 2}px`;
+  playerEl.style.top = `${state.y}px`;
   const viewW = viewport.clientWidth;
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
   const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
   const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
-  const playerX = state.x - PLAYER.width / 2;
-  const playerY = state.y;
-  playerEl.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
@@ -228,7 +225,6 @@ document.querySelectorAll(".direction").forEach((button) => {
   };
   button.addEventListener("pointerup", release);
   button.addEventListener("pointercancel", release);
-  button.addEventListener("pointerleave", release);
   button.addEventListener("lostpointercapture", release);
 });
 window.addEventListener("blur", stopInput);
