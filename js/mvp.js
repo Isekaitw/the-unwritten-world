@@ -133,15 +133,18 @@ function movePlayer(dx, dy) {
   if (!collides(state.x, nextY)) state.y = nextY;
 }
 function updateScene() {
-  // Keep the player on the compositor path; updating left/top every frame can
-  // trigger repeated layout work and visible jitter on slower devices.
-  playerEl.style.transform = `translate3d(${state.x - PLAYER.width / 2}px, ${state.y}px, 0)`;
+  // Snap both player and camera transforms to whole CSS pixels. Keeping the
+  // physics state fractional preserves smooth movement, while matching the
+  // render rounding avoids subpixel shimmer between nested transformed layers.
+  const playerRenderX = Math.round(state.x - PLAYER.width / 2);
+  const playerRenderY = Math.round(state.y);
+  playerEl.style.transform = `translate3d(${playerRenderX}px, ${playerRenderY}px, 0)`;
   const viewW = viewport.clientWidth;
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
-  const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
-  const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
+  const cameraX = Math.round(Math.max(0, Math.min(maxX, state.x - viewW / 2)));
+  const cameraY = Math.round(Math.max(0, Math.min(maxY, state.y - viewH / 2)));
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
