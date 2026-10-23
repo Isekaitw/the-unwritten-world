@@ -17,8 +17,6 @@ const coordinates = $("#coordinates");
 const gate = $("#gate");
 
 const WORLD = { width: 1600, height: 1000 };
-const dpr = window.devicePixelRatio || 1;
-const snap = (value) => Math.round(value * dpr) / dpr;
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
 const state = {
   started: false,
@@ -83,8 +81,6 @@ function showTitle() {
   startButton.focus();
 }
 function startExploration() {
-  if (state.frame) cancelAnimationFrame(state.frame);
-  state.frame = 0;
   stopInput();
   state.x = 180; state.y = 180;
   state.gateOpen = false;
@@ -143,18 +139,12 @@ function updateScene() {
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
-  // Keep fractional CSS-pixel positions. Rounding each frame makes diagonal
-  // movement advance in a visible staircase (e.g. up, then left), and can
-  // amplify shimmer when the camera and player are transformed separately.
   const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
   const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
   const playerX = state.x - PLAYER.width / 2;
   const playerY = state.y;
-  // Diagnostic: position the player with layout coordinates instead of a transform.
-  playerEl.style.left = `${playerX}px`;
-  playerEl.style.top = `${playerY}px`;
-  playerEl.style.transform = "none";
-  world.style.transform = `translate3d(${-snap(cameraX)}px, ${-snap(cameraY)}px, 0)`;
+  playerEl.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
+  world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
