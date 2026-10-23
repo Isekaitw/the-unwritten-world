@@ -133,15 +133,20 @@ function movePlayer(dx, dy) {
   if (!collides(state.x, nextY)) state.y = nextY;
 }
 function updateScene() {
-  playerEl.style.left = `${state.x - PLAYER.width / 2}px`;
-  playerEl.style.top = `${state.y}px`;
   const viewW = viewport.clientWidth;
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
+
+  // Follow the player's center. Clamp the camera at world edges so the
+  // screen-space player only leaves center when the camera cannot follow.
   const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
-  const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
+  const playerCenterY = state.y + PLAYER.height / 2;
+  const cameraY = Math.max(0, Math.min(maxY, playerCenterY - viewH / 2));
+
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
+  playerEl.style.left = `${state.x - cameraX - PLAYER.width / 2}px`;
+  playerEl.style.top = `${state.y - cameraY}px`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
