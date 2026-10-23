@@ -139,12 +139,13 @@ function updateScene() {
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
-  // Quantize the player and camera to whole CSS pixels to avoid subpixel
-  // shimmer when the browser composites the nested transforms.
-  const cameraX = Math.round(Math.max(0, Math.min(maxX, state.x - viewW / 2)));
-  const cameraY = Math.round(Math.max(0, Math.min(maxY, state.y - viewH / 2)));
-  const playerX = Math.round(state.x - PLAYER.width / 2);
-  const playerY = Math.round(state.y);
+  // Keep fractional CSS-pixel positions. Rounding each frame makes diagonal
+  // movement advance in a visible staircase (e.g. up, then left), and can
+  // amplify shimmer when the camera and player are transformed separately.
+  const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
+  const cameraY = Math.max(0, Math.min(maxY, state.y - viewH / 2));
+  const playerX = state.x - PLAYER.width / 2;
+  const playerY = state.y;
   playerEl.style.transform = `translate3d(${playerX}px, ${playerY}px, 0)`;
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
