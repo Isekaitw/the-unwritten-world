@@ -3,7 +3,11 @@ const titleScreen = $("#title-screen");
 const gameScreen = $("#game-screen");
 const startButton = $("#start-button");
 const backButton = $("#back-to-title");
-const fullscreenButton = $("#fullscreen-button");
+const questToggle = $("#quest-toggle");
+const inventoryToggle = $("#inventory-toggle");
+const questPanel = $("#quest-panel");
+const inventoryPanel = $("#inventory-panel");
+const SAVE_KEY = "unwritten-world-exploration-save-v1";
 const viewport = $("#scene");
 const world = $("#world");
 const playerEl = $("#player");
@@ -35,7 +39,9 @@ const state = {
   dialogueOpen: false,
   target: null,
   lastTime: 0,
-  frame: 0
+  frame: 0,
+  questOpen: true,
+  inventoryOpen: false
 };
 
 const obstacles = [
@@ -97,9 +103,10 @@ function openDialogue(title, message) {
 function closeDialogue() {
   state.dialogueOpen = false;
   dialoguePanel.hidden = true;
-  if (state.started) setStatus(state.target ? `靠近「${state.target.title}」了，按 E／Enter 或「互動」。` : "使用方向控制探索；靠近標記、回聲或機關即可互動。");
+  if (state.started) setStatus(state.target ? `靠近「${state.target.title}」了，按 F 互動。` : "使用方向控制探索；靠近標記、回聲或機關即可互動。");
 }
 function showTitle() {
+  saveProgress();
   stopInput();
   state.started = false;
   state.lastTime = 0;
@@ -107,6 +114,7 @@ function showTitle() {
   state.frame = 0;
   titleScreen.hidden = false;
   gameScreen.hidden = true;
+  if (document.fullscreenElement === gameScreen && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   dialoguePanel.hidden = true;
   state.dialogueOpen = false;
   startButton.focus();
@@ -115,27 +123,32 @@ function startExploration() {
   // User gesture from the start button permits requesting browser fullscreen.
   if (!document.fullscreenElement && gameScreen.requestFullscreen) {
     gameScreen.requestFullscreen().catch(() => {
-      setStatus("已進入遊戲；若要隱藏瀏覽器介面，請按右上角「全螢幕」。");
+      setStatus("瀏覽器未允許全螢幕；請確認網站全螢幕權限。");
     });
   }
   stopInput();
-  state.x = 180; state.y = 180;
-  state.gateOpen = false;
-  state.secretFound = false;
-  state.markerInspected = false;
-  state.gateCrossed = false;
+  const saved = loadProgress();
+  state.x = saved ? saved.x : 180; state.y = saved ? saved.y : 180;
+  state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
+  state.secretFound = saved ? Boolean(saved.secretFound) : false;
+  state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
+  state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;
   state.target = null;
   state.started = true;
   state.lastTime = 0;
-  gate.classList.remove("is-open");
-  $("#secret").classList.remove("is-found");
-  $("#switch").classList.remove("is-active");
-  statusChip.lastChild.textContent = " 機關未啟動";
+  gate.classList.toggle("is-open", state.gateOpen);
+  $("#secret").classList.toggle("is-found", state.secretFound);
+  $("#switch").classList.toggle("is-active", state.gateOpen);
+  statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關未啟動";
   titleScreen.hidden = true;
   gameScreen.hidden = false;
   dialoguePanel.hidden = true;
   state.dialogueOpen = false;
-  setStatus("使用 WASD／方向鍵或螢幕方向控制移動。靠近物件後按 E／Enter 或「互動」。");
+  questPanel.hidden = !state.questOpen;
+  inventoryPanel.hidden = !state.inventoryOpen;
+  questToggle.setAttribute("aria-expanded", String(state.questOpen));
+  inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
+  setStatus(saved ? "已載入本機儲存的進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
   updateScene();
   state.frame = requestAnimationFrame(tick);
 }
@@ -419,7 +432,7 @@ function updateScene() {
     .sort((a, b) => a.distance - b.distance)[0] || null;
   state.target = nearest;
   interactButton.disabled = !nearest || state.dialogueOpen;
-  interactButton.textContent = nearest ? `互動：${nearest.title}` : "互動（E）";
+  interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
 function tick(timestamp) {
@@ -434,7 +447,9 @@ function tick(timestamp) {
   state.frame = requestAnimationFrame(tick);
 }
 function interact() {
-  if (!state.started || state.dialogueOpen || !state.target) return;
+  if (!state.started) return;
+  if (state.dialogueOpen) { closeDialogue(); saveProgress(); return; }
+  if (!state.target) return;
   const target = state.target;
   if (target.id === "test_interactable_tide_marker") {
     state.markerInspected = true;
@@ -463,24 +478,10 @@ function interact() {
 }
 startButton.addEventListener("click", startExploration);
 backButton.addEventListener("click", showTitle);
-fullscreenButton.addEventListener("click", async () => {
-  try {
-    if (document.fullscreenElement === gameScreen) {
-      await document.exitFullscreen();
-    } else if (gameScreen.requestFullscreen) {
-      await gameScreen.requestFullscreen();
-    } else {
-      setStatus("此瀏覽器不支援網頁全螢幕，請使用瀏覽器的全螢幕功能。");
-      return;
-    }
-  } catch (error) {
-    setStatus("無法切換全螢幕；請確認瀏覽器允許此操作。");
-  }
-});
+questToggle.addEventListener("click", () => { state.questOpen = !state.questOpen; questPanel.hidden = !state.questOpen; questToggle.setAttribute("aria-expanded", String(state.questOpen)); saveProgress(); });
+inventoryToggle.addEventListener("click", () => { state.inventoryOpen = !state.inventoryOpen; inventoryPanel.hidden = !state.inventoryOpen; inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen)); saveProgress(); });
 document.addEventListener("fullscreenchange", () => {
-  const active = document.fullscreenElement === gameScreen;
-  fullscreenButton.setAttribute("aria-pressed", String(active));
-  fullscreenButton.textContent = active ? "⛶ 離開全螢幕" : "⛶ 全螢幕";
+  if (state.started && !document.fullscreenElement && gameScreen.requestFullscreen) gameScreen.requestFullscreen().catch(() => {});
   requestAnimationFrame(() => { if (state.started) updateScene(); });
 });
 interactButton.addEventListener("click", interact);
@@ -490,10 +491,11 @@ objects.forEach((object) => object.el.addEventListener("click", () => {
 }));
 closeDialogueButton.addEventListener("click", closeDialogue);
 document.addEventListener("keydown", (event) => {
+  if (!state.started) return;
+  if (event.key === "t" || event.key === "T") { event.preventDefault(); state.questOpen = !state.questOpen; questPanel.hidden = !state.questOpen; questToggle.setAttribute("aria-expanded", String(state.questOpen)); saveProgress(); return; }
+  if (event.key === "e" || event.key === "E") { event.preventDefault(); state.inventoryOpen = !state.inventoryOpen; inventoryPanel.hidden = !state.inventoryOpen; inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen)); saveProgress(); return; }
+  if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
   if (event.key === "Escape" && !dialoguePanel.hidden) { closeDialogue(); return; }
-  if (event.key === "e" || event.key === "E" || event.key === "Enter") {
-    if (state.started && !state.dialogueOpen && state.target) { event.preventDefault(); interact(); }
-  }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
 });
@@ -518,6 +520,13 @@ document.querySelectorAll(".direction").forEach((button) => {
   button.addEventListener("pointercancel", release);
   button.addEventListener("lostpointercapture", release);
 });
-window.addEventListener("blur", stopInput);
+window.addEventListener("blur", () => { stopInput(); saveProgress(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopInput(); });
 window.addEventListener("resize", () => { if (state.started) updateScene(); });
+
+function saveProgress() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen })); } catch (error) {}
+}
+function loadProgress() {
+  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); return data; } catch (error) { return null; }
+}
