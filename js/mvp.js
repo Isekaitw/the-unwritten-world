@@ -151,6 +151,14 @@ function drawVision(cameraX, cameraY) {
   const py = state.y + PLAYER.height / 2 - cameraY;
   const brightnessFactor = Math.max(0.12, Math.min(1, VISION.brightness));
   const fogFactor = Math.max(0, Math.min(1, VISION.fog));
+
+  // Keep the normal scene fully visible. Only enable the vision overlay when
+  // a brightness or fog effect actually restricts sight.
+  if (brightnessFactor >= 1 && fogFactor <= 0) {
+    ctx.globalCompositeOperation = "source-over";
+    return;
+  }
+
   const radius = VISION.baseRadius * (0.48 + brightnessFactor * 0.52) * (1 - fogFactor * 0.68);
 
   // Darkness outside the sight circle.
