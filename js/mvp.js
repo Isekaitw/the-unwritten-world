@@ -30,6 +30,7 @@ const state = {
   gateOpen: false,
   secretFound: false,
   markerInspected: false,
+  gateCrossed: false,
   dialogueOpen: false,
   target: null,
   lastTime: 0,
@@ -57,6 +58,33 @@ const keyMap = {
 
 function setStatus(message) {
   statusMessage.textContent = message;
+}
+function updateQuestUI() {
+  const objectives = [
+    { id: "quest-marker", done: state.markerInspected },
+    { id: "quest-gate", done: state.gateOpen },
+    { id: "quest-cross", done: state.gateCrossed }
+  ];
+  objectives.forEach(({ id, done }) => {
+    const item = $(`#${id}`);
+    item.classList.toggle("is-complete", done);
+    item.classList.toggle("is-active", !done && (
+      (id === "quest-marker") ||
+      (id === "quest-gate" && state.markerInspected) ||
+      (id === "quest-cross" && state.gateOpen)
+    ));
+  });
+  const completed = objectives.filter((objective) => objective.done).length;
+  $("#quest-progress").textContent = `${completed} / ${objectives.length} 完成`;
+  $("#quest-message").textContent = state.gateCrossed
+    ? "探索流程完成！你已穿越通路；返回標題可重新開始本局測試。"
+    : state.gateOpen
+      ? "通路已開啟，沿著機關旁的通路向上穿越。"
+      : state.markerInspected
+        ? "線索已記錄。接著找到測量機關，啟動它以打開通路。"
+        : "先找到潮痕標記，調查這處測試區留下的線索。";
+  $("#quest-secret").classList.toggle("is-complete", state.secretFound);
+  $("#quest-secret-status").textContent = state.secretFound ? "已發現" : "未發現";
 }
 function openDialogue(title, message) {
   state.dialogueOpen = true;
@@ -88,6 +116,7 @@ function startExploration() {
   state.gateOpen = false;
   state.secretFound = false;
   state.markerInspected = false;
+  state.gateCrossed = false;
   state.target = null;
   state.started = true;
   state.lastTime = 0;
@@ -235,6 +264,10 @@ function updateScene() {
   playerEl.style.top = `${state.y - cameraY}px`;
   drawVision(cameraX, cameraY);
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
+  if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
+    state.gateCrossed = true;
+  }
+  updateQuestUI();
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
     .sort((a, b) => a.distance - b.distance)[0] || null;
