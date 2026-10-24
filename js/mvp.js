@@ -257,7 +257,7 @@ function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
   if (!width || !height) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
   const pixelWidth = Math.round(width * dpr);
   const pixelHeight = Math.round(height * dpr);
   if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
@@ -366,7 +366,7 @@ function drawVision(cameraX, cameraY) {
   // Show the visible faces/areas of wall sprites without revealing anything
   // hidden behind a different wall. Small tiles avoid coarse holes; each test
   // uses the same world-space line segment and active-wall list as ray casting.
-  const sampleSize = 1;
+  const sampleSize = 0.5;
   for (const wall of opaque) {
     const minX = Math.max(wall.x, cameraX);
     const maxX = Math.min(wall.x + wall.w, cameraX + width);
@@ -477,19 +477,24 @@ function interact() {
   }
   updateScene();
 }
+document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const selected = tab.dataset.questTab;
+    document.querySelectorAll("[data-quest-tab]").forEach((item) => {
+      const active = item === tab;
+      item.classList.toggle("is-selected", active);
+      item.setAttribute("aria-selected", String(active));
+    });
+    document.querySelectorAll("[data-quest-category]").forEach((panel) => {
+      panel.hidden = panel.dataset.questCategory !== selected;
+      panel.classList.toggle("is-selected", !panel.hidden);
+    });
+  });
+});
 startButton.addEventListener("click", startExploration);
 backButton.addEventListener("click", showTitle);
 questToggle.addEventListener("click", () => { state.questOpen = !state.questOpen; questPanel.hidden = !state.questOpen; questToggle.setAttribute("aria-expanded", String(state.questOpen)); saveProgress(); });
 inventoryToggle.addEventListener("click", () => { state.inventoryOpen = !state.inventoryOpen; inventoryPanel.hidden = !state.inventoryOpen; inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen)); saveProgress(); });
-document.addEventListener("fullscreenchange", () => {
-  if (state.started && !document.fullscreenElement) {
-    gameScreen.classList.add("immersive-fallback");
-    if (gameScreen.requestFullscreen) gameScreen.requestFullscreen().catch(() => {});
-  } else if (document.fullscreenElement === gameScreen) {
-    gameScreen.classList.remove("immersive-fallback");
-  }
-  requestAnimationFrame(() => { if (state.started) updateScene(); });
-});
 interactButton.addEventListener("click", interact);
 objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
@@ -501,7 +506,6 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "t" || event.key === "T") { event.preventDefault(); state.questOpen = !state.questOpen; questPanel.hidden = !state.questOpen; questToggle.setAttribute("aria-expanded", String(state.questOpen)); saveProgress(); return; }
   if (event.key === "e" || event.key === "E") { event.preventDefault(); state.inventoryOpen = !state.inventoryOpen; inventoryPanel.hidden = !state.inventoryOpen; inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen)); saveProgress(); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
-  if (event.key === "Escape" && !dialoguePanel.hidden) { closeDialogue(); return; }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
 });
