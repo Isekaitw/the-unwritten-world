@@ -230,3 +230,10 @@
 .inventory-panel h3 { margin:0 0 8px; } .inventory-panel p { margin:0; color:var(--muted); line-height:1.6; }
 #game-screen:fullscreen .mvp-status { bottom:18px; } #game-screen:fullscreen .mvp-status p { max-width:min(50vw,520px); }
 @media(max-width:650px) { #game-screen:fullscreen .quest-panel, #game-screen:fullscreen .inventory-panel { top:auto; right:10px; bottom:16px; width:min(240px,56vw); max-height:35vh; } #game-screen:fullscreen .scene-toolbar-actions .quiet-button { padding:6px 7px; font-size:.68rem; } }
+
+/* Fallback when the browser exits Fullscreen API (for example, Escape). */
+#game-screen.immersive-fallback { position:fixed !important; inset:0 !important; z-index:2147483000 !important; width:100vw !important; height:100vh !important; height:100dvh !important; max-width:none !important; margin:0 !important; padding:0 !important; overflow:hidden !important; background:#071014 !important; }
+#game-screen.immersive-fallback .game-viewport { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; }
+#game-screen.immersive-fallback .mvp-controls { display:none !important; }
+#game-screen.immersive-fallback .quest-panel { position:absolute; z-index:22; top:84px; right:12px; width:min(320px,34vw); max-height:42vh; overflow:auto; }
+#game-screen.immersive-fallback .inventory-panel { position:absolute; z-index:23; top:84px; right:12px; width:min(320px,34vw); }
