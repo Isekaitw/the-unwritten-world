@@ -195,6 +195,17 @@ function wallSampleVisible(worldX, worldY, targetObstacle, playerX, playerY, vis
   });
 }
 function rayRectDistance(originX, originY, dirX, dirY, rect) {
+  // A player anchor can briefly overlap a wall boundary because the visual
+  // sprite and collision hitbox have different heights. Treat that wall as
+  // the source surface, not as an occluder; returning its exit distance here
+  // creates a false wedge of darkness around the player.
+  const sourceInsideRect =
+    originX >= rect.x - 0.5 &&
+    originX <= rect.x + rect.w + 0.5 &&
+    originY >= rect.y - 0.5 &&
+    originY <= rect.y + rect.h + 0.5;
+  if (sourceInsideRect) return Infinity;
+
   let near = -Infinity;
   let far = Infinity;
   const axes = [
