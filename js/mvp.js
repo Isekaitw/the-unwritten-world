@@ -495,29 +495,37 @@ document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
 startButton.addEventListener("click", startExploration);
 backButton.addEventListener("click", showTitle);
 let panelStack = 100;
+// Register every full-screen page here so opening one automatically closes
+// every other page. Add future pages to this list and the same rule applies.
+const overlayPanels = [
+  { panel: questPanel, toggle: questToggle, stateKey: "questOpen" },
+  { panel: inventoryPanel, toggle: inventoryToggle, stateKey: "inventoryOpen" }
+];
 function toggleOverlayPanel(panel, toggle, stateKey) {
-  state[stateKey] = !state[stateKey];
+  const shouldOpen = !state[stateKey];
 
-  // Opening inventory automatically closes the quest panel.
-  if (stateKey === "inventoryOpen" && state.inventoryOpen) {
-    state.questOpen = false;
-    questPanel.hidden = true;
-    questPanel.removeAttribute("aria-modal");
-    questPanel.removeAttribute("role");
-    questToggle.setAttribute("aria-expanded", "false");
+  if (shouldOpen) {
+    overlayPanels.forEach((item) => {
+      if (item.stateKey === stateKey) return;
+      state[item.stateKey] = false;
+      item.panel.hidden = true;
+      item.panel.removeAttribute("aria-modal");
+      item.panel.removeAttribute("role");
+      item.toggle.setAttribute("aria-expanded", "false");
+    });
   }
 
-  panel.hidden = !state[stateKey];
-  if (state[stateKey]) {
+  state[stateKey] = shouldOpen;
+  panel.hidden = !shouldOpen;
+  if (shouldOpen) {
     panel.style.setProperty("--panel-z-index", String(++panelStack));
-    // Keep the newly opened full-screen page above any page left open.
     panel.setAttribute("aria-modal", "true");
     panel.setAttribute("role", "dialog");
   } else {
     panel.removeAttribute("aria-modal");
     panel.removeAttribute("role");
   }
-  toggle.setAttribute("aria-expanded", String(state[stateKey]));
+  toggle.setAttribute("aria-expanded", String(shouldOpen));
   saveProgress();
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
