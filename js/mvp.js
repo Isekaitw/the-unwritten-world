@@ -499,7 +499,7 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   state[stateKey] = !state[stateKey];
   panel.hidden = !state[stateKey];
   if (state[stateKey]) {
-    panel.style.zIndex = String(++panelStack);
+    panel.style.setProperty("--panel-z-index", String(++panelStack));
     // Keep the newly opened full-screen page above any page left open.
     panel.setAttribute("aria-modal", "true");
     panel.setAttribute("role", "dialog");
