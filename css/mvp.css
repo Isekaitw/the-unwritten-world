@@ -422,3 +422,26 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
     font-size: .75rem;
   }
 }
+
+/* Interaction/dialogue notices float over the game and never affect layout. */
+#game-screen:not([hidden]) .dialogue-panel {
+  position: fixed !important;
+  z-index: 2147483003 !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: min(560px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px);
+  max-height: min(78vh, 720px);
+  overflow: auto;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  box-sizing: border-box;
+  background: rgba(13, 23, 31, .96);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .6);
+}
+#game-screen:not([hidden]) .dialogue-panel[hidden] {
+  display: none !important;
+}
