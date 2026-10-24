@@ -152,32 +152,30 @@ function drawVision(cameraX, cameraY) {
   const brightnessFactor = Math.max(0.12, Math.min(1, VISION.brightness));
   const fogFactor = Math.max(0, Math.min(1, VISION.fog));
 
-  // Keep the normal scene fully visible. Only enable the vision overlay when
-  // a brightness or fog effect actually restricts sight.
-  if (brightnessFactor >= 1 && fogFactor <= 0) {
-    ctx.globalCompositeOperation = "source-over";
-    return;
-  }
-
+  // Sight-radius darkness is conditional; obstacle occlusion is always active.
+  const sightRestricted = brightnessFactor < 1 || fogFactor > 0;
   const radius = VISION.baseRadius * (0.48 + brightnessFactor * 0.52) * (1 - fogFactor * 0.68);
 
-  // Darkness outside the sight circle.
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = `rgba(0, 0, 0, ${VISION.darkness})`;
-  ctx.fillRect(0, 0, width, height);
-  ctx.globalCompositeOperation = "destination-out";
-  const gradient = ctx.createRadialGradient(px, py, radius * (1 - VISION.edgeSoftness), px, py, radius);
-  gradient.addColorStop(0, "rgba(0,0,0,1)");
-  gradient.addColorStop(0.45, "rgba(0,0,0,0.98)");
-  gradient.addColorStop(0.76, "rgba(0,0,0,0.68)");
-  gradient.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = gradient;
-  ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill();
+  if (sightRestricted) {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = `rgba(0, 0, 0, ${VISION.darkness})`;
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalCompositeOperation = "destination-out";
+    const gradient = ctx.createRadialGradient(px, py, radius * (1 - VISION.edgeSoftness), px, py, radius);
+    gradient.addColorStop(0, "rgba(0,0,0,1)");
+    gradient.addColorStop(0.45, "rgba(0,0,0,0.98)");
+    gradient.addColorStop(0.76, "rgba(0,0,0,0.68)");
+    gradient.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = gradient;
+    ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill();
+  }
 
-  // Hard-edged obstacle silhouettes cast shadows away from the player.
+  // Hard-edged obstacle silhouettes cast shadows away from the player in every state.
   ctx.globalCompositeOperation = "source-over";
   ctx.save();
-  ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.clip();
+  if (sightRestricted) {
+    ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.clip();
+  }
   ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, VISION.shadowOpacity)})`;
   ctx.filter = `blur(${VISION.shadowBlur}px)`;
   const obstaclesToDraw = obstacles.filter((o) => !(o.gate && state.gateOpen));
