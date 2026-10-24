@@ -21,7 +21,7 @@ const gate = $("#gate");
 const WORLD = { width: 1600, height: 1000 };
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
 // Temporary vision settings: brightness/fog are independent knobs for future systems.
-const VISION = { baseRadius: 720, brightness: 1, fog: 0, darkness: 0.94, edgeSoftness: 0.16 };
+const VISION = { baseRadius: 720, brightness: 1, fog: 0, darkness: 0.94, edgeSoftness: 0.38, shadowBlur: 12, shadowOpacity: 0.82 };
 const state = {
   started: false,
   x: 180, y: 180,
@@ -160,7 +160,8 @@ function drawVision(cameraX, cameraY) {
   ctx.globalCompositeOperation = "destination-out";
   const gradient = ctx.createRadialGradient(px, py, radius * (1 - VISION.edgeSoftness), px, py, radius);
   gradient.addColorStop(0, "rgba(0,0,0,1)");
-  gradient.addColorStop(0.78, "rgba(0,0,0,0.98)");
+  gradient.addColorStop(0.45, "rgba(0,0,0,0.98)");
+  gradient.addColorStop(0.76, "rgba(0,0,0,0.68)");
   gradient.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = gradient;
   ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill();
@@ -169,7 +170,8 @@ function drawVision(cameraX, cameraY) {
   ctx.globalCompositeOperation = "source-over";
   ctx.save();
   ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.clip();
-  ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, VISION.darkness + 0.05)})`;
+  ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, VISION.shadowOpacity)})`;
+  ctx.filter = `blur(${VISION.shadowBlur}px)`;
   const obstaclesToDraw = obstacles.filter((o) => !(o.gate && state.gateOpen));
   const reach = Math.hypot(width, height) * 2 + radius;
   for (const o of obstaclesToDraw) {
@@ -196,7 +198,17 @@ function drawVision(cameraX, cameraY) {
       ctx.closePath(); ctx.fill();
     }
   }
+  ctx.filter = "none";
   ctx.restore();
+
+  // Cut the obstacle silhouettes out of the overlay so their surfaces remain visible.
+  // The surrounding projected polygons stay dark, hiding what is behind each wall.
+  ctx.globalCompositeOperation = "destination-out";
+  for (const o of obstaclesToDraw) {
+    const x = o.x - cameraX, y = o.y - cameraY;
+    ctx.fillStyle = "rgba(0,0,0,1)";
+    ctx.fillRect(x - 1, y - 1, o.w + 2, o.h + 2);
+  }
   ctx.globalCompositeOperation = "source-over";
 }
 
