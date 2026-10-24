@@ -165,67 +165,64 @@ function movePlayer(dx, dy) {
   const nextY = Math.max(0, Math.min(WORLD.height - PLAYER.height, state.y + dy));
   if (!collides(state.x, nextY)) state.y = nextY;
 }
+// Segment/rectangle test using the slab method. A hit counts only when it
+// occurs strictly before the sample point; touching the endpoint is not an occlusion.
 function segmentHitsRectBeforeTarget(x1, y1, x2, y2, rect) {
   const dx = x2 - x1;
   const dy = y2 - y1;
   let near = 0;
   let far = 1;
-  const axes = [
+  for (const axis of [
     { start: x1, delta: dx, min: rect.x, max: rect.x + rect.w },
     { start: y1, delta: dy, min: rect.y, max: rect.y + rect.h }
-  ];
-  for (const axis of axes) {
-    if (Math.abs(axis.delta) < 0.0001) {
+  ]) {
+    if (Math.abs(axis.delta) < 1e-8) {
       if (axis.start < axis.min || axis.start > axis.max) return false;
       continue;
     }
-    let a = (axis.min - axis.start) / axis.delta;
-    let b = (axis.max - axis.start) / axis.delta;
-    if (a > b) [a, b] = [b, a];
-    near = Math.max(near, a);
-    far = Math.min(far, b);
-    if (near > far) return false;
+    let t1 = (axis.min - axis.start) / axis.delta;
+    let t2 = (axis.max - axis.start) / axis.delta;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    near = Math.max(near, t1);
+    far = Math.min(far, t2);
+    if (near >= far - 1e-8) return false;
   }
-  return far > 0.001 && near < 0.999;
+  return far > 1e-6 && near < 1 - 1e-6;
 }
-function wallSampleVisible(worldX, worldY, targetObstacle, playerX, playerY, visibleObstacles) {
-  return !visibleObstacles.some((obstacle) => {
-    if (obstacle === targetObstacle) return false;
-    return segmentHitsRectBeforeTarget(playerX, playerY, worldX, worldY, obstacle);
-  });
-}
-function rayRectDistance(originX, originY, dirX, dirY, rect) {
-  // A player anchor can briefly overlap a wall boundary because the visual
-  // sprite and collision hitbox have different heights. Treat that wall as
-  // the source surface, not as an occluder; returning its exit distance here
-  // creates a false wedge of darkness around the player.
-  const sourceInsideRect =
-    originX >= rect.x - 0.5 &&
-    originX <= rect.x + rect.w + 0.5 &&
-    originY >= rect.y - 0.5 &&
-    originY <= rect.y + rect.h + 0.5;
-  if (sourceInsideRect) return Infinity;
 
+// A wall's own rectangle is the surface being inspected, not an occluder.
+// Every other closed wall must be clear between the player and that sample.
+function wallSampleVisible(worldX, worldY, targetObstacle, playerX, playerY, visibleObstacles) {
+  for (const obstacle of visibleObstacles) {
+    if (obstacle === targetObstacle) continue;
+    if (segmentHitsRectBeforeTarget(playerX, playerY, worldX, worldY, obstacle)) return false;
+  }
+  return true;
+}
+
+// Return the first positive intersection with an opaque rectangle. If the
+// origin is inside a rectangle, use its exit edge so the ray never produces
+// Infinity/NaN geometry or a discontinuous polygon.
+function rayRectDistance(originX, originY, dirX, dirY, rect) {
   let near = -Infinity;
   let far = Infinity;
-  const axes = [
+  for (const axis of [
     { origin: originX, dir: dirX, min: rect.x, max: rect.x + rect.w },
     { origin: originY, dir: dirY, min: rect.y, max: rect.y + rect.h }
-  ];
-  for (const axis of axes) {
-    if (Math.abs(axis.dir) < 0.000001) {
+  ]) {
+    if (Math.abs(axis.dir) < 1e-8) {
       if (axis.origin < axis.min || axis.origin > axis.max) return Infinity;
       continue;
     }
-    let a = (axis.min - axis.origin) / axis.dir;
-    let b = (axis.max - axis.origin) / axis.dir;
-    if (a > b) [a, b] = [b, a];
-    near = Math.max(near, a);
-    far = Math.min(far, b);
-    if (near > far) return Infinity;
+    let t1 = (axis.min - axis.origin) / axis.dir;
+    let t2 = (axis.max - axis.origin) / axis.dir;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    near = Math.max(near, t1);
+    far = Math.min(far, t2);
+    if (near > far + 1e-8) return Infinity;
   }
-  if (far <= 0.001) return Infinity;
-  return near > 0.001 ? near : far;
+  if (far <= 1e-6) return Infinity;
+  return near > 1e-6 ? near : far;
 }
 function rayViewportDistance(originX, originY, dirX, dirY, rect) {
   let distance = Infinity;
@@ -238,101 +235,132 @@ function rayViewportDistance(originX, originY, dirX, dirY, rect) {
 function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
+  if (!width || !height) return;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  if (visionCanvas.width !== Math.round(width * dpr) || visionCanvas.height !== Math.round(height * dpr)) {
-    visionCanvas.width = Math.round(width * dpr);
-    visionCanvas.height = Math.round(height * dpr);
+  const pixelWidth = Math.round(width * dpr);
+  const pixelHeight = Math.round(height * dpr);
+  if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
+    visionCanvas.width = pixelWidth;
+    visionCanvas.height = pixelHeight;
   }
-  visionContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   const ctx = visionContext;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(0, 0, width, height);
 
-  // Use the player's collision/foot anchor rather than sprite center. When
-  // touching a wall from below, the sprite center can overlap the wall's bounds.
+  // All occlusion decisions use one world-space source: the player's foot /
+  // collision anchor. Camera coordinates are used only when drawing to canvas.
   const sourceX = state.x;
   const sourceY = state.y + PLAYER.height - PLAYER.hitHeight / 2;
-  const px = sourceX - cameraX;
-  const py = sourceY - cameraY;
-  const brightnessFactor = Math.max(0.12, Math.min(1, VISION.brightness));
-  const fogFactor = Math.max(0, Math.min(1, VISION.fog));
-  const sightRestricted = brightnessFactor < 1 || fogFactor > 0;
-  const radius = VISION.baseRadius * (0.48 + brightnessFactor * 0.52) * (1 - fogFactor * 0.68);
-  const visibleObstacles = obstacles.filter((o) => !(o.gate && state.gateOpen));
-  const viewRect = { x: cameraX, y: cameraY, w: width, h: height };
+  const screenX = sourceX - cameraX;
+  const screenY = sourceY - cameraY;
+  const brightness = Math.max(0.12, Math.min(1, VISION.brightness));
+  const fog = Math.max(0, Math.min(1, VISION.fog));
+  const restricted = brightness < 1 || fog > 0;
+  const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
+  const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
+  const view = { x: cameraX, y: cameraY, w: width, h: height };
 
-  // Start with a fully opaque mask. Only the player's line-of-sight polygon
-  // and the individually visible wall surfaces are cut out of this mask.
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = "rgba(0, 0, 0, 1)";
+  // The overlay is fully opaque. Only space reachable by a ray before its
+  // first wall (or vision radius) is removed from the overlay.
+  ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
   const angles = [];
-  const epsilon = 0.0001;
-  const addCornerAngles = (x, y) => {
+  const epsilon = 1e-5;
+  const addCorner = (x, y) => {
     const angle = Math.atan2(y - sourceY, x - sourceX);
     angles.push(angle - epsilon, angle, angle + epsilon);
   };
-  addCornerAngles(cameraX, cameraY);
-  addCornerAngles(cameraX + width, cameraY);
-  addCornerAngles(cameraX + width, cameraY + height);
-  addCornerAngles(cameraX, cameraY + height);
-  for (const o of visibleObstacles) {
-    addCornerAngles(o.x, o.y);
-    addCornerAngles(o.x + o.w, o.y);
-    addCornerAngles(o.x + o.w, o.y + o.h);
-    addCornerAngles(o.x, o.y + o.h);
+  addCorner(cameraX, cameraY);
+  addCorner(cameraX + width, cameraY);
+  addCorner(cameraX + width, cameraY + height);
+  addCorner(cameraX, cameraY + height);
+  for (const o of opaque) {
+    addCorner(o.x, o.y);
+    addCorner(o.x + o.w, o.y);
+    addCorner(o.x + o.w, o.y + o.h);
+    addCorner(o.x, o.y + o.h);
   }
   angles.sort((a, b) => a - b);
 
-  const points = [];
+  // Deduplicate near-identical angles to avoid zero-area spikes at corners.
+  const uniqueAngles = [];
   for (const angle of angles) {
+    if (!uniqueAngles.length || Math.abs(angle - uniqueAngles[uniqueAngles.length - 1]) > 1e-7) {
+      uniqueAngles.push(angle);
+    }
+  }
+
+  const points = [];
+  for (const angle of uniqueAngles) {
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
-    let distance = rayViewportDistance(sourceX, sourceY, dirX, dirY, viewRect);
-    if (sightRestricted) distance = Math.min(distance, radius);
-    for (const obstacle of visibleObstacles) {
-      const hitDistance = rayRectDistance(sourceX, sourceY, dirX, dirY, obstacle);
-      if (hitDistance < distance) distance = hitDistance;
+    let distance = rayViewportDistance(sourceX, sourceY, dirX, dirY, view);
+    if (restricted) distance = Math.min(distance, radius);
+    for (const obstacle of opaque) {
+      const hit = rayRectDistance(sourceX, sourceY, dirX, dirY, obstacle);
+      if (hit < distance) distance = hit;
     }
+    if (!Number.isFinite(distance) || distance < 0) continue;
     points.push({
       x: sourceX + dirX * distance - cameraX,
       y: sourceY + dirY * distance - cameraY
     });
   }
 
-  // Carve a hard-edged visibility polygon: no blurred shadow edge can leak
-  // background detail through the shadow or create pale seams at wall corners.
   ctx.globalCompositeOperation = "destination-out";
-  ctx.beginPath();
-  points.forEach((point, index) => {
-    if (index === 0) ctx.moveTo(point.x, point.y);
-    else ctx.lineTo(point.x, point.y);
-  });
-  ctx.closePath();
-  ctx.fill();
+  if (points.length >= 3) {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.closePath();
+    ctx.fill();
+  }
 
-  // Reveal only wall pixels with a clear line from the player's foot anchor.
-  // Small contiguous tiles avoid the coarse gaps that appeared with 6px samples.
+  // Show the visible faces/areas of wall sprites without revealing anything
+  // hidden behind a different wall. Small tiles avoid coarse holes; each test
+  // uses the same world-space line segment and active-wall list as ray casting.
   const sampleSize = 2;
-  for (const o of visibleObstacles) {
-    const minX = Math.max(o.x, cameraX);
-    const maxX = Math.min(o.x + o.w, cameraX + width);
-    const minY = Math.max(o.y, cameraY);
-    const maxY = Math.min(o.y + o.h, cameraY + height);
+  for (const wall of opaque) {
+    const minX = Math.max(wall.x, cameraX);
+    const maxX = Math.min(wall.x + wall.w, cameraX + width);
+    const minY = Math.max(wall.y, cameraY);
+    const maxY = Math.min(wall.y + wall.h, cameraY + height);
+    if (minX >= maxX || minY >= maxY) continue;
     for (let worldY = minY; worldY < maxY; worldY += sampleSize) {
       const tileH = Math.min(sampleSize, maxY - worldY);
+      let runStart = null;
+      let runEnd = null;
       for (let worldX = minX; worldX < maxX; worldX += sampleSize) {
         const tileW = Math.min(sampleSize, maxX - worldX);
-        const sampleX = worldX + tileW / 2;
-        const sampleY = worldY + tileH / 2;
-        if (!wallSampleVisible(sampleX, sampleY, o, sourceX, sourceY, visibleObstacles)) continue;
-        ctx.clearRect(worldX - cameraX, worldY - cameraY, tileW, tileH);
+        const visible = wallSampleVisible(
+          worldX + tileW / 2, worldY + tileH / 2, wall,
+          sourceX, sourceY, opaque
+        );
+        if (visible) {
+          if (runStart === null) runStart = worldX;
+          runEnd = worldX + tileW;
+        } else if (runStart !== null) {
+          ctx.clearRect(runStart - cameraX, worldY - cameraY, runEnd - runStart, tileH);
+          runStart = null;
+          runEnd = null;
+        }
+      }
+      if (runStart !== null) {
+        ctx.clearRect(runStart - cameraX, worldY - cameraY, runEnd - runStart, tileH);
       }
     }
   }
 
-  // Keep the character fully visible even when its sprite overlaps a wall edge.
-  ctx.clearRect(px - PLAYER.width / 2 - 2, state.y - cameraY - 2, PLAYER.width + 4, PLAYER.height + 4);
+  // The player sprite is UI-visible regardless of wall-edge rasterization.
+  ctx.clearRect(
+    screenX - PLAYER.width / 2 - 2,
+    state.y - cameraY - 2,
+    PLAYER.width + 4,
+    PLAYER.height + 4
+  );
   ctx.globalCompositeOperation = "source-over";
 }
 function updateScene() {
