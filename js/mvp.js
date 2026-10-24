@@ -165,6 +165,37 @@ function movePlayer(dx, dy) {
   const nextY = Math.max(0, Math.min(WORLD.height - PLAYER.height, state.y + dy));
   if (!collides(state.x, nextY)) state.y = nextY;
 }
+function segmentHitsRectBeforeTarget(x1, y1, x2, y2, rect) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  let near = 0;
+  let far = 1;
+  const axes = [
+    { start: x1, delta: dx, min: rect.x, max: rect.x + rect.w },
+    { start: y1, delta: dy, min: rect.y, max: rect.y + rect.h }
+  ];
+  for (const axis of axes) {
+    if (Math.abs(axis.delta) < 0.0001) {
+      if (axis.start < axis.min || axis.start > axis.max) return false;
+      continue;
+    }
+    let a = (axis.min - axis.start) / axis.delta;
+    let b = (axis.max - axis.start) / axis.delta;
+    if (a > b) [a, b] = [b, a];
+    near = Math.max(near, a);
+    far = Math.min(far, b);
+    if (near > far) return false;
+  }
+  return far > 0.001 && near < 0.999;
+}
+function wallSampleVisible(worldX, worldY, targetObstacle, playerX, playerY, visibleObstacles) {
+  return !visibleObstacles.some((obstacle) => {
+    if (obstacle === targetObstacle) return false;
+    return segmentHitsRectBeforeTarget(
+      playerX, playerY, worldX, worldY, obstacle
+    );
+  });
+}
 function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
@@ -224,7 +255,12 @@ function drawVision(cameraX, cameraY) {
       const next = (i + 1) % 4;
       const midX = (corners[i].x + corners[next].x) / 2;
       const midY = (corners[i].y + corners[next].y) / 2;
-      if ((midX - px) ** 2 + (midY - py) ** 2 < 1) continue;
+      const edgeX = corners[next].x - corners[i].x;
+      const edgeY = corners[next].y - corners[i].y;
+      // Only the edge facing away from the player casts a shadow.
+      // Drawing all four edges makes long projections overlap and can darken the whole view.
+      const outwardDot = edgeY * (px - midX) - edgeX * (py - midY);
+      if (outwardDot > 0 || (midX - px) ** 2 + (midY - py) ** 2 < 1) continue;
       ctx.beginPath();
       ctx.moveTo(corners[i].x, corners[i].y);
       ctx.lineTo(corners[next].x, corners[next].y);
@@ -236,13 +272,21 @@ function drawVision(cameraX, cameraY) {
   ctx.filter = "none";
   ctx.restore();
 
-  // Cut the obstacle silhouettes out of the overlay so their surfaces remain visible.
-  // The surrounding projected polygons stay dark, hiding what is behind each wall.
+  // Reveal only wall pixels that have a clear line of sight from the player.
+  // If another wall is in the way, its shadow remains over the wall behind it.
   ctx.globalCompositeOperation = "destination-out";
+  const sampleSize = 6;
   for (const o of obstaclesToDraw) {
-    const x = o.x - cameraX, y = o.y - cameraY;
-    ctx.fillStyle = "rgba(0,0,0,1)";
-    ctx.fillRect(x - 1, y - 1, o.w + 2, o.h + 2);
+    for (let worldY = o.y; worldY < o.y + o.h; worldY += sampleSize) {
+      const tileH = Math.min(sampleSize, o.y + o.h - worldY);
+      for (let worldX = o.x; worldX < o.x + o.w; worldX += sampleSize) {
+        const tileW = Math.min(sampleSize, o.x + o.w - worldX);
+        const sampleX = worldX + tileW / 2;
+        const sampleY = worldY + tileH / 2;
+        if (!wallSampleVisible(sampleX, sampleY, o, state.x, state.y + PLAYER.height / 2, obstaclesToDraw)) continue;
+        ctx.clearRect(worldX - cameraX, worldY - cameraY, tileW, tileH);
+      }
+    }
   }
   ctx.globalCompositeOperation = "source-over";
 }
