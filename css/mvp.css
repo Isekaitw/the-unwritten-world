@@ -242,7 +242,7 @@
 #game-screen .quest-panel,
 #game-screen .inventory-panel {
   position: fixed !important;
-  z-index: 2147483001 !important;
+  z-index: var(--panel-z-index, 2147483001) !important;
   top: 50% !important;
   left: 50% !important;
   right: auto !important;
