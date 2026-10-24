@@ -219,3 +219,14 @@
   #game-screen:fullscreen .dpad { grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(2, 40px); gap: 4px; }
   #game-screen:fullscreen .interact-button { width: 34vw; min-height: 46px; font-size: .78rem; }
 }
+
+/* Keyboard-first HUD: floating quest and inventory panels. */
+#game-screen:fullscreen .mvp-controls { display: none !important; }
+#game-screen:fullscreen .quest-panel { position:absolute; z-index:22; top:max(92px,calc(env(safe-area-inset-top) + 76px)); right:max(12px,env(safe-area-inset-right)); width:min(320px,34vw); max-height:42vh; overflow:auto; margin:0; padding:12px; background:rgba(9,22,28,.84); backdrop-filter:blur(10px); }
+#game-screen:fullscreen .quest-panel[hidden], #game-screen:fullscreen .inventory-panel[hidden] { display:none !important; }
+#game-screen:fullscreen .scene-toolbar-actions { flex-wrap:wrap; justify-content:flex-end; }
+#game-screen:fullscreen .scene-toolbar-actions .quiet-button { font-size:.76rem; padding:8px 10px; }
+.inventory-panel { position:absolute; z-index:23; top:max(92px,calc(env(safe-area-inset-top) + 76px)); right:max(12px,env(safe-area-inset-right)); width:min(320px,34vw); padding:18px; border:1px solid rgba(210,243,231,.2); border-radius:14px; background:rgba(9,22,28,.92); color:#e7f3ef; backdrop-filter:blur(10px); }
+.inventory-panel h3 { margin:0 0 8px; } .inventory-panel p { margin:0; color:var(--muted); line-height:1.6; }
+#game-screen:fullscreen .mvp-status { bottom:18px; } #game-screen:fullscreen .mvp-status p { max-width:min(50vw,520px); }
+@media(max-width:650px) { #game-screen:fullscreen .quest-panel, #game-screen:fullscreen .inventory-panel { top:auto; right:10px; bottom:16px; width:min(240px,56vw); max-height:35vh; } #game-screen:fullscreen .scene-toolbar-actions .quiet-button { padding:6px 7px; font-size:.68rem; } }
