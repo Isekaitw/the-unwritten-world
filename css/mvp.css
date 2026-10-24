@@ -237,3 +237,40 @@
 #game-screen.immersive-fallback .mvp-controls { display:none !important; }
 #game-screen.immersive-fallback .quest-panel { position:absolute; z-index:22; top:84px; right:12px; width:min(320px,34vw); max-height:42vh; overflow:auto; }
 #game-screen.immersive-fallback .inventory-panel { position:absolute; z-index:23; top:84px; right:12px; width:min(320px,34vw); }
+
+/* Center all floating windows and keep task categories inside one modal. */
+#game-screen .quest-panel,
+#game-screen .inventory-panel {
+  position: fixed !important;
+  z-index: 2147483001 !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: min(560px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px);
+  max-height: min(78vh, 720px) !important;
+  overflow: auto;
+  margin: 0 !important;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  box-shadow: 0 24px 90px rgba(0,0,0,.55);
+}
+#game-screen .inventory-panel { width: min(480px, calc(100vw - 32px)) !important; }
+#game-screen .quest-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:16px 0 12px; }
+#game-screen .quest-tab { padding:10px 8px; border:1px solid rgba(211,244,228,.16); border-radius:9px; color:#c8ded5; background:rgba(4,17,23,.38); cursor:pointer; }
+#game-screen .quest-tab.is-selected { color:#fff1c8; border-color:rgba(255,231,165,.55); background:rgba(255,231,165,.09); }
+#game-screen .quest-category[hidden] { display:none !important; }
+#game-screen .quest-category { min-height:110px; }
+#game-screen .quest-category .quest-list { grid-template-columns:1fr; }
+#game-screen .quest-category .quest-item { min-height:42px; }
+#game-screen .quest-category .quest-secret { margin-top:0; }
+#game-screen .quest-category > .quest-message { margin-top:10px; }
+#game-screen .quest-panel[hidden], #game-screen .inventory-panel[hidden] { display:none !important; }
+@media(max-width:540px) {
+  #game-screen .quest-panel, #game-screen .inventory-panel { width:calc(100vw - 28px) !important; max-height:76vh !important; padding:14px; }
+  #game-screen .quest-tabs { gap:4px; }
+  #game-screen .quest-tab { padding:9px 3px; font-size:.82rem; }
+}
+/* Higher-resolution visibility mask and subpixel wall sampling reduce stair-step edges. */
+.vision-canvas { image-rendering:auto; }
