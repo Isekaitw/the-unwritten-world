@@ -423,25 +423,36 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   }
 }
 
-/* Interaction/dialogue notices float over the game and never affect layout. */
+/* Gacha-style dialogue box: anchored near the bottom, floating above the game scene. */
 #game-screen:not([hidden]) .dialogue-panel {
   position: fixed !important;
   z-index: 2147483003 !important;
-  top: 50% !important;
+  top: auto !important;
   left: 50% !important;
   right: auto !important;
-  bottom: auto !important;
-  width: min(560px, calc(100vw - 32px)) !important;
+  bottom: max(82px, calc(env(safe-area-inset-bottom) + 76px)) !important;
+  width: min(760px, calc(100vw - 32px)) !important;
   max-width: calc(100vw - 32px);
-  max-height: min(78vh, 720px);
+  max-height: min(38vh, 320px);
   overflow: auto;
   margin: 0 !important;
-  transform: translate(-50%, -50%) !important;
+  transform: translateX(-50%) !important;
   box-sizing: border-box;
-  background: rgba(13, 23, 31, .96);
+  background: rgba(13, 23, 31, .94);
   backdrop-filter: blur(16px);
   box-shadow: 0 24px 90px rgba(0, 0, 0, .6);
+  border: 1px solid rgba(210, 243, 231, .3);
+  border-radius: 14px;
 }
 #game-screen:not([hidden]) .dialogue-panel[hidden] {
   display: none !important;
+}
+@media (max-width: 540px) {
+  #game-screen:not([hidden]) .dialogue-panel {
+    bottom: max(76px, calc(env(safe-area-inset-bottom) + 68px)) !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px);
+    max-height: 34vh;
+    border-radius: 12px;
+  }
 }
