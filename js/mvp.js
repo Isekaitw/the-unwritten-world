@@ -497,6 +497,16 @@ backButton.addEventListener("click", showTitle);
 let panelStack = 100;
 function toggleOverlayPanel(panel, toggle, stateKey) {
   state[stateKey] = !state[stateKey];
+
+  // Opening inventory automatically closes the quest panel.
+  if (stateKey === "inventoryOpen" && state.inventoryOpen) {
+    state.questOpen = false;
+    questPanel.hidden = true;
+    questPanel.removeAttribute("aria-modal");
+    questPanel.removeAttribute("role");
+    questToggle.setAttribute("aria-expanded", "false");
+  }
+
   panel.hidden = !state[stateKey];
   if (state[stateKey]) {
     panel.style.setProperty("--panel-z-index", String(++panelStack));
