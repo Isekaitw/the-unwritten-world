@@ -176,7 +176,8 @@ function segmentHitsRectBeforeTarget(x1, y1, x2, y2, rect) {
   ];
   for (const axis of axes) {
     if (Math.abs(axis.delta) < 0.0001) {
-      if (axis.start < axis.min || axis.start > axis.max) return false;
+      // A ray that only grazes a rectangle edge should not count as blocked.
+      if (axis.start <= axis.min || axis.start >= axis.max) return false;
       continue;
     }
     let a = (axis.min - axis.start) / axis.delta;
@@ -184,11 +185,23 @@ function segmentHitsRectBeforeTarget(x1, y1, x2, y2, rect) {
     if (a > b) [a, b] = [b, a];
     near = Math.max(near, a);
     far = Math.min(far, b);
-    if (near > far) return false;
+    if (near >= far - 1e-6) return false;
   }
   return far > 0.001 && near < 0.999;
 }
+const WALL_REVEAL_DEPTH = 24; // Maximum wall depth revealed from the player's side.
+
 function wallSampleVisible(worldX, worldY, targetObstacle, playerX, playerY, visibleObstacles) {
+  const dx = worldX - playerX;
+  const dy = worldY - playerY;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 0.001) return true;
+
+  // Only reveal a shallow layer from the first surface of the target wall.
+  // This keeps the wall's back/deep side from being lit through itself.
+  const entry = rayRectDistance(playerX, playerY, dx / dist, dy / dist, targetObstacle);
+  if (!Number.isFinite(entry) || dist - entry > WALL_REVEAL_DEPTH) return false;
+
   return !visibleObstacles.some((obstacle) => {
     if (obstacle === targetObstacle) return false;
     return segmentHitsRectBeforeTarget(playerX, playerY, worldX, worldY, obstacle);
@@ -321,12 +334,24 @@ function drawVision(cameraX, cameraY) {
     const maxY = Math.min(o.y + o.h, cameraY + height);
     for (let worldY = minY; worldY < maxY; worldY += sampleSize) {
       const tileH = Math.min(sampleSize, maxY - worldY);
+      const sampleY = worldY + tileH / 2;
+      let runStart = null;
+
+      // Merge adjacent visible samples into one horizontal clearRect call.
       for (let worldX = minX; worldX < maxX; worldX += sampleSize) {
         const tileW = Math.min(sampleSize, maxX - worldX);
         const sampleX = worldX + tileW / 2;
-        const sampleY = worldY + tileH / 2;
-        if (!wallSampleVisible(sampleX, sampleY, o, sourceX, sourceY, visibleObstacles)) continue;
-        ctx.clearRect(worldX - cameraX, worldY - cameraY, tileW, tileH);
+        const visible = wallSampleVisible(sampleX, sampleY, o, sourceX, sourceY, visibleObstacles);
+
+        if (visible && runStart === null) runStart = worldX;
+        if (!visible && runStart !== null) {
+          ctx.clearRect(runStart - cameraX, worldY - cameraY, worldX - runStart, tileH);
+          runStart = null;
+        }
+      }
+
+      if (runStart !== null) {
+        ctx.clearRect(runStart - cameraX, worldY - cameraY, maxX - runStart, tileH);
       }
     }
   }
@@ -343,9 +368,9 @@ function updateScene() {
 
   // Follow the player's center. Clamp the camera at world edges so the
   // screen-space player only leaves center when the camera cannot follow.
-  const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
+  const cameraX = Math.round(Math.max(0, Math.min(maxX, state.x - viewW / 2)));
   const playerCenterY = state.y + PLAYER.height / 2;
-  const cameraY = Math.max(0, Math.min(maxY, playerCenterY - viewH / 2));
+  const cameraY = Math.round(Math.max(0, Math.min(maxY, playerCenterY - viewH / 2)));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${state.x - cameraX - PLAYER.width / 2}px`;
