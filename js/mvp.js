@@ -393,6 +393,16 @@ function drawVision(cameraX, cameraY) {
     for (const other of opaque) if (other !== wall) addShadow(other);
     ctx.fill();
     ctx.restore();
+
+    // Keep a thin, fully visible rim on every wall. The visibility mask and
+    // projected shadows can otherwise darken the wall's own edge as the
+    // player moves around it, making the wall appear to lose a few pixels.
+    // Clear only the overlay at the rim so the underlying wall edge stays intact.
+    const edge = 1.5;
+    ctx.clearRect(rx, ry, wall.w, edge);
+    ctx.clearRect(rx, ry + wall.h - edge, wall.w, edge);
+    ctx.clearRect(rx, ry, edge, wall.h);
+    ctx.clearRect(rx + wall.w - edge, ry, edge, wall.h);
   }
 
   // The player sprite is UI-visible regardless of wall-edge rasterization.
