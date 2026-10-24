@@ -121,12 +121,6 @@ function showTitle() {
   startButton.focus();
 }
 function startExploration() {
-  // User gesture from the start button permits requesting browser fullscreen.
-  if (!document.fullscreenElement && gameScreen.requestFullscreen) {
-    gameScreen.requestFullscreen().catch(() => {
-      setStatus("瀏覽器未允許全螢幕；請確認網站全螢幕權限。");
-    });
-  }
   stopInput();
   const saved = loadProgress();
   state.x = saved ? saved.x : 180; state.y = saved ? saved.y : 180;
@@ -181,9 +175,15 @@ function collides(x, y) {
   });
 }
 function movePlayer(dx, dy) {
-  const nextX = Math.max(PLAYER.width / 2, Math.min(WORLD.width - PLAYER.width / 2, state.x + dx));
+  // Resolve axes independently so diagonal movement remains stable against
+  // world boundaries and wall corners; clamp using the sprite's full bounds.
+  const minX = PLAYER.width / 2;
+  const maxX = WORLD.width - PLAYER.width / 2;
+  const minY = 0;
+  const maxY = WORLD.height - PLAYER.height;
+  const nextX = Math.max(minX, Math.min(maxX, state.x + dx));
   if (!collides(nextX, state.y)) state.x = nextX;
-  const nextY = Math.max(0, Math.min(WORLD.height - PLAYER.height, state.y + dy));
+  const nextY = Math.max(minY, Math.min(maxY, state.y + dy));
   if (!collides(state.x, nextY)) state.y = nextY;
 }
 // Segment/rectangle test using the slab method. A hit counts only when it
@@ -435,9 +435,10 @@ function updateScene() {
 
   // Follow the player's center. Clamp the camera at world edges so the
   // screen-space player only leaves center when the camera cannot follow.
-  const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const cameraX = Math.round(Math.max(0, Math.min(maxX, state.x - viewW / 2)) * dpr) / dpr;
   const playerCenterY = state.y + PLAYER.height / 2;
-  const cameraY = Math.max(0, Math.min(maxY, playerCenterY - viewH / 2));
+  const cameraY = Math.round(Math.max(0, Math.min(maxY, playerCenterY - viewH / 2)) * dpr) / dpr;
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${state.x - cameraX - PLAYER.width / 2}px`;
@@ -513,8 +514,24 @@ document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
 });
 startButton.addEventListener("click", startExploration);
 backButton.addEventListener("click", showTitle);
-questToggle.addEventListener("click", () => { state.questOpen = !state.questOpen; questPanel.hidden = !state.questOpen; questToggle.setAttribute("aria-expanded", String(state.questOpen)); saveProgress(); });
-inventoryToggle.addEventListener("click", () => { state.inventoryOpen = !state.inventoryOpen; inventoryPanel.hidden = !state.inventoryOpen; inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen)); saveProgress(); });
+let panelStack = 100;
+function toggleOverlayPanel(panel, toggle, stateKey) {
+  state[stateKey] = !state[stateKey];
+  panel.hidden = !state[stateKey];
+  if (state[stateKey]) {
+    panel.style.zIndex = String(++panelStack);
+    // Keep the newly opened full-screen page above any page left open.
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("role", "dialog");
+  } else {
+    panel.removeAttribute("aria-modal");
+    panel.removeAttribute("role");
+  }
+  toggle.setAttribute("aria-expanded", String(state[stateKey]));
+  saveProgress();
+}
+questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
+inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
 interactButton.addEventListener("click", interact);
 objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
@@ -523,8 +540,8 @@ objects.forEach((object) => object.el.addEventListener("click", () => {
 closeDialogueButton.addEventListener("click", closeDialogue);
 document.addEventListener("keydown", (event) => {
   if (!state.started) return;
-  if (event.key === "t" || event.key === "T") { event.preventDefault(); state.questOpen = !state.questOpen; questPanel.hidden = !state.questOpen; questToggle.setAttribute("aria-expanded", String(state.questOpen)); saveProgress(); return; }
-  if (event.key === "e" || event.key === "E") { event.preventDefault(); state.inventoryOpen = !state.inventoryOpen; inventoryPanel.hidden = !state.inventoryOpen; inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen)); saveProgress(); return; }
+  if (event.key === "t" || event.key === "T") { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
+  if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
