@@ -354,13 +354,33 @@ function drawVision(cameraX, cameraY) {
     points.push({ x: hitX - cameraX, y: hitY - cameraY });
   }
 
-  ctx.globalCompositeOperation = "destination-out";
+  // Feather the silhouette edge by rendering the visibility polygon to a
+  // mask and blurring only that mask. Keep wall-face reveal logic below crisp.
   if (points.length >= 3) {
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-    ctx.closePath();
-    ctx.fill();
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = pixelWidth;
+    maskCanvas.height = pixelHeight;
+    const maskCtx = maskCanvas.getContext("2d");
+    maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    maskCtx.fillStyle = "#fff";
+    maskCtx.beginPath();
+    maskCtx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) maskCtx.lineTo(points[i].x, points[i].y);
+    maskCtx.closePath();
+    maskCtx.fill();
+
+    // Blur radius is expressed in CSS pixels and stays subtle on high-DPI screens.
+    const featherCanvas = document.createElement("canvas");
+    featherCanvas.width = pixelWidth;
+    featherCanvas.height = pixelHeight;
+    const featherCtx = featherCanvas.getContext("2d");
+    featherCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    featherCtx.filter = "blur(5px)";
+    featherCtx.drawImage(maskCanvas, 0, 0, width, height);
+    featherCtx.filter = "none";
+
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.drawImage(featherCanvas, 0, 0, pixelWidth, pixelHeight, 0, 0, width, height);
   }
 
   // Show the visible faces/areas of wall sprites without revealing anything
