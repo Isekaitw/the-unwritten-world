@@ -6,6 +6,8 @@ const backButton = $("#back-to-title");
 const viewport = $("#scene");
 const world = $("#world");
 const playerEl = $("#player");
+const visionCanvas = $("#vision-canvas");
+const visionContext = visionCanvas.getContext("2d");
 const statusMessage = $("#status-message");
 const statusChip = $("#status-chip");
 const interactButton = $("#interact-button");
@@ -18,6 +20,8 @@ const gate = $("#gate");
 
 const WORLD = { width: 1600, height: 1000 };
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
+// Temporary vision settings: brightness/fog are independent knobs for future systems.
+const VISION = { baseRadius: 720, brightness: 1, fog: 0, darkness: 0.94, edgeSoftness: 0.16 };
 const state = {
   started: false,
   x: 180, y: 180,
@@ -132,6 +136,70 @@ function movePlayer(dx, dy) {
   const nextY = Math.max(0, Math.min(WORLD.height - PLAYER.height, state.y + dy));
   if (!collides(state.x, nextY)) state.y = nextY;
 }
+function drawVision(cameraX, cameraY) {
+  const width = viewport.clientWidth;
+  const height = viewport.clientHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (visionCanvas.width !== Math.round(width * dpr) || visionCanvas.height !== Math.round(height * dpr)) {
+    visionCanvas.width = Math.round(width * dpr);
+    visionCanvas.height = Math.round(height * dpr);
+  }
+  visionContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const ctx = visionContext;
+  ctx.clearRect(0, 0, width, height);
+  const px = state.x - cameraX;
+  const py = state.y + PLAYER.height / 2 - cameraY;
+  const brightnessFactor = Math.max(0.12, Math.min(1, VISION.brightness));
+  const fogFactor = Math.max(0, Math.min(1, VISION.fog));
+  const radius = VISION.baseRadius * (0.48 + brightnessFactor * 0.52) * (1 - fogFactor * 0.68);
+
+  // Darkness outside the sight circle.
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = `rgba(0, 0, 0, ${VISION.darkness})`;
+  ctx.fillRect(0, 0, width, height);
+  ctx.globalCompositeOperation = "destination-out";
+  const gradient = ctx.createRadialGradient(px, py, radius * (1 - VISION.edgeSoftness), px, py, radius);
+  gradient.addColorStop(0, "rgba(0,0,0,1)");
+  gradient.addColorStop(0.78, "rgba(0,0,0,0.98)");
+  gradient.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill();
+
+  // Hard-edged obstacle silhouettes cast shadows away from the player.
+  ctx.globalCompositeOperation = "source-over";
+  ctx.save();
+  ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, VISION.darkness + 0.05)})`;
+  const obstaclesToDraw = obstacles.filter((o) => !(o.gate && state.gateOpen));
+  const reach = Math.hypot(width, height) * 2 + radius;
+  for (const o of obstaclesToDraw) {
+    const corners = [
+      { x: o.x - cameraX, y: o.y - cameraY },
+      { x: o.x + o.w - cameraX, y: o.y - cameraY },
+      { x: o.x + o.w - cameraX, y: o.y + o.h - cameraY },
+      { x: o.x - cameraX, y: o.y + o.h - cameraY }
+    ];
+    const far = corners.map((p) => {
+      const dx = p.x - px, dy = p.y - py, len = Math.hypot(dx, dy) || 1;
+      return { x: p.x + dx / len * reach, y: p.y + dy / len * reach };
+    });
+    for (let i = 0; i < 4; i++) {
+      const next = (i + 1) % 4;
+      const midX = (corners[i].x + corners[next].x) / 2;
+      const midY = (corners[i].y + corners[next].y) / 2;
+      if ((midX - px) ** 2 + (midY - py) ** 2 < 1) continue;
+      ctx.beginPath();
+      ctx.moveTo(corners[i].x, corners[i].y);
+      ctx.lineTo(corners[next].x, corners[next].y);
+      ctx.lineTo(far[next].x, far[next].y);
+      ctx.lineTo(far[i].x, far[i].y);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.restore();
+  ctx.globalCompositeOperation = "source-over";
+}
+
 function updateScene() {
   const viewW = viewport.clientWidth;
   const viewH = viewport.clientHeight;
@@ -147,6 +215,7 @@ function updateScene() {
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${state.x - cameraX - PLAYER.width / 2}px`;
   playerEl.style.top = `${state.y - cameraY}px`;
+  drawVision(cameraX, cameraY);
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
