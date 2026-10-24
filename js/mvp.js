@@ -304,10 +304,33 @@ function drawVision(cameraX, cameraY) {
       if (hit < distance) distance = hit;
     }
     if (!Number.isFinite(distance) || distance < 0) continue;
-    points.push({
-      x: sourceX + dirX * distance - cameraX,
-      y: sourceY + dirY * distance - cameraY
-    });
+
+    // Snap ray endpoints to exact obstacle corners when the first hit lands
+    // numerically on one. This prevents tiny floating-point offsets from
+    // drawing a dark seam that appears detached from the wall corner.
+    let hitX = sourceX + dirX * distance;
+    let hitY = sourceY + dirY * distance;
+    let nearestCorner = null;
+    let nearestCornerError = 0.75;
+    for (const wall of opaque) {
+      for (const corner of [
+        { x: wall.x, y: wall.y },
+        { x: wall.x + wall.w, y: wall.y },
+        { x: wall.x + wall.w, y: wall.y + wall.h },
+        { x: wall.x, y: wall.y + wall.h }
+      ]) {
+        const error = Math.hypot(hitX - corner.x, hitY - corner.y);
+        if (error < nearestCornerError) {
+          nearestCorner = corner;
+          nearestCornerError = error;
+        }
+      }
+    }
+    if (nearestCorner) {
+      hitX = nearestCorner.x;
+      hitY = nearestCorner.y;
+    }
+    points.push({ x: hitX - cameraX, y: hitY - cameraY });
   }
 
   ctx.globalCompositeOperation = "destination-out";
