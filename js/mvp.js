@@ -114,6 +114,7 @@ function showTitle() {
   state.frame = 0;
   titleScreen.hidden = false;
   gameScreen.hidden = true;
+  gameScreen.classList.remove("immersive-fallback");
   if (document.fullscreenElement === gameScreen && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   dialoguePanel.hidden = true;
   state.dialogueOpen = false;
