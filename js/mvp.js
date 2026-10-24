@@ -345,7 +345,7 @@ function drawVision(cameraX, cameraY) {
     // Blur radius is expressed in CSS pixels and stays subtle on high-DPI screens.
     featherCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     featherCtx.clearRect(0, 0, width, height);
-    featherCtx.filter = "blur(5px)";
+    featherCtx.filter = "blur(2px)";
     featherCtx.drawImage(maskCanvas, 0, 0, width, height);
     featherCtx.filter = "none";
 
