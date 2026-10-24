@@ -1,0 +1,95 @@
+.game-viewport {
+  height: clamp(360px, 62vh, 650px);
+  min-height: 360px;
+  background: #122b34;
+  touch-action: pan-y;
+}
+.game-world {
+  position: absolute;
+  left: 0; top: 0;
+  width: 1600px; height: 1000px;
+  overflow: hidden;
+  transform: translate3d(0,0,0);
+  transform-origin: top left;
+  will-change: transform;
+  background: #24464a;
+}
+.world-ground {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 25% 30%, rgba(195,215,177,.16), transparent 28%),
+    radial-gradient(ellipse at 75% 65%, rgba(129,180,162,.12), transparent 34%),
+    repeating-linear-gradient(32deg, transparent 0 74px, rgba(220,238,211,.035) 75px 77px, transparent 78px 150px),
+    linear-gradient(135deg,#31575a,#1d3b43 60%,#284b4b);
+}
+.world-water {
+  position:absolute;left:0;right:0;bottom:0;height:170px;
+  background:repeating-linear-gradient(174deg,transparent 0 20px,rgba(184,230,219,.13) 21px 23px,transparent 24px 45px),linear-gradient(180deg,rgba(27,79,86,.25),#102a36);
+}
+.world-landmark {
+  position:absolute; padding:20px 28px; border:1px solid rgba(214,244,224,.17);
+  color:rgba(224,244,229,.42); letter-spacing:.3em; font-size:20px;
+  transform:rotate(-7deg); background:rgba(9,28,33,.15);
+}
+.landmark-one{left:90px;top:330px}.landmark-two{left:1020px;top:400px}
+.obstacle {
+  position:absolute; z-index:3; border:2px solid #8a9a8d; border-radius:7px;
+  background:linear-gradient(145deg,#62766e,#344d4c 68%,#263e40);
+  box-shadow:inset 0 5px 0 rgba(233,245,218,.12),0 9px 16px rgba(0,0,0,.22);
+}
+.gate {
+  position:absolute;z-index:4;border:3px solid #d2c7a0;border-radius:5px;
+  background:repeating-linear-gradient(90deg,#8c8165 0 10px,#c0b48b 11px 14px,#655f4e 15px 20px);
+  box-shadow:0 0 22px rgba(236,212,146,.22);
+  transition:opacity .25s,transform .25s;
+}
+.gate.is-open { opacity:.16; transform:translateY(-24px); pointer-events:none; }
+.player {
+  position:absolute;z-index:6;width:30px;height:42px;border-radius:45% 45% 35% 35%;
+  background:linear-gradient(145deg,#e1f4dd,#8bbeb2 70%,#507b7c);
+  border:2px solid rgba(239,255,235,.9); box-shadow:0 5px 12px rgba(0,0,0,.32),0 0 15px rgba(179,240,219,.22);
+}
+.player::before {content:"";position:absolute;left:5px;top:-7px;width:16px;height:16px;border-radius:50%;background:#d6e7d9;border:2px solid #769d96}
+.player span {position:absolute;left:4px;right:4px;bottom:-4px;height:7px;border-radius:50%;background:rgba(4,18,22,.35)}
+.world-object {
+  position:absolute;z-index:5;min-width:48px;min-height:48px;padding:5px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  color:#e8fff4;background:rgba(12,33,38,.78);border:1px solid rgba(203,255,229,.7);
+  border-radius:50%;font-size:22px;cursor:pointer;box-shadow:0 0 20px rgba(171,239,213,.16);
+  transform:translate(-50%,-50%);touch-action:manipulation;
+}
+.world-object span {position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);padding:5px 8px;border-radius:6px;background:rgba(7,19,25,.82);font-size:12px;white-space:nowrap;letter-spacing:.04em}
+.world-object.is-near {border-color:#fff4bb;box-shadow:0 0 0 6px rgba(255,239,174,.14),0 0 25px rgba(255,239,174,.55)}
+.secret-object {color:#ffe6a2;border-color:rgba(255,230,162,.6)}
+.secret-object.is-found {opacity:.25;filter:grayscale(1)}
+.switch-object.is-active {color:#baffd7;background:#225b4b;box-shadow:0 0 28px rgba(132,255,193,.65)}
+.world-label {position:absolute;color:rgba(237,246,230,.7);font-size:13px;letter-spacing:.1em;text-shadow:0 2px 4px #0a1a20}
+.label-start{left:105px;top:120px}.label-gate{left:790px;top:560px}
+.scene-overlay {position:absolute;z-index:8;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;color:#e7f3ef;font-size:12px}
+.scene-overlay span {padding:7px 9px;border:1px solid rgba(228,247,237,.16);border-radius:8px;background:rgba(5,17,24,.64)}
+.mvp-status {align-items:center}.mvp-status p{max-width:720px}
+.mvp-controls {display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 0 4px}
+.dpad {display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,46px);gap:5px;touch-action:none}
+.direction {border:1px solid rgba(210,243,231,.28);border-radius:12px;background:rgba(218,246,235,.09);color:#eefbf4;font-size:17px;touch-action:none;user-select:none;-webkit-user-select:none}
+.direction.up{grid-column:2;grid-row:1}.direction.left{grid-column:1;grid-row:2}.direction.down{grid-column:2;grid-row:2}.direction.right{grid-column:3;grid-row:2}
+.direction.is-pressed {background:rgba(169,225,216,.4);border-color:#d4fff3}
+.interact-button {min-height:54px;max-width:55%;white-space:normal}
+.interact-button:disabled {opacity:.45;cursor:not-allowed;box-shadow:none}
+.mvp-help {margin:8px 0 0;color:var(--muted);font-size:.78rem;line-height:1.7}
+@media(max-width:540px){
+ .game-viewport{height:min(55vh,520px);min-height:350px;border-radius:12px}
+ .mvp-controls{gap:10px}.dpad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px);gap:4px}
+ .interact-button{max-width:54%;padding:8px 12px;font-size:.82rem}
+ .scene-overlay{font-size:10px}.world-object span{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.gate{transition:none}}
+
+/* Temporary field-of-vision overlay; the player stays above it. */
+.vision-canvas {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

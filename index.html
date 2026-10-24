@@ -7,13 +7,14 @@
   <meta name="description" content="《零界紀元：THE UNWRITTEN WORLD》最小可玩原型">
   <title>零界紀元｜THE UNWRITTEN WORLD</title>
   <link rel="stylesheet" href="./css/main.css">
-  <script type="module" src="./js/main.js"></script>
+  <link rel="stylesheet" href="./css/mvp.css">
+  <script type="module" src="./js/mvp.js"></script>
 </head>
 <body>
   <main class="app-shell">
     <header class="topbar">
       <a class="wordmark" href="./" aria-label="零界紀元首頁">零界紀元 <span>THE UNWRITTEN WORLD</span></a>
-      <span class="build-label">P01 · 原型</span>
+      <span class="build-label">技術 MVP · 測試區</span>
     </header>
 
     <section id="title-screen" class="title-screen" aria-labelledby="game-title">
@@ -23,54 +24,64 @@
       <p class="subtitle">THE UNWRITTEN WORLD</p>
       <p class="title-copy">有些記錄消失了，有些地方仍記得。</p>
       <button id="start-button" class="primary-button" type="button">開始探索 <span aria-hidden="true">↗</span></button>
-      <p class="prototype-note">原型版本：使用 CSS 佔位場景，尚未加入正式美術。</p>
+      <p class="prototype-note">技術測試區使用幾何佔位物件；不代表正式場景或劇情內容。</p>
     </section>
 
     <section id="game-screen" class="game-screen" hidden aria-labelledby="scene-title">
       <div class="scene-toolbar">
         <div>
-          <p class="eyebrow">第一章 · 靜潮海岸</p>
-          <h2 id="scene-title">潮痕灘</h2>
+          <p class="eyebrow">技術測試區 · 非正式章節內容</p>
+          <h2 id="scene-title">潮痕灘｜探索原型</h2>
         </div>
         <button id="back-to-title" class="quiet-button" type="button">返回標題</button>
       </div>
 
-      <div id="scene" class="scene" aria-label="潮痕灘佔位場景">
-        <div class="scene-sky" aria-hidden="true"></div>
-        <div class="scene-moon" aria-hidden="true"></div>
-        <div class="scene-horizon" aria-hidden="true"></div>
-        <div class="scene-water" aria-hidden="true"></div>
-        <div class="scene-foreground" aria-hidden="true"></div>
-        <div class="scene-caption">
-          <span class="caption-mark" aria-hidden="true">◇</span>
-          <span>海風帶來了不屬於此地的微弱回聲。</span>
+      <div id="scene" class="scene game-viewport" aria-label="可移動探索的測試區">
+        <div id="world" class="game-world">
+          <div class="world-ground" aria-hidden="true"></div>
+          <div class="world-water" aria-hidden="true"></div>
+          <div class="world-landmark landmark-one" aria-hidden="true">潮痕</div>
+          <div class="world-landmark landmark-two" aria-hidden="true">遺跡</div>
+          <div class="obstacle" style="left:330px;top:220px;width:210px;height:65px" aria-label="石牆障礙"></div>
+          <div class="obstacle" style="left:610px;top:350px;width:80px;height:220px" aria-label="石柱障礙"></div>
+          <div class="obstacle" style="left:930px;top:170px;width:240px;height:75px" aria-label="石牆障礙"></div>
+          <div class="obstacle" style="left:1180px;top:560px;width:90px;height:190px" aria-label="石柱障礙"></div>
+          <div id="gate" class="gate" style="left:760px;top:600px;width:180px;height:44px" aria-label="封閉通路"></div>
+          <button id="marker" class="world-object marker-object" style="left:250px;top:460px" type="button" aria-label="調查潮痕標記">◇<span>潮痕標記</span></button>
+          <button id="secret" class="world-object secret-object" style="left:1320px;top:300px" type="button" aria-label="調查隱藏回聲">✧<span>微弱回聲</span></button>
+          <button id="switch" class="world-object switch-object" style="left:830px;top:760px" type="button" aria-label="啟動古代機關">◎<span>測量機關</span></button>
+          <div class="world-label label-start">起始區域</div>
+          <div class="world-label label-gate">封閉通路</div>
         </div>
-        <button id="tide-hotspot" class="hotspot" type="button" aria-describedby="hotspot-hint">
-          <span class="hotspot-pulse" aria-hidden="true"></span>
-          <span class="hotspot-label">調查潮痕標記</span>
-        </button>
-        <p id="hotspot-hint" class="scene-hint">點擊發光標記以調查</p>
+        <canvas id="vision-canvas" class="vision-canvas" aria-hidden="true"></canvas>
+        <div id="player" class="player" role="img" aria-label="玩家角色"><span></span></div>
+        <div class="scene-overlay" aria-hidden="true"><span>探索測試區</span><span id="coordinates">X 180 · Y 180</span></div>
       </div>
 
-      <div class="status-row">
-        <p id="status-message" role="status" aria-live="polite">你抵達了潮痕灘。試著調查場景中的標記。</p>
-        <span class="status-chip"><span class="status-dot" aria-hidden="true"></span> 原型運行中</span>
+      <div class="status-row mvp-status">
+        <p id="status-message" role="status" aria-live="polite">使用 WASD／方向鍵或螢幕方向控制移動。靠近物件後按 E／Enter 或「互動」。</p>
+        <span id="status-chip" class="status-chip"><span class="status-dot" aria-hidden="true"></span> 機關未啟動</span>
       </div>
+
+      <div class="mvp-controls">
+        <div class="dpad" aria-label="角色方向控制">
+          <button class="direction up" data-direction="up" type="button" aria-label="向上移動">▲</button>
+          <button class="direction left" data-direction="left" type="button" aria-label="向左移動">◀</button>
+          <button class="direction down" data-direction="down" type="button" aria-label="向下移動">▼</button>
+          <button class="direction right" data-direction="right" type="button" aria-label="向右移動">▶</button>
+        </div>
+        <button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（E）</button>
+      </div>
+      <p class="mvp-help">目標：探索測試區、調查物件、發現一次性秘密，並啟動機關打開通路。返回標題再開始會重置本局狀態。</p>
 
       <section id="dialogue-panel" class="dialogue-panel" hidden aria-labelledby="dialogue-title">
-        <div class="dialogue-heading">
-          <span class="dialogue-symbol" aria-hidden="true">◇</span>
-          <h3 id="dialogue-title">潮痕標記</h3>
-        </div>
-        <p id="dialogue-text">石面上留著一道不自然的刻痕。</p>
+        <div class="dialogue-heading"><span class="dialogue-symbol" aria-hidden="true">◇</span><h3 id="dialogue-title">調查結果</h3></div>
+        <p id="dialogue-text"></p>
         <button id="close-dialogue" class="primary-button compact-button" type="button">明白了</button>
       </section>
     </section>
 
-    <footer class="footer">
-      <span>THE UNWRITTEN WORLD</span>
-      <span>原型測試版 · 不代表正式內容已完成</span>
-    </footer>
+    <footer class="footer"><span>THE UNWRITTEN WORLD</span><span>技術 MVP · 不代表正式內容已完成</span></footer>
   </main>
 </body>
 </html>
