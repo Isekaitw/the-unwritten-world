@@ -93,3 +93,35 @@
   height: 100%;
   pointer-events: none;
 }
+
+
+/* Desktop-first objective tracker for the technical exploration loop. */
+.quest-panel {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(210, 243, 231, .16);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(17, 36, 43, .96), rgba(21, 48, 53, .9));
+}
+.quest-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.quest-heading .eyebrow { margin: 0 0 4px; }
+.quest-heading h3 { margin: 0; font-size: 1.05rem; font-weight: 650; }
+.quest-progress { flex: 0 0 auto; padding: 6px 10px; border: 1px solid rgba(211, 244, 228, .18); border-radius: 999px; color: #d8f3e5; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.quest-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 12px; padding: 0; list-style: none; }
+.quest-item { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 10px 12px; border: 1px solid rgba(211, 244, 228, .1); border-radius: 10px; color: rgba(226, 241, 233, .58); background: rgba(4, 17, 23, .2); font-size: .9rem; }
+.quest-check { display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; align-items: center; justify-content: center; border: 1px solid rgba(211, 244, 228, .3); border-radius: 50%; font-size: 12px; }
+.quest-item.is-active { border-color: rgba(255, 231, 165, .45); color: #fff1c8; background: rgba(255, 231, 165, .06); }
+.quest-item.is-active .quest-check { border-color: #f3d990; box-shadow: 0 0 0 3px rgba(243, 217, 144, .08); }
+.quest-item.is-complete { color: #b9e9d0; border-color: rgba(137, 224, 177, .22); }
+.quest-item.is-complete .quest-check { border-color: #8edbb3; background: #8edbb3; color: #163d32; }
+.quest-item.is-complete .quest-check::before { content: "✓"; }
+.quest-message { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.6; }
+.quest-secret { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(211, 244, 228, .1); color: #e6d8a7; font-size: .82rem; }
+.quest-secret > span:last-child { margin-left: auto; color: var(--muted); }
+.quest-secret.is-complete { color: #b9e9d0; }
+.quest-secret.is-complete > span:last-child { color: #b9e9d0; }
+@media(max-width: 720px) {
+  .quest-panel { padding: 15px; }
+  .quest-list { grid-template-columns: 1fr; gap: 7px; margin: 12px 0; }
+  .quest-item { min-height: 40px; }
+}
