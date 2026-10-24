@@ -19,7 +19,6 @@ const interactButton = $("#interact-button");
 const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
-const closeDialogueButton = $("#close-dialogue");
 const coordinates = $("#coordinates");
 const gate = $("#gate");
 
@@ -104,7 +103,7 @@ function openDialogue(title, message) {
   dialogueTitle.textContent = title;
   dialogueText.textContent = message;
   dialoguePanel.hidden = false;
-  closeDialogueButton.focus();
+  dialoguePanel.focus();
 }
 function closeDialogue() {
   state.dialogueOpen = false;
@@ -535,12 +534,12 @@ objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
   else if (state.started) setStatus("請先移動角色靠近物件，再按互動。");
 }));
-closeDialogueButton.addEventListener("click", closeDialogue);
 document.addEventListener("keydown", (event) => {
   if (!state.started) return;
   if (event.key === "t" || event.key === "T") { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
+  if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
 });
