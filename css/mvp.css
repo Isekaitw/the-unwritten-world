@@ -84,10 +84,10 @@
 }
 @media(prefers-reduced-motion:reduce){.gate{transition:none}}
 
-/* Temporary field-of-vision overlay; the player stays above it. */
+/* Keep the darkness mask behind walls and gates so it cannot cover their edges. */
 .vision-canvas {
   position: absolute;
-  z-index: 5;
+  z-index: 2;
   inset: 0;
   width: 100%;
   height: 100%;
