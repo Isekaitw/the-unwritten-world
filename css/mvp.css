@@ -93,3 +93,357 @@
   height: 100%;
   pointer-events: none;
 }
+
+
+/* Desktop-first objective tracker for the technical exploration loop. */
+.quest-panel {
+  margin-top: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(210, 243, 231, .16);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(17, 36, 43, .96), rgba(21, 48, 53, .9));
+}
+.quest-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.quest-heading .eyebrow { margin: 0 0 4px; }
+.quest-heading h3 { margin: 0; font-size: 1.05rem; font-weight: 650; }
+.quest-progress { flex: 0 0 auto; padding: 6px 10px; border: 1px solid rgba(211, 244, 228, .18); border-radius: 999px; color: #d8f3e5; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.quest-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 12px; padding: 0; list-style: none; }
+.quest-item { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 10px 12px; border: 1px solid rgba(211, 244, 228, .1); border-radius: 10px; color: rgba(226, 241, 233, .58); background: rgba(4, 17, 23, .2); font-size: .9rem; }
+.quest-check { display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; align-items: center; justify-content: center; border: 1px solid rgba(211, 244, 228, .3); border-radius: 50%; font-size: 12px; }
+.quest-item.is-active { border-color: rgba(255, 231, 165, .45); color: #fff1c8; background: rgba(255, 231, 165, .06); }
+.quest-item.is-active .quest-check { border-color: #f3d990; box-shadow: 0 0 0 3px rgba(243, 217, 144, .08); }
+.quest-item.is-complete { color: #b9e9d0; border-color: rgba(137, 224, 177, .22); }
+.quest-item.is-complete .quest-check { border-color: #8edbb3; background: #8edbb3; color: #163d32; }
+.quest-item.is-complete .quest-check::before { content: "✓"; }
+.quest-message { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.6; }
+.quest-secret { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(211, 244, 228, .1); color: #e6d8a7; font-size: .82rem; }
+.quest-secret > span:last-child { margin-left: auto; color: var(--muted); }
+.quest-secret.is-complete { color: #b9e9d0; }
+.quest-secret.is-complete > span:last-child { color: #b9e9d0; }
+@media(max-width: 720px) {
+  .quest-panel { padding: 15px; }
+  .quest-list { grid-template-columns: 1fr; gap: 7px; margin: 12px 0; }
+  .quest-item { min-height: 40px; }
+}
+
+
+/* Fullscreen exploration mode. The toolbar remains available to exit fullscreen. */
+.scene-toolbar-actions { display: flex; align-items: center; gap: 8px; }
+#game-screen:fullscreen {
+  box-sizing: border-box; position: fixed; inset: 0; width: 100vw; height: 100vh;
+  overflow: auto; padding: clamp(12px, 2vw, 28px); background: #101923; z-index: 9999;
+}
+#game-screen:fullscreen .game-viewport { height: clamp(300px, 58vh, 720px); min-height: 300px; }
+#game-screen:fullscreen .scene-toolbar { margin-bottom: 12px; }
+#game-screen:fullscreen .quest-panel { margin-top: 12px; }
+@media (max-width: 540px) {
+  .scene-toolbar-actions { gap: 6px; }
+  .scene-toolbar-actions .quiet-button { padding: 8px 10px; font-size: .78rem; }
+  #game-screen:fullscreen { padding: 10px; }
+  #game-screen:fullscreen .game-viewport { height: 52vh; min-height: 260px; }
+}
+
+
+/* Immersive play mode: scene is the screen; controls are HUD overlays, not page content. */
+#game-screen:fullscreen {
+  position: fixed; inset: 0; z-index: 9999;
+  width: 100vw; height: 100vh; height: 100dvh;
+  box-sizing: border-box; overflow: hidden;
+  padding: 0; margin: 0; background: #101923;
+  display: block;
+}
+#game-screen:fullscreen .scene-toolbar {
+  position: absolute; z-index: 20; top: max(10px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+  margin: 0; padding: 0; align-items: flex-start; pointer-events: none;
+}
+#game-screen:fullscreen .scene-toolbar > div,
+#game-screen:fullscreen .scene-toolbar-actions { pointer-events: auto; }
+#game-screen:fullscreen .scene-toolbar .eyebrow { display: none; }
+#game-screen:fullscreen .scene-toolbar h2 { margin: 0; font-size: clamp(.85rem, 1.5vw, 1.1rem); text-shadow: 0 2px 8px #000; }
+#game-screen:fullscreen .scene-toolbar-actions .quiet-button { background: rgba(6,16,22,.78); backdrop-filter: blur(8px); }
+#game-screen:fullscreen .game-viewport {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; height: 100dvh;
+  min-height: 0; max-height: none; margin: 0;
+  border: 0; border-radius: 0; touch-action: none;
+}
+#game-screen:fullscreen .scene-overlay { top: max(58px, calc(env(safe-area-inset-top) + 42px)); }
+#game-screen:fullscreen .mvp-status {
+  position: absolute; z-index: 20; left: 12px; right: 12px;
+  bottom: calc(116px + env(safe-area-inset-bottom));
+  display: flex; justify-content: flex-start; align-items: flex-start;
+  pointer-events: none;
+}
+#game-screen:fullscreen .mvp-status p { max-width: min(60vw, 520px); margin: 0; padding: 8px 10px; border-radius: 9px; background: rgba(5,17,24,.72); font-size: .8rem; }
+#game-screen:fullscreen .mvp-status .status-chip { display: none; }
+#game-screen:fullscreen .mvp-controls {
+  position: absolute; z-index: 21; left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex; align-items: flex-end; padding: 0; margin: 0;
+  pointer-events: none;
+}
+#game-screen:fullscreen .dpad,
+#game-screen:fullscreen .interact-button { pointer-events: auto; }
+#game-screen:fullscreen .dpad { grid-template-columns: repeat(3, clamp(42px, 5vw, 58px)); grid-template-rows: repeat(2, clamp(40px, 5vh, 52px)); gap: 5px; }
+#game-screen:fullscreen .direction { background: rgba(6,19,25,.66); backdrop-filter: blur(8px); }
+#game-screen:fullscreen .interact-button { margin-left: auto; width: min(210px, 35vw); max-width: none; background: rgba(12,42,43,.88); backdrop-filter: blur(8px); }
+#game-screen:fullscreen .quest-panel {
+  position: absolute; z-index: 22; top: max(96px, calc(env(safe-area-inset-top) + 80px));
+  right: max(12px, env(safe-area-inset-right)); width: min(320px, 34vw);
+  max-height: 42vh; overflow: auto; margin: 0; padding: 12px;
+  background: rgba(9,22,28,.82); backdrop-filter: blur(10px);
+}
+#game-screen:fullscreen .quest-list { grid-template-columns: 1fr; gap: 5px; margin: 8px 0; }
+#game-screen:fullscreen .quest-item { min-height: 30px; padding: 6px 8px; font-size: .78rem; }
+#game-screen:fullscreen .quest-secret { margin-top: 8px; padding-top: 8px; }
+#game-screen:fullscreen .mvp-help,
+#game-screen:fullscreen ~ .footer { display: none !important; }
+#game-screen:fullscreen .dialogue-panel {
+  position: absolute; z-index: 30; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: min(560px, calc(100vw - 32px)); margin: 0;
+  background: rgba(13,23,31,.96); box-shadow: 0 18px 70px #0009;
+}
+@media (max-width: 650px) {
+  #game-screen:fullscreen .scene-toolbar h2 { font-size: .82rem; max-width: 42vw; }
+  #game-screen:fullscreen .quest-panel { top: auto; right: 10px; bottom: calc(150px + env(safe-area-inset-bottom)); width: min(230px, 55vw); max-height: 28vh; padding: 9px; }
+  #game-screen:fullscreen .quest-heading h3 { font-size: .85rem; }
+  #game-screen:fullscreen .quest-heading .eyebrow,
+  #game-screen:fullscreen .quest-message,
+  #game-screen:fullscreen .quest-secret { display: none; }
+  #game-screen:fullscreen .quest-list { margin: 6px 0 0; }
+  #game-screen:fullscreen .quest-item { min-height: 26px; font-size: .7rem; }
+  #game-screen:fullscreen .mvp-status { bottom: calc(112px + env(safe-area-inset-bottom)); }
+  #game-screen:fullscreen .mvp-status p { max-width: 72vw; font-size: .72rem; }
+  #game-screen:fullscreen .mvp-controls { bottom: max(12px, env(safe-area-inset-bottom)); }
+  #game-screen:fullscreen .dpad { grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(2, 40px); gap: 4px; }
+  #game-screen:fullscreen .interact-button { width: 34vw; min-height: 46px; font-size: .78rem; }
+}
+
+/* Keyboard-first HUD: floating quest and inventory panels. */
+#game-screen:fullscreen .mvp-controls { display: none !important; }
+#game-screen:fullscreen .quest-panel { position:absolute; z-index:22; top:max(92px,calc(env(safe-area-inset-top) + 76px)); right:max(12px,env(safe-area-inset-right)); width:min(320px,34vw); max-height:42vh; overflow:auto; margin:0; padding:12px; background:rgba(9,22,28,.84); backdrop-filter:blur(10px); }
+#game-screen:fullscreen .quest-panel[hidden], #game-screen:fullscreen .inventory-panel[hidden] { display:none !important; }
+#game-screen:fullscreen .scene-toolbar-actions { flex-wrap:wrap; justify-content:flex-end; }
+#game-screen:fullscreen .scene-toolbar-actions .quiet-button { font-size:.76rem; padding:8px 10px; }
+.inventory-panel { position:absolute; z-index:23; top:max(92px,calc(env(safe-area-inset-top) + 76px)); right:max(12px,env(safe-area-inset-right)); width:min(320px,34vw); padding:18px; border:1px solid rgba(210,243,231,.2); border-radius:14px; background:rgba(9,22,28,.92); color:#e7f3ef; backdrop-filter:blur(10px); }
+.inventory-panel h3 { margin:0 0 8px; } .inventory-panel p { margin:0; color:var(--muted); line-height:1.6; }
+#game-screen:fullscreen .mvp-status { bottom:18px; } #game-screen:fullscreen .mvp-status p { max-width:min(50vw,520px); }
+@media(max-width:650px) { #game-screen:fullscreen .quest-panel, #game-screen:fullscreen .inventory-panel { top:auto; right:10px; bottom:16px; width:min(240px,56vw); max-height:35vh; } #game-screen:fullscreen .scene-toolbar-actions .quiet-button { padding:6px 7px; font-size:.68rem; } }
+
+/* Fallback when the browser exits Fullscreen API (for example, Escape). */
+#game-screen.immersive-fallback { position:fixed !important; inset:0 !important; z-index:2147483000 !important; width:100vw !important; height:100vh !important; height:100dvh !important; max-width:none !important; margin:0 !important; padding:0 !important; overflow:hidden !important; background:#071014 !important; }
+#game-screen.immersive-fallback .game-viewport { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; }
+#game-screen.immersive-fallback .mvp-controls { display:none !important; }
+#game-screen.immersive-fallback .quest-panel { position:absolute; z-index:22; top:84px; right:12px; width:min(320px,34vw); max-height:42vh; overflow:auto; }
+#game-screen.immersive-fallback .inventory-panel { position:absolute; z-index:23; top:84px; right:12px; width:min(320px,34vw); }
+
+/* Center all floating windows and keep task categories inside one modal. */
+#game-screen .quest-panel,
+#game-screen .inventory-panel {
+  position: fixed !important;
+  z-index: var(--panel-z-index, 2147483001) !important;
+  top: auto !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: max(88px, calc(env(safe-area-inset-bottom) + 76px)) !important;
+  width: min(560px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px);
+  max-height: min(78vh, 720px) !important;
+  overflow: auto;
+  margin: 0 !important;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  box-shadow: 0 24px 90px rgba(0,0,0,.55);
+}
+#game-screen .inventory-panel { width: min(480px, calc(100vw - 32px)) !important; }
+#game-screen .quest-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:16px 0 12px; }
+#game-screen .quest-tab { padding:10px 8px; border:1px solid rgba(211,244,228,.16); border-radius:9px; color:#c8ded5; background:rgba(4,17,23,.38); cursor:pointer; }
+#game-screen .quest-tab.is-selected { color:#fff1c8; border-color:rgba(255,231,165,.55); background:rgba(255,231,165,.09); }
+#game-screen .quest-category[hidden] { display:none !important; }
+#game-screen .quest-category { min-height:110px; }
+#game-screen .quest-category .quest-list { grid-template-columns:1fr; }
+#game-screen .quest-category .quest-item { min-height:42px; }
+#game-screen .quest-category .quest-secret { margin-top:0; }
+#game-screen .quest-category > .quest-message { margin-top:10px; }
+#game-screen .quest-panel[hidden], #game-screen .inventory-panel[hidden] { display:none !important; }
+@media(max-width:540px) {
+  #game-screen .quest-panel, #game-screen .inventory-panel { width:calc(100vw - 28px) !important; max-height:76vh !important; padding:14px; }
+  #game-screen .quest-tabs { gap:4px; }
+  #game-screen .quest-tab { padding:9px 3px; font-size:.82rem; }
+}
+/* Higher-resolution visibility mask and subpixel wall sampling reduce stair-step edges. */
+.vision-canvas { image-rendering:auto; }
+
+
+/* Full-viewport task and inventory pages; the most recently opened panel wins. */
+#game-screen .quest-panel,
+#game-screen .inventory-panel {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483001;
+  width: 100vw !important;
+  max-width: none !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  overflow: auto;
+  margin: 0 !important;
+  padding: clamp(22px, 5vw, 64px);
+  border: 0;
+  border-radius: 0;
+  transform: none !important;
+  box-sizing: border-box;
+  background: rgba(9, 22, 28, .98);
+  backdrop-filter: blur(16px);
+  box-shadow: none;
+}
+#game-screen .quest-panel { z-index: 2147483001; }
+#game-screen .inventory-panel { z-index: 2147483002; }
+#game-screen .quest-panel h3,
+#game-screen .inventory-panel h3 { font-size: clamp(1.25rem, 3vw, 2rem); }
+#game-screen .quest-category { max-width: 920px; margin: 0 auto; }
+#game-screen .quest-heading,
+#game-screen .quest-tabs,
+#game-screen .quest-list,
+#game-screen .quest-message,
+#game-screen .quest-secret { max-width: 920px; margin-left: auto; margin-right: auto; }
+#game-screen .quest-heading { margin-bottom: 22px; }
+#game-screen .quest-tabs { margin-top: 20px; margin-bottom: 20px; }
+#game-screen .inventory-panel > * { max-width: 920px; margin-left: auto; margin-right: auto; }
+#game-screen .inventory-panel h3 { margin-bottom: 18px; }
+
+
+/* Maximize the game inside the existing browser window without invoking
+   browser fullscreen. Hide site chrome and let the playable viewport fill it. */
+body:has(#game-screen:not([hidden])) { overflow: hidden; }
+.app-shell:has(#game-screen:not([hidden])) {
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+}
+.app-shell:has(#game-screen:not([hidden])) > .topbar,
+.app-shell:has(#game-screen:not([hidden])) > .footer { display: none; }
+#game-screen:not([hidden]) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 12px;
+  overflow: hidden;
+}
+#game-screen:not([hidden]) .scene-toolbar { flex: 0 0 auto; margin-bottom: 10px; }
+#game-screen:not([hidden]) .game-viewport {
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+}
+#game-screen:not([hidden]) .mvp-status,
+#game-screen:not([hidden]) .mvp-controls,
+#game-screen:not([hidden]) .mvp-help { flex: 0 0 auto; }
+@media(max-width: 540px) {
+  #game-screen:not([hidden]) { padding: 8px; }
+  #game-screen:not([hidden]) .scene-toolbar { gap: 8px; }
+  #game-screen:not([hidden]) .scene-toolbar h2 { font-size: 1rem; }
+}
+
+
+/* Immersive gameplay layout: only the playable scene and essential controls
+   remain visible; remove surrounding website/game-page chrome. */
+#game-screen:not([hidden]) {
+  position: relative;
+  padding: 0 !important;
+  gap: 0;
+}
+#game-screen:not([hidden]) .scene-toolbar {
+  position: absolute;
+  z-index: 50;
+  top: max(10px, env(safe-area-inset-top));
+  left: 10px;
+  right: 10px;
+  display: block;
+  margin: 0;
+  pointer-events: none;
+}
+#game-screen:not([hidden]) .scene-toolbar > div:first-child,
+#game-screen:not([hidden]) #back-to-title { display: none !important; }
+#game-screen:not([hidden]) .scene-toolbar-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+#game-screen:not([hidden]) .scene-toolbar-actions .quiet-button {
+  min-height: 40px;
+  padding: 7px 12px;
+  background: rgba(5, 17, 24, .78);
+  backdrop-filter: blur(10px);
+}
+#game-screen:not([hidden]) .game-viewport {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+#game-screen:not([hidden]) .mvp-status,
+#game-screen:not([hidden]) .mvp-help { display: none !important; }
+#game-screen:not([hidden]) .mvp-controls {
+  position: absolute;
+  z-index: 45;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  padding: 0;
+  pointer-events: none;
+}
+#game-screen:not([hidden]) .mvp-controls > * { pointer-events: auto; }
+#game-screen:not([hidden]) .interact-button {
+  min-height: 48px;
+  max-width: 220px;
+  background: rgba(9, 22, 28, .9);
+  color: var(--ink);
+  border-color: rgba(210,243,231,.35);
+  backdrop-filter: blur(10px);
+}
+@media(max-width: 540px) {
+  #game-screen:not([hidden]) .scene-toolbar-actions .quiet-button {
+    min-height: 36px;
+    padding: 6px 9px;
+    font-size: .75rem;
+  }
+}
+
+/* Gacha-style dialogue box: wide and anchored close to the bottom of the game. */
+#game-screen:not([hidden]) .dialogue-panel {
+  position: fixed !important;
+  z-index: 2147483003 !important;
+  top: auto !important;
+  left: 12px !important;
+  right: 12px !important;
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+  width: auto !important;
+  max-width: none;
+  max-height: min(32vh, 280px);
+  overflow: auto;
+  margin: 0 !important;
+  transform: none !important;
+  box-sizing: border-box;
+  background: rgba(13, 23, 31, .94);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .6);
+  border: 1px solid rgba(210, 243, 231, .3);
+  border-radius: 14px;
+}
+#game-screen:not([hidden]) .dialogue-panel[hidden] {
+  display: none !important;
+}

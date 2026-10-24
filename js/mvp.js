@@ -3,6 +3,11 @@ const titleScreen = $("#title-screen");
 const gameScreen = $("#game-screen");
 const startButton = $("#start-button");
 const backButton = $("#back-to-title");
+const questToggle = $("#quest-toggle");
+const inventoryToggle = $("#inventory-toggle");
+const questPanel = $("#quest-panel");
+const inventoryPanel = $("#inventory-panel");
+const SAVE_KEY = "unwritten-world-exploration-save-v1";
 const viewport = $("#scene");
 const world = $("#world");
 const playerEl = $("#player");
@@ -14,9 +19,14 @@ const interactButton = $("#interact-button");
 const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
-const closeDialogueButton = $("#close-dialogue");
 const coordinates = $("#coordinates");
 const gate = $("#gate");
+
+// 離屏 canvas 只建立一次，每幀重複使用（避免每幀配置兩張全解析度 canvas）
+const maskCanvas = document.createElement("canvas");
+const maskCtx = maskCanvas.getContext("2d");
+const featherCanvas = document.createElement("canvas");
+const featherCtx = featherCanvas.getContext("2d");
 
 const WORLD = { width: 1600, height: 1000 };
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
@@ -30,10 +40,13 @@ const state = {
   gateOpen: false,
   secretFound: false,
   markerInspected: false,
+  gateCrossed: false,
   dialogueOpen: false,
   target: null,
   lastTime: 0,
-  frame: 0
+  frame: 0,
+  questOpen: true,
+  inventoryOpen: false
 };
 
 const obstacles = [
@@ -58,19 +71,47 @@ const keyMap = {
 function setStatus(message) {
   statusMessage.textContent = message;
 }
+function updateQuestUI() {
+  const objectives = [
+    { id: "quest-marker", done: state.markerInspected },
+    { id: "quest-gate", done: state.gateOpen },
+    { id: "quest-cross", done: state.gateCrossed }
+  ];
+  objectives.forEach(({ id, done }) => {
+    const item = $(`#${id}`);
+    item.classList.toggle("is-complete", done);
+    item.classList.toggle("is-active", !done && (
+      (id === "quest-marker") ||
+      (id === "quest-gate" && state.markerInspected) ||
+      (id === "quest-cross" && state.gateOpen)
+    ));
+  });
+  const completed = objectives.filter((objective) => objective.done).length;
+  $("#quest-progress").textContent = `${completed} / ${objectives.length} 完成`;
+  $("#quest-message").textContent = state.gateCrossed
+    ? "探索流程完成！你已穿越通路；返回標題可重新開始本局測試。"
+    : state.gateOpen
+      ? "通路已開啟，沿著機關旁的通路向上穿越。"
+      : state.markerInspected
+        ? "線索已記錄。接著找到測量機關，啟動它以打開通路。"
+        : "先找到潮痕標記，調查這處測試區留下的線索。";
+  $("#quest-secret").classList.toggle("is-complete", state.secretFound);
+  $("#quest-secret-status").textContent = state.secretFound ? "已發現" : "未發現";
+}
 function openDialogue(title, message) {
   state.dialogueOpen = true;
   dialogueTitle.textContent = title;
   dialogueText.textContent = message;
   dialoguePanel.hidden = false;
-  closeDialogueButton.focus();
+  dialoguePanel.focus();
 }
 function closeDialogue() {
   state.dialogueOpen = false;
   dialoguePanel.hidden = true;
-  if (state.started) setStatus(state.target ? `靠近「${state.target.title}」了，按 E／Enter 或「互動」。` : "使用方向控制探索；靠近標記、回聲或機關即可互動。");
+  if (state.started) setStatus(state.target ? `靠近「${state.target.title}」了，按 F 互動。` : "使用方向控制探索；靠近標記、回聲或機關即可互動。");
 }
 function showTitle() {
+  saveProgress();
   stopInput();
   state.started = false;
   state.lastTime = 0;
@@ -78,28 +119,36 @@ function showTitle() {
   state.frame = 0;
   titleScreen.hidden = false;
   gameScreen.hidden = true;
+  gameScreen.classList.remove("immersive-fallback");
+  if (document.fullscreenElement === gameScreen && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   dialoguePanel.hidden = true;
   state.dialogueOpen = false;
   startButton.focus();
 }
 function startExploration() {
   stopInput();
-  state.x = 180; state.y = 180;
-  state.gateOpen = false;
-  state.secretFound = false;
-  state.markerInspected = false;
+  const saved = loadProgress();
+  state.x = saved ? saved.x : 180; state.y = saved ? saved.y : 180;
+  state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
+  state.secretFound = saved ? Boolean(saved.secretFound) : false;
+  state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
+  state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;
   state.target = null;
   state.started = true;
   state.lastTime = 0;
-  gate.classList.remove("is-open");
-  $("#secret").classList.remove("is-found");
-  $("#switch").classList.remove("is-active");
-  statusChip.lastChild.textContent = " 機關未啟動";
+  gate.classList.toggle("is-open", state.gateOpen);
+  $("#secret").classList.toggle("is-found", state.secretFound);
+  $("#switch").classList.toggle("is-active", state.gateOpen);
+  statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關未啟動";
   titleScreen.hidden = true;
   gameScreen.hidden = false;
   dialoguePanel.hidden = true;
   state.dialogueOpen = false;
-  setStatus("使用 WASD／方向鍵或螢幕方向控制移動。靠近物件後按 E／Enter 或「互動」。");
+  questPanel.hidden = !state.questOpen;
+  inventoryPanel.hidden = !state.inventoryOpen;
+  questToggle.setAttribute("aria-expanded", String(state.questOpen));
+  inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
+  setStatus(saved ? "已載入本機儲存的進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
   updateScene();
   state.frame = requestAnimationFrame(tick);
 }
@@ -131,116 +180,260 @@ function collides(x, y) {
   });
 }
 function movePlayer(dx, dy) {
-  const nextX = Math.max(PLAYER.width / 2, Math.min(WORLD.width - PLAYER.width / 2, state.x + dx));
+  // Resolve axes independently so diagonal movement remains stable against
+  // world boundaries and wall corners; clamp using the sprite's full bounds.
+  const minX = PLAYER.width / 2;
+  const maxX = WORLD.width - PLAYER.width / 2;
+  const minY = 0;
+  const maxY = WORLD.height - PLAYER.height;
+  const nextX = Math.max(minX, Math.min(maxX, state.x + dx));
   if (!collides(nextX, state.y)) state.x = nextX;
-  const nextY = Math.max(0, Math.min(WORLD.height - PLAYER.height, state.y + dy));
+  const nextY = Math.max(minY, Math.min(maxY, state.y + dy));
   if (!collides(state.x, nextY)) state.y = nextY;
+}
+
+// Return the first positive intersection with an opaque rectangle. If the
+// origin is inside a rectangle, use its exit edge so the ray never produces
+// Infinity/NaN geometry or a discontinuous polygon.
+function rayRectDistance(originX, originY, dirX, dirY, rect) {
+  let near = -Infinity;
+  let far = Infinity;
+  for (const axis of [
+    { origin: originX, dir: dirX, min: rect.x, max: rect.x + rect.w },
+    { origin: originY, dir: dirY, min: rect.y, max: rect.y + rect.h }
+  ]) {
+    if (Math.abs(axis.dir) < 1e-8) {
+      if (axis.origin < axis.min || axis.origin > axis.max) return Infinity;
+      continue;
+    }
+    let t1 = (axis.min - axis.origin) / axis.dir;
+    let t2 = (axis.max - axis.origin) / axis.dir;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    near = Math.max(near, t1);
+    far = Math.min(far, t2);
+    if (near > far + 1e-8) return Infinity;
+  }
+  if (far <= 1e-6) return Infinity;
+  return near > 1e-6 ? near : far;
+}
+function rayViewportDistance(originX, originY, dirX, dirY, rect) {
+  let distance = Infinity;
+  if (dirX > 0.000001) distance = Math.min(distance, (rect.x + rect.w - originX) / dirX);
+  else if (dirX < -0.000001) distance = Math.min(distance, (rect.x - originX) / dirX);
+  if (dirY > 0.000001) distance = Math.min(distance, (rect.y + rect.h - originY) / dirY);
+  else if (dirY < -0.000001) distance = Math.min(distance, (rect.y - originY) / dirY);
+  return distance > 0 ? distance : 0;
 }
 function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  if (visionCanvas.width !== Math.round(width * dpr) || visionCanvas.height !== Math.round(height * dpr)) {
-    visionCanvas.width = Math.round(width * dpr);
-    visionCanvas.height = Math.round(height * dpr);
+  if (!width || !height) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const pixelWidth = Math.round(width * dpr);
+  const pixelHeight = Math.round(height * dpr);
+  if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
+    visionCanvas.width = pixelWidth;
+    visionCanvas.height = pixelHeight;
   }
-  visionContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   const ctx = visionContext;
-  ctx.clearRect(0, 0, width, height);
-  const px = state.x - cameraX;
-  const py = state.y + PLAYER.height / 2 - cameraY;
-  const brightnessFactor = Math.max(0.12, Math.min(1, VISION.brightness));
-  const fogFactor = Math.max(0, Math.min(1, VISION.fog));
-
-  // Sight-radius darkness is conditional; obstacle occlusion is always active.
-  const sightRestricted = brightnessFactor < 1 || fogFactor > 0;
-  const radius = VISION.baseRadius * (0.48 + brightnessFactor * 0.52) * (1 - fogFactor * 0.68);
-
-  if (sightRestricted) {
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = `rgba(0, 0, 0, ${VISION.darkness})`;
-    ctx.fillRect(0, 0, width, height);
-    ctx.globalCompositeOperation = "destination-out";
-    const gradient = ctx.createRadialGradient(px, py, radius * (1 - VISION.edgeSoftness), px, py, radius);
-    gradient.addColorStop(0, "rgba(0,0,0,1)");
-    gradient.addColorStop(0.45, "rgba(0,0,0,0.98)");
-    gradient.addColorStop(0.76, "rgba(0,0,0,0.68)");
-    gradient.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = gradient;
-    ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // Hard-edged obstacle silhouettes cast shadows away from the player in every state.
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.globalCompositeOperation = "source-over";
-  ctx.save();
-  if (sightRestricted) {
-    ctx.beginPath(); ctx.arc(px, py, radius, 0, Math.PI * 2); ctx.clip();
+  ctx.clearRect(0, 0, width, height);
+
+  // All occlusion decisions use one world-space source: the player's foot /
+  // collision anchor. Camera coordinates are used only when drawing to canvas.
+  const sourceX = state.x;
+  const sourceY = state.y + PLAYER.height - PLAYER.hitHeight / 2;
+  const screenX = sourceX - cameraX;
+  const brightness = Math.max(0.12, Math.min(1, VISION.brightness));
+  const fog = Math.max(0, Math.min(1, VISION.fog));
+  const restricted = brightness < 1 || fog > 0;
+  const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
+  const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
+  const view = { x: cameraX, y: cameraY, w: width, h: height };
+
+  // The overlay is fully opaque. Only space reachable by a ray before its
+  // first wall (or vision radius) is removed from the overlay.
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, width, height);
+
+  const angles = [];
+  const epsilon = 1e-5;
+  const addCorner = (x, y) => {
+    const angle = Math.atan2(y - sourceY, x - sourceX);
+    angles.push(angle - epsilon, angle, angle + epsilon);
+  };
+  addCorner(cameraX, cameraY);
+  addCorner(cameraX + width, cameraY);
+  addCorner(cameraX + width, cameraY + height);
+  addCorner(cameraX, cameraY + height);
+  for (const o of opaque) {
+    addCorner(o.x, o.y);
+    addCorner(o.x + o.w, o.y);
+    addCorner(o.x + o.w, o.y + o.h);
+    addCorner(o.x, o.y + o.h);
   }
-  ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(1, VISION.shadowOpacity)})`;
-  ctx.filter = `blur(${VISION.shadowBlur}px)`;
-  const obstaclesToDraw = obstacles.filter((o) => !(o.gate && state.gateOpen));
-  const reach = Math.hypot(width, height) * 2 + radius;
-  for (const o of obstaclesToDraw) {
-    const corners = [
-      { x: o.x - cameraX, y: o.y - cameraY },
-      { x: o.x + o.w - cameraX, y: o.y - cameraY },
-      { x: o.x + o.w - cameraX, y: o.y + o.h - cameraY },
-      { x: o.x - cameraX, y: o.y + o.h - cameraY }
-    ];
-    const far = corners.map((p) => {
-      const dx = p.x - px, dy = p.y - py, len = Math.hypot(dx, dy) || 1;
-      return { x: p.x + dx / len * reach, y: p.y + dy / len * reach };
-    });
-    for (let i = 0; i < 4; i++) {
-      const next = (i + 1) % 4;
-      const midX = (corners[i].x + corners[next].x) / 2;
-      const midY = (corners[i].y + corners[next].y) / 2;
-      if ((midX - px) ** 2 + (midY - py) ** 2 < 1) continue;
-      ctx.beginPath();
-      ctx.moveTo(corners[i].x, corners[i].y);
-      ctx.lineTo(corners[next].x, corners[next].y);
-      ctx.lineTo(far[next].x, far[next].y);
-      ctx.lineTo(far[i].x, far[i].y);
-      ctx.closePath(); ctx.fill();
+  angles.sort((a, b) => a - b);
+
+  // Deduplicate near-identical angles to avoid zero-area spikes at corners.
+  const uniqueAngles = [];
+  for (const angle of angles) {
+    if (!uniqueAngles.length || Math.abs(angle - uniqueAngles[uniqueAngles.length - 1]) > 1e-7) {
+      uniqueAngles.push(angle);
     }
   }
-  ctx.filter = "none";
-  ctx.restore();
 
-  // Cut the obstacle silhouettes out of the overlay so their surfaces remain visible.
-  // The surrounding projected polygons stay dark, hiding what is behind each wall.
-  ctx.globalCompositeOperation = "destination-out";
-  for (const o of obstaclesToDraw) {
-    const x = o.x - cameraX, y = o.y - cameraY;
-    ctx.fillStyle = "rgba(0,0,0,1)";
-    ctx.fillRect(x - 1, y - 1, o.w + 2, o.h + 2);
+  const points = [];
+  for (const angle of uniqueAngles) {
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+    let distance = rayViewportDistance(sourceX, sourceY, dirX, dirY, view);
+    if (restricted) distance = Math.min(distance, radius);
+    for (const obstacle of opaque) {
+      const hit = rayRectDistance(sourceX, sourceY, dirX, dirY, obstacle);
+      if (hit < distance) distance = hit;
+    }
+    if (!Number.isFinite(distance) || distance < 0) continue;
+
+    // Snap ray endpoints to exact obstacle corners when the first hit lands
+    // numerically on one. This prevents tiny floating-point offsets from
+    // drawing a dark seam that appears detached from the wall corner.
+    let hitX = sourceX + dirX * distance;
+    let hitY = sourceY + dirY * distance;
+    let nearestCorner = null;
+    let nearestCornerError = 0.75;
+    for (const wall of opaque) {
+      for (const corner of [
+        { x: wall.x, y: wall.y },
+        { x: wall.x + wall.w, y: wall.y },
+        { x: wall.x + wall.w, y: wall.y + wall.h },
+        { x: wall.x, y: wall.y + wall.h }
+      ]) {
+        const error = Math.hypot(hitX - corner.x, hitY - corner.y);
+        if (error < nearestCornerError) {
+          nearestCorner = corner;
+          nearestCornerError = error;
+        }
+      }
+    }
+    if (nearestCorner) {
+      hitX = nearestCorner.x;
+      hitY = nearestCorner.y;
+    }
+    points.push({ x: hitX - cameraX, y: hitY - cameraY });
   }
+
+  // Feather the silhouette edge by rendering the visibility polygon to a
+  // mask and blurring only that mask. Offscreen canvases are reused every frame.
+  if (points.length >= 3) {
+    for (const c of [maskCanvas, featherCanvas]) {
+      if (c.width !== pixelWidth || c.height !== pixelHeight) {
+        c.width = pixelWidth;
+        c.height = pixelHeight;
+      }
+    }
+    maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    maskCtx.clearRect(0, 0, width, height);
+    maskCtx.fillStyle = "#fff";
+    maskCtx.beginPath();
+    maskCtx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) maskCtx.lineTo(points[i].x, points[i].y);
+    maskCtx.closePath();
+    maskCtx.fill();
+
+    // Blur radius is expressed in CSS pixels and stays subtle on high-DPI screens.
+    featherCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    featherCtx.clearRect(0, 0, width, height);
+    featherCtx.filter = "blur(5px)";
+    featherCtx.drawImage(maskCanvas, 0, 0, width, height);
+    featherCtx.filter = "none";
+
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.drawImage(featherCanvas, 0, 0, pixelWidth, pixelHeight, 0, 0, width, height);
+  }
+
+  // Wall faces: reveal each wall entirely, then paint back the shadows cast
+  // onto it by every OTHER wall (clipped to this wall). Replaces the old
+  // 0.5px per-sample ray test: same result, far cheaper, and anti-aliased.
+  const FAR = 4000;
+  const addShadow = (o) => {
+    const c = [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]];
+    const p = c.map(([x, y]) => {
+      const dx = x - sourceX, dy = y - sourceY, l = Math.hypot(dx, dy) || 1;
+      return [x + dx / l * FAR, y + dy / l * FAR];
+    });
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      const q = [c[i], c[j], p[j], p[i]];
+      let area = 0;
+      for (let k = 0; k < 4; k++) {
+        const a = q[k], b = q[(k + 1) % 4];
+        area += a[0] * b[1] - b[0] * a[1];
+      }
+      if (area < 0) q.reverse(); // consistent winding so nonzero fill never cancels out
+      ctx.moveTo(q[0][0] - cameraX, q[0][1] - cameraY);
+      for (let k = 1; k < 4; k++) ctx.lineTo(q[k][0] - cameraX, q[k][1] - cameraY);
+      ctx.closePath();
+    }
+  };
+  for (const wall of opaque) {
+    const rx = wall.x - cameraX;
+    const ry = wall.y - cameraY;
+    if (rx > width || ry > height || rx + wall.w < 0 || ry + wall.h < 0) continue;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rx, ry, wall.w, wall.h);
+    ctx.clip();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, wall.w, wall.h);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.beginPath();
+    for (const other of opaque) if (other !== wall) addShadow(other);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // The player sprite is UI-visible regardless of wall-edge rasterization.
+  ctx.clearRect(
+    screenX - PLAYER.width / 2 - 2,
+    state.y - cameraY - 2,
+    PLAYER.width + 4,
+    PLAYER.height + 4
+  );
   ctx.globalCompositeOperation = "source-over";
 }
-
 function updateScene() {
   const viewW = viewport.clientWidth;
   const viewH = viewport.clientHeight;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
 
-  // Follow the player's center. Clamp the camera at world edges so the
-  // screen-space player only leaves center when the camera cannot follow.
-  const cameraX = Math.max(0, Math.min(maxX, state.x - viewW / 2));
-  const playerCenterY = state.y + PLAYER.height / 2;
-  const cameraY = Math.max(0, Math.min(maxY, playerCenterY - viewH / 2));
+  // Player and camera share the same device-pixel grid so the sprite's
+  // on-screen offset stays constant while the camera follows (no sub-pixel jitter).
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const snap = (v) => Math.round(v * dpr) / dpr;
+  const px = snap(state.x);
+  const py = snap(state.y);
+  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
+  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
-  playerEl.style.left = `${state.x - cameraX - PLAYER.width / 2}px`;
-  playerEl.style.top = `${state.y - cameraY}px`;
+  playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
+  playerEl.style.top = `${py - cameraY}px`;
   drawVision(cameraX, cameraY);
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
+  if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
+    state.gateCrossed = true;
+  }
+  updateQuestUI();
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
     .sort((a, b) => a.distance - b.distance)[0] || null;
   state.target = nearest;
   interactButton.disabled = !nearest || state.dialogueOpen;
-  interactButton.textContent = nearest ? `互動：${nearest.title}` : "互動（E）";
+  interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
 function tick(timestamp) {
@@ -255,7 +448,9 @@ function tick(timestamp) {
   state.frame = requestAnimationFrame(tick);
 }
 function interact() {
-  if (!state.started || state.dialogueOpen || !state.target) return;
+  if (!state.started) return;
+  if (state.dialogueOpen) { closeDialogue(); saveProgress(); return; }
+  if (!state.target) return;
   const target = state.target;
   if (target.id === "test_interactable_tide_marker") {
     state.markerInspected = true;
@@ -282,19 +477,69 @@ function interact() {
   }
   updateScene();
 }
+document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const selected = tab.dataset.questTab;
+    document.querySelectorAll("[data-quest-tab]").forEach((item) => {
+      const active = item === tab;
+      item.classList.toggle("is-selected", active);
+      item.setAttribute("aria-selected", String(active));
+    });
+    document.querySelectorAll("[data-quest-category]").forEach((panel) => {
+      panel.hidden = panel.dataset.questCategory !== selected;
+      panel.classList.toggle("is-selected", !panel.hidden);
+    });
+  });
+});
 startButton.addEventListener("click", startExploration);
 backButton.addEventListener("click", showTitle);
+let panelStack = 100;
+// Register every full-screen page here so opening one automatically closes
+// every other page. Add future pages to this list and the same rule applies.
+const overlayPanels = [
+  { panel: questPanel, toggle: questToggle, stateKey: "questOpen" },
+  { panel: inventoryPanel, toggle: inventoryToggle, stateKey: "inventoryOpen" }
+];
+function toggleOverlayPanel(panel, toggle, stateKey) {
+  const shouldOpen = !state[stateKey];
+
+  if (shouldOpen) {
+    overlayPanels.forEach((item) => {
+      if (item.stateKey === stateKey) return;
+      state[item.stateKey] = false;
+      item.panel.hidden = true;
+      item.panel.removeAttribute("aria-modal");
+      item.panel.removeAttribute("role");
+      item.toggle.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  state[stateKey] = shouldOpen;
+  panel.hidden = !shouldOpen;
+  if (shouldOpen) {
+    panel.style.setProperty("--panel-z-index", String(++panelStack));
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("role", "dialog");
+  } else {
+    panel.removeAttribute("aria-modal");
+    panel.removeAttribute("role");
+  }
+  toggle.setAttribute("aria-expanded", String(shouldOpen));
+  saveProgress();
+}
+questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
+inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
 interactButton.addEventListener("click", interact);
 objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
   else if (state.started) setStatus("請先移動角色靠近物件，再按互動。");
 }));
-closeDialogueButton.addEventListener("click", closeDialogue);
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !dialoguePanel.hidden) { closeDialogue(); return; }
-  if (event.key === "e" || event.key === "E" || event.key === "Enter") {
-    if (state.started && !state.dialogueOpen && state.target) { event.preventDefault(); interact(); }
-  }
+  if (!state.started) return;
+  if (event.key === "t" || event.key === "T") { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
+  if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
+  if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
+  if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
 });
@@ -319,6 +564,13 @@ document.querySelectorAll(".direction").forEach((button) => {
   button.addEventListener("pointercancel", release);
   button.addEventListener("lostpointercapture", release);
 });
-window.addEventListener("blur", stopInput);
+window.addEventListener("blur", () => { stopInput(); saveProgress(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) stopInput(); });
 window.addEventListener("resize", () => { if (state.started) updateScene(); });
+
+function saveProgress() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen })); } catch (error) {}
+}
+function loadProgress() {
+  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); return data; } catch (error) { return null; }
+}
