@@ -3,6 +3,7 @@ const titleScreen = $("#title-screen");
 const gameScreen = $("#game-screen");
 const startButton = $("#start-button");
 const backButton = $("#back-to-title");
+const fullscreenButton = $("#fullscreen-button");
 const viewport = $("#scene");
 const world = $("#world");
 const playerEl = $("#player");
@@ -456,6 +457,26 @@ function interact() {
 }
 startButton.addEventListener("click", startExploration);
 backButton.addEventListener("click", showTitle);
+fullscreenButton.addEventListener("click", async () => {
+  try {
+    if (document.fullscreenElement === gameScreen) {
+      await document.exitFullscreen();
+    } else if (gameScreen.requestFullscreen) {
+      await gameScreen.requestFullscreen();
+    } else {
+      setStatus("此瀏覽器不支援網頁全螢幕，請使用瀏覽器的全螢幕功能。");
+      return;
+    }
+  } catch (error) {
+    setStatus("無法切換全螢幕；請確認瀏覽器允許此操作。");
+  }
+});
+document.addEventListener("fullscreenchange", () => {
+  const active = document.fullscreenElement === gameScreen;
+  fullscreenButton.setAttribute("aria-pressed", String(active));
+  fullscreenButton.textContent = active ? "⛶ 離開全螢幕" : "⛶ 全螢幕";
+  requestAnimationFrame(() => { if (state.started) updateScene(); });
+});
 interactButton.addEventListener("click", interact);
 objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
