@@ -112,6 +112,12 @@ function showTitle() {
   startButton.focus();
 }
 function startExploration() {
+  // User gesture from the start button permits requesting browser fullscreen.
+  if (!document.fullscreenElement && gameScreen.requestFullscreen) {
+    gameScreen.requestFullscreen().catch(() => {
+      setStatus("已進入遊戲；若要隱藏瀏覽器介面，請按右上角「全螢幕」。");
+    });
+  }
   stopInput();
   state.x = 180; state.y = 180;
   state.gateOpen = false;
