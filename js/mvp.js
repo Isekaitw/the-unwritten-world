@@ -365,7 +365,7 @@ function drawVision(cameraX, cameraY) {
   // Show the visible faces/areas of wall sprites without revealing anything
   // hidden behind a different wall. Small tiles avoid coarse holes; each test
   // uses the same world-space line segment and active-wall list as ray casting.
-  const sampleSize = 2;
+  const sampleSize = 1;
   for (const wall of opaque) {
     const minX = Math.max(wall.x, cameraX);
     const maxX = Math.min(wall.x + wall.w, cameraX + width);
@@ -481,7 +481,12 @@ backButton.addEventListener("click", showTitle);
 questToggle.addEventListener("click", () => { state.questOpen = !state.questOpen; questPanel.hidden = !state.questOpen; questToggle.setAttribute("aria-expanded", String(state.questOpen)); saveProgress(); });
 inventoryToggle.addEventListener("click", () => { state.inventoryOpen = !state.inventoryOpen; inventoryPanel.hidden = !state.inventoryOpen; inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen)); saveProgress(); });
 document.addEventListener("fullscreenchange", () => {
-  if (state.started && !document.fullscreenElement && gameScreen.requestFullscreen) gameScreen.requestFullscreen().catch(() => {});
+  if (state.started && !document.fullscreenElement) {
+    gameScreen.classList.add("immersive-fallback");
+    if (gameScreen.requestFullscreen) gameScreen.requestFullscreen().catch(() => {});
+  } else if (document.fullscreenElement === gameScreen) {
+    gameScreen.classList.remove("immersive-fallback");
+  }
   requestAnimationFrame(() => { if (state.started) updateScene(); });
 });
 interactButton.addEventListener("click", interact);
