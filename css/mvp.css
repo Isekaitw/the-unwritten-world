@@ -125,3 +125,20 @@
   .quest-list { grid-template-columns: 1fr; gap: 7px; margin: 12px 0; }
   .quest-item { min-height: 40px; }
 }
+
+
+/* Fullscreen exploration mode. The toolbar remains available to exit fullscreen. */
+.scene-toolbar-actions { display: flex; align-items: center; gap: 8px; }
+#game-screen:fullscreen {
+  box-sizing: border-box; position: fixed; inset: 0; width: 100vw; height: 100vh;
+  overflow: auto; padding: clamp(12px, 2vw, 28px); background: #101923; z-index: 9999;
+}
+#game-screen:fullscreen .game-viewport { height: clamp(300px, 58vh, 720px); min-height: 300px; }
+#game-screen:fullscreen .scene-toolbar { margin-bottom: 12px; }
+#game-screen:fullscreen .quest-panel { margin-top: 12px; }
+@media (max-width: 540px) {
+  .scene-toolbar-actions { gap: 6px; }
+  .scene-toolbar-actions .quiet-button { padding: 8px 10px; font-size: .78rem; }
+  #game-screen:fullscreen { padding: 10px; }
+  #game-screen:fullscreen .game-viewport { height: 52vh; min-height: 260px; }
+}
