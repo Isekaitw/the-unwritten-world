@@ -72,7 +72,23 @@
         </div>
         <button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（E）</button>
       </div>
-      <p class="mvp-help">目標：探索測試區、調查物件、發現一次性秘密，並啟動機關打開通路。返回標題再開始會重置本局狀態。</p>
+      <section class="quest-panel" aria-labelledby="quest-title">
+        <div class="quest-heading">
+          <div>
+            <p class="eyebrow">本局進度</p>
+            <h3 id="quest-title">潮痕灘探索目標</h3>
+          </div>
+          <span id="quest-progress" class="quest-progress" aria-live="polite">0 / 3 完成</span>
+        </div>
+        <ol class="quest-list">
+          <li id="quest-marker" class="quest-item is-active"><span class="quest-check" aria-hidden="true"></span><span>調查潮痕標記</span></li>
+          <li id="quest-gate" class="quest-item"><span class="quest-check" aria-hidden="true"></span><span>啟動測量機關</span></li>
+          <li id="quest-cross" class="quest-item"><span class="quest-check" aria-hidden="true"></span><span>穿越已開啟的通路</span></li>
+        </ol>
+        <p id="quest-message" class="quest-message" role="status" aria-live="polite">先找到潮痕標記，調查這處測試區留下的線索。</p>
+        <div id="quest-secret" class="quest-secret"><span aria-hidden="true">✧</span><span>選擇性探索：尋找微弱回聲</span><span id="quest-secret-status">未發現</span></div>
+      </section>
+      <p class="mvp-help">操作：WASD／方向鍵移動，靠近物件後按 E／Enter 互動，Esc 關閉對話。返回標題再開始會重置本局進度。</p>
 
       <section id="dialogue-panel" class="dialogue-panel" hidden aria-labelledby="dialogue-title">
         <div class="dialogue-heading"><span class="dialogue-symbol" aria-hidden="true">◇</span><h3 id="dialogue-title">調查結果</h3></div>
