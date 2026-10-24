@@ -23,6 +23,12 @@ const closeDialogueButton = $("#close-dialogue");
 const coordinates = $("#coordinates");
 const gate = $("#gate");
 
+// 離屏 canvas 只建立一次，每幀重複使用（避免每幀配置兩張全解析度 canvas）
+const maskCanvas = document.createElement("canvas");
+const maskCtx = maskCanvas.getContext("2d");
+const featherCanvas = document.createElement("canvas");
+const featherCtx = featherCanvas.getContext("2d");
+
 const WORLD = { width: 1600, height: 1000 };
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
 // Temporary vision settings: brightness/fog are independent knobs for future systems.
@@ -186,40 +192,6 @@ function movePlayer(dx, dy) {
   const nextY = Math.max(minY, Math.min(maxY, state.y + dy));
   if (!collides(state.x, nextY)) state.y = nextY;
 }
-// Segment/rectangle test using the slab method. A hit counts only when it
-// occurs strictly before the sample point; touching the endpoint is not an occlusion.
-function segmentHitsRectBeforeTarget(x1, y1, x2, y2, rect) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  let near = 0;
-  let far = 1;
-  for (const axis of [
-    { start: x1, delta: dx, min: rect.x, max: rect.x + rect.w },
-    { start: y1, delta: dy, min: rect.y, max: rect.y + rect.h }
-  ]) {
-    if (Math.abs(axis.delta) < 1e-8) {
-      if (axis.start < axis.min || axis.start > axis.max) return false;
-      continue;
-    }
-    let t1 = (axis.min - axis.start) / axis.delta;
-    let t2 = (axis.max - axis.start) / axis.delta;
-    if (t1 > t2) [t1, t2] = [t2, t1];
-    near = Math.max(near, t1);
-    far = Math.min(far, t2);
-    if (near >= far - 1e-8) return false;
-  }
-  return far > 1e-6 && near < 1 - 1e-6;
-}
-
-// A wall's own rectangle is the surface being inspected, not an occluder.
-// Every other closed wall must be clear between the player and that sample.
-function wallSampleVisible(worldX, worldY, targetObstacle, playerX, playerY, visibleObstacles) {
-  for (const obstacle of visibleObstacles) {
-    if (obstacle === targetObstacle) continue;
-    if (segmentHitsRectBeforeTarget(playerX, playerY, worldX, worldY, obstacle)) return false;
-  }
-  return true;
-}
 
 // Return the first positive intersection with an opaque rectangle. If the
 // origin is inside a rectangle, use its exit edge so the ray never produces
@@ -275,7 +247,6 @@ function drawVision(cameraX, cameraY) {
   const sourceX = state.x;
   const sourceY = state.y + PLAYER.height - PLAYER.hitHeight / 2;
   const screenX = sourceX - cameraX;
-  const screenY = sourceY - cameraY;
   const brightness = Math.max(0.12, Math.min(1, VISION.brightness));
   const fog = Math.max(0, Math.min(1, VISION.fog));
   const restricted = brightness < 1 || fog > 0;
@@ -355,13 +326,16 @@ function drawVision(cameraX, cameraY) {
   }
 
   // Feather the silhouette edge by rendering the visibility polygon to a
-  // mask and blurring only that mask. Keep wall-face reveal logic below crisp.
+  // mask and blurring only that mask. Offscreen canvases are reused every frame.
   if (points.length >= 3) {
-    const maskCanvas = document.createElement("canvas");
-    maskCanvas.width = pixelWidth;
-    maskCanvas.height = pixelHeight;
-    const maskCtx = maskCanvas.getContext("2d");
+    for (const c of [maskCanvas, featherCanvas]) {
+      if (c.width !== pixelWidth || c.height !== pixelHeight) {
+        c.width = pixelWidth;
+        c.height = pixelHeight;
+      }
+    }
     maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    maskCtx.clearRect(0, 0, width, height);
     maskCtx.fillStyle = "#fff";
     maskCtx.beginPath();
     maskCtx.moveTo(points[0].x, points[0].y);
@@ -370,11 +344,8 @@ function drawVision(cameraX, cameraY) {
     maskCtx.fill();
 
     // Blur radius is expressed in CSS pixels and stays subtle on high-DPI screens.
-    const featherCanvas = document.createElement("canvas");
-    featherCanvas.width = pixelWidth;
-    featherCanvas.height = pixelHeight;
-    const featherCtx = featherCanvas.getContext("2d");
     featherCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    featherCtx.clearRect(0, 0, width, height);
     featherCtx.filter = "blur(5px)";
     featherCtx.drawImage(maskCanvas, 0, 0, width, height);
     featherCtx.filter = "none";
@@ -383,39 +354,46 @@ function drawVision(cameraX, cameraY) {
     ctx.drawImage(featherCanvas, 0, 0, pixelWidth, pixelHeight, 0, 0, width, height);
   }
 
-  // Show the visible faces/areas of wall sprites without revealing anything
-  // hidden behind a different wall. Small tiles avoid coarse holes; each test
-  // uses the same world-space line segment and active-wall list as ray casting.
-  const sampleSize = 0.5;
-  for (const wall of opaque) {
-    const minX = Math.max(wall.x, cameraX);
-    const maxX = Math.min(wall.x + wall.w, cameraX + width);
-    const minY = Math.max(wall.y, cameraY);
-    const maxY = Math.min(wall.y + wall.h, cameraY + height);
-    if (minX >= maxX || minY >= maxY) continue;
-    for (let worldY = minY; worldY < maxY; worldY += sampleSize) {
-      const tileH = Math.min(sampleSize, maxY - worldY);
-      let runStart = null;
-      let runEnd = null;
-      for (let worldX = minX; worldX < maxX; worldX += sampleSize) {
-        const tileW = Math.min(sampleSize, maxX - worldX);
-        const visible = wallSampleVisible(
-          worldX + tileW / 2, worldY + tileH / 2, wall,
-          sourceX, sourceY, opaque
-        );
-        if (visible) {
-          if (runStart === null) runStart = worldX;
-          runEnd = worldX + tileW;
-        } else if (runStart !== null) {
-          ctx.clearRect(runStart - cameraX, worldY - cameraY, runEnd - runStart, tileH);
-          runStart = null;
-          runEnd = null;
-        }
+  // Wall faces: reveal each wall entirely, then paint back the shadows cast
+  // onto it by every OTHER wall (clipped to this wall). Replaces the old
+  // 0.5px per-sample ray test: same result, far cheaper, and anti-aliased.
+  const FAR = 4000;
+  const addShadow = (o) => {
+    const c = [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]];
+    const p = c.map(([x, y]) => {
+      const dx = x - sourceX, dy = y - sourceY, l = Math.hypot(dx, dy) || 1;
+      return [x + dx / l * FAR, y + dy / l * FAR];
+    });
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      const q = [c[i], c[j], p[j], p[i]];
+      let area = 0;
+      for (let k = 0; k < 4; k++) {
+        const a = q[k], b = q[(k + 1) % 4];
+        area += a[0] * b[1] - b[0] * a[1];
       }
-      if (runStart !== null) {
-        ctx.clearRect(runStart - cameraX, worldY - cameraY, runEnd - runStart, tileH);
-      }
+      if (area < 0) q.reverse(); // consistent winding so nonzero fill never cancels out
+      ctx.moveTo(q[0][0] - cameraX, q[0][1] - cameraY);
+      for (let k = 1; k < 4; k++) ctx.lineTo(q[k][0] - cameraX, q[k][1] - cameraY);
+      ctx.closePath();
     }
+  };
+  for (const wall of opaque) {
+    const rx = wall.x - cameraX;
+    const ry = wall.y - cameraY;
+    if (rx > width || ry > height || rx + wall.w < 0 || ry + wall.h < 0) continue;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rx, ry, wall.w, wall.h);
+    ctx.clip();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, wall.w, wall.h);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.beginPath();
+    for (const other of opaque) if (other !== wall) addShadow(other);
+    ctx.fill();
+    ctx.restore();
   }
 
   // The player sprite is UI-visible regardless of wall-edge rasterization.
@@ -433,16 +411,18 @@ function updateScene() {
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
 
-  // Follow the player's center. Clamp the camera at world edges so the
-  // screen-space player only leaves center when the camera cannot follow.
+  // Player and camera share the same device-pixel grid so the sprite's
+  // on-screen offset stays constant while the camera follows (no sub-pixel jitter).
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const cameraX = Math.round(Math.max(0, Math.min(maxX, state.x - viewW / 2)) * dpr) / dpr;
-  const playerCenterY = state.y + PLAYER.height / 2;
-  const cameraY = Math.round(Math.max(0, Math.min(maxY, playerCenterY - viewH / 2)) * dpr) / dpr;
+  const snap = (v) => Math.round(v * dpr) / dpr;
+  const px = snap(state.x);
+  const py = snap(state.y);
+  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
+  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
-  playerEl.style.left = `${state.x - cameraX - PLAYER.width / 2}px`;
-  playerEl.style.top = `${state.y - cameraY}px`;
+  playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
+  playerEl.style.top = `${py - cameraY}px`;
   drawVision(cameraX, cameraY);
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
