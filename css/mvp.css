@@ -447,3 +447,57 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 #game-screen:not([hidden]) .dialogue-panel[hidden] {
   display: none !important;
 }
+
+
+/* Desktop-first presentation: keyboard/mouse is the default; touch controls
+   are shown only on touch-oriented devices or narrow viewports. */
+@media (hover: hover) and (pointer: fine) and (min-width: 900px) {
+  #game-screen:not([hidden]) .mvp-controls { display: none !important; }
+  #game-screen:not([hidden]) .scene-toolbar {
+    top: 18px;
+    left: 22px;
+    right: 22px;
+  }
+  #game-screen:not([hidden]) .scene-toolbar > div:first-child {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    max-width: min(34vw, 420px);
+    padding: 12px 16px;
+    border: 1px solid rgba(210,243,231,.16);
+    border-radius: 12px;
+    background: rgba(5,17,24,.78);
+    backdrop-filter: blur(10px);
+  }
+  #game-screen:not([hidden]) .scene-toolbar > div:first-child .eyebrow {
+    margin: 0 0 4px;
+    font-size: .7rem;
+  }
+  #game-screen:not([hidden]) .scene-toolbar > div:first-child h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+  #game-screen:not([hidden]) .scene-toolbar-actions {
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  #game-screen:not([hidden]) .scene-toolbar-actions .quiet-button {
+    min-height: 42px;
+    padding: 9px 15px;
+    font-size: .88rem;
+  }
+  #game-screen:not([hidden]) .dialogue-panel {
+    left: 50% !important;
+    right: auto !important;
+    bottom: 28px !important;
+    width: min(760px, calc(100vw - 80px)) !important;
+    max-height: min(34vh, 300px);
+    transform: translateX(-50%) !important;
+  }
+}
+
+/* Keep touch affordances on touch screens, including tablets with wide screens. */
+@media (pointer: coarse), (max-width: 899px) {
+  #game-screen:not([hidden]) .mvp-controls { display: block; }
+}
