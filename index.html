@@ -1,108 +1,29 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101923">
-  <meta name="description" content="《零界紀元：THE UNWRITTEN WORLD》最小可玩原型">
-  <title>零界紀元｜THE UNWRITTEN WORLD</title>
-  <link rel="stylesheet" href="./css/main.css">
-  <link rel="stylesheet" href="./css/mvp.css">
-  <script type="module" src="./js/mvp.js"></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101923">
+<meta name="description" content="零界紀元：第一章探索冒險">
+<title>零界紀元｜第一章：潮痕之下</title>
+<link rel="stylesheet" href="./css/main.css"><link rel="stylesheet" href="./css/chapter1.css">
+<script type="module" src="./js/chapter1.js"></script>
 </head>
-<body>
-  <main class="app-shell">
-    <header class="topbar">
-      <a class="wordmark" href="./" aria-label="零界紀元首頁">零界紀元 <span>THE UNWRITTEN WORLD</span></a>
-      <span class="build-label">技術 MVP · 測試區</span>
-    </header>
-
-    <section id="title-screen" class="title-screen" aria-labelledby="game-title">
-      <div class="title-orb" aria-hidden="true"></div>
-      <p class="eyebrow">一段尚未被寫下的歷史</p>
-      <h1 id="game-title">零界紀元</h1>
-      <p class="subtitle">THE UNWRITTEN WORLD</p>
-      <p class="title-copy">有些記錄消失了，有些地方仍記得。</p>
-      <button id="start-button" class="primary-button" type="button">開始探索 <span aria-hidden="true">↗</span></button>
-      <p class="prototype-note">技術測試區使用幾何佔位物件；不代表正式場景或劇情內容。</p>
-    </section>
-
-    <section id="game-screen" class="game-screen" hidden aria-labelledby="scene-title">
-      <div class="scene-toolbar">
-        <div>
-          <p class="eyebrow">技術測試區 · 非正式章節內容</p>
-          <h2 id="scene-title">潮痕灘｜探索原型</h2>
-        </div>
-        <div class="scene-toolbar-actions"><button id="quest-toggle" class="quiet-button" type="button" aria-expanded="true">任務（T）</button><button id="inventory-toggle" class="quiet-button" type="button" aria-expanded="false">背包（E）</button><button id="back-to-title" class="quiet-button" type="button">儲存並回到標題</button></div>
-      </div>
-
-      <div id="scene" class="scene game-viewport" aria-label="可移動探索的測試區">
-        <div id="world" class="game-world">
-          <div class="world-ground" aria-hidden="true"></div>
-          <div class="world-water" aria-hidden="true"></div>
-          <div class="world-landmark landmark-one" aria-hidden="true">潮痕</div>
-          <div class="world-landmark landmark-two" aria-hidden="true">遺跡</div>
-          <div class="obstacle" style="left:330px;top:220px;width:210px;height:65px" aria-label="石牆障礙"></div>
-          <div class="obstacle" style="left:610px;top:350px;width:80px;height:220px" aria-label="石柱障礙"></div>
-          <div class="obstacle" style="left:930px;top:170px;width:240px;height:75px" aria-label="石牆障礙"></div>
-          <div class="obstacle" style="left:1180px;top:560px;width:90px;height:190px" aria-label="石柱障礙"></div>
-          <div id="gate" class="gate" style="left:760px;top:600px;width:180px;height:44px" aria-label="封閉通路"></div>
-          <button id="marker" class="world-object marker-object" style="left:250px;top:460px" type="button" aria-label="調查潮痕標記">◇<span>潮痕標記</span></button>
-          <button id="secret" class="world-object secret-object" style="left:1320px;top:300px" type="button" aria-label="調查隱藏回聲">✧<span>微弱回聲</span></button>
-          <button id="switch" class="world-object switch-object" style="left:830px;top:760px" type="button" aria-label="啟動古代機關">◎<span>測量機關</span></button>
-          <div class="world-label label-start">起始區域</div>
-          <div class="world-label label-gate">封閉通路</div>
-        </div>
-        <canvas id="vision-canvas" class="vision-canvas" aria-hidden="true"></canvas>
-        <div id="player" class="player" role="img" aria-label="玩家角色"><span></span></div>
-        <div class="scene-overlay" aria-hidden="true"><span>探索測試區</span><span id="coordinates">X 180 · Y 180</span></div>
-      </div>
-
-      <div class="status-row mvp-status">
-        <p id="status-message" role="status" aria-live="polite">使用 WASD／方向鍵或螢幕方向控制移動。靠近物件後按 E／Enter 或「互動」。</p>
-        <span id="status-chip" class="status-chip"><span class="status-dot" aria-hidden="true"></span> 機關未啟動</span>
-      </div>
-
-      <div class="mvp-controls"><button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（F）</button></div>
-      <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title"><h3 id="inventory-title">背包</h3><p>背包功能尚未開放，這裡會放置物品與裝備。</p></section>
-      <section id="quest-panel" class="quest-panel" aria-labelledby="quest-title">
-        <div class="quest-heading">
-          <div>
-            <p class="eyebrow">本局進度</p>
-            <h3 id="quest-title">任務</h3>
-          </div>
-          <span id="quest-progress" class="quest-progress" aria-live="polite">0 / 3 完成</span>
-        </div>
-        <div class="quest-tabs" role="tablist" aria-label="任務類型">
-          <button class="quest-tab is-selected" type="button" role="tab" aria-selected="true" data-quest-tab="main">主線任務</button>
-          <button class="quest-tab" type="button" role="tab" aria-selected="false" data-quest-tab="side">支線任務</button>
-          <button class="quest-tab" type="button" role="tab" aria-selected="false" data-quest-tab="challenge">挑戰任務</button>
-        </div>
-        <div class="quest-category is-selected" data-quest-category="main" role="tabpanel">
-          <ol class="quest-list">
-            <li id="quest-marker" class="quest-item is-active"><span class="quest-check" aria-hidden="true"></span><span>調查潮痕標記</span></li>
-            <li id="quest-gate" class="quest-item"><span class="quest-check" aria-hidden="true"></span><span>啟動測量機關</span></li>
-            <li id="quest-cross" class="quest-item"><span class="quest-check" aria-hidden="true"></span><span>穿越已開啟的通路</span></li>
-          </ol>
-          <p id="quest-message" class="quest-message" role="status" aria-live="polite">先找到潮痕標記，調查這處測試區留下的線索。</p>
-        </div>
-        <div class="quest-category" data-quest-category="side" role="tabpanel" hidden>
-          <div id="quest-secret" class="quest-secret"><span aria-hidden="true">✧</span><span>尋找微弱回聲</span><span id="quest-secret-status">未發現</span></div>
-          <p class="quest-message">探索遺跡角落，尋找可選的隱藏線索。</p>
-        </div>
-        <div class="quest-category" data-quest-category="challenge" role="tabpanel" hidden>
-          <p class="quest-message">目前尚無挑戰任務。後續可加入限時探索、收集或解謎目標。</p>
-        </div>
-      </section>
-      <p class="mvp-help">操作：WASD／方向鍵移動，靠近物件後按 E／Enter 互動；按 F 或 Esc 關閉對話。進度會儲存在本機，下次可以接續遊玩。</p>
-
-      <section id="dialogue-panel" class="dialogue-panel" hidden aria-labelledby="dialogue-title" tabindex="-1">
-        <div class="dialogue-heading"><span class="dialogue-symbol" aria-hidden="true">◇</span><h3 id="dialogue-title">調查結果</h3></div>
-        <p id="dialogue-text"></p>
-      </section>
-    </section>
-
-    <footer class="footer"><span>THE UNWRITTEN WORLD</span><span>技術 MVP · 不代表正式內容已完成</span></footer>
-  </main>
-</body>
-</html>
+<body><main class="shell">
+<header class="topbar"><div class="brand">零界紀元 <small>THE UNWRITTEN WORLD</small></div><span class="eyebrow">第一章｜潮痕之下</span></header>
+<section id="title" class="title-screen"><p class="eyebrow">CHAPTER 01 · THE TRACE BENEATH</p><h1>潮痕之下</h1><p class="subtitle">THE UNWRITTEN WORLD</p><p>有些記錄消失了，有些地方仍記得。</p><p>從潮痕灘出發，追查灰鐘的異響，直到下層記錄室揭開互相矛盾的歷史。</p><button id="start" class="primary">開始／繼續第一章 ↗</button><p class="hint">進度儲存在目前瀏覽器。桌面建議使用 WASD／方向鍵移動，E／Enter 互動。</p></section>
+<section id="game" hidden>
+<div class="layout"><div class="main-column">
+<div class="toolbar"><div><p class="eyebrow" id="scene-index">ch01_tide_mark</p><h2 id="scene-title">潮痕灘</h2></div><div class="toolbar-actions"><button id="quest-toggle">任務</button><button id="clues-toggle">線索簿</button><button id="save">儲存</button><button id="reset">清除存檔</button></div></div>
+<div id="viewport" class="viewport" tabindex="0" aria-label="遊戲場景"><div id="world" class="world"><div class="ground"></div></div><div id="player" class="player"></div><div class="scene-caption" id="target-label">探索環境</div></div>
+<div class="statusline"><span id="status" role="status" aria-live="polite">使用 WASD／方向鍵移動，靠近物件後按 E 或 Enter 調查。</span><button id="interact" disabled>互動（E）</button></div>
+<p class="hint">靠近場景中的標記、人物或出口即可互動。遇到對話時按 Enter 或 Esc 繼續。</p>
+</div><aside class="sidebar">
+<section id="quest-panel" class="panel"><div class="panel-heading"><h3>第一章任務</h3><span class="count" id="chapter-status">調查進行中</span></div><ol id="quest-list"></ol><p id="secret-status">隱藏線索：尚未發現</p></section>
+<section id="clues-panel" class="panel"><div class="panel-heading"><h3>線索簿</h3><span class="count" id="clue-count">0 條</span></div><ul id="clue-list"></ul></section>
+<section class="panel"><h3>操作說明</h3><p>移動：WASD／方向鍵<br>互動：E／Enter／F<br>對話：Enter／Esc<br>儲存：上方「儲存」</p></section>
+</aside></div>
+</section>
+<footer class="footer"><span>THE UNWRITTEN WORLD</span><span>第一章開發版｜桌面優先，行動裝置相容性待回歸</span></footer>
+</main>
+<section id="dialogue" class="dialogue" hidden role="dialog" aria-modal="true" aria-labelledby="dialogue-title"><h3 id="dialogue-title">調查結果</h3><p id="dialogue-body"></p><div id="choices" class="choices"></div><button id="close-dialogue" type="button">繼續</button></section>
+</body></html>
