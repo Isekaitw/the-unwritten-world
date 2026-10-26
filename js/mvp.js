@@ -330,13 +330,15 @@ function drawVision(cameraX, cameraY) {
   // Feather the silhouette edge by rendering the visibility polygon to a
   // mask and blurring only that mask. Offscreen canvases are reused every frame.
   if (points.length >= 3) {
+    // The mask is a soft-edged overlay, so half-resolution rendering greatly
+    // reduces blur work while preserving the feathered silhouette.
+    const S = 0.5;
+    const mw = Math.max(1, Math.round(width * S));
+    const mh = Math.max(1, Math.round(height * S));
     for (const c of [maskCanvas, featherCanvas]) {
-      if (c.width !== pixelWidth || c.height !== pixelHeight) {
-        c.width = pixelWidth;
-        c.height = pixelHeight;
-      }
+      if (c.width !== mw || c.height !== mh) { c.width = mw; c.height = mh; }
     }
-    maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    maskCtx.setTransform(S, 0, 0, S, 0, 0);
     maskCtx.clearRect(0, 0, width, height);
     maskCtx.fillStyle = "#fff";
     maskCtx.beginPath();
@@ -345,15 +347,14 @@ function drawVision(cameraX, cameraY) {
     maskCtx.closePath();
     maskCtx.fill();
 
-    // Blur radius is expressed in CSS pixels and stays subtle on high-DPI screens.
-    featherCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    featherCtx.clearRect(0, 0, width, height);
-    featherCtx.filter = "blur(5px)";
-    featherCtx.drawImage(maskCanvas, 0, 0, width, height);
+    featherCtx.setTransform(1, 0, 0, 1, 0, 0);
+    featherCtx.clearRect(0, 0, mw, mh);
+    featherCtx.filter = "blur(2.5px)";
+    featherCtx.drawImage(maskCanvas, 0, 0);
     featherCtx.filter = "none";
 
     ctx.globalCompositeOperation = "destination-out";
-    ctx.drawImage(featherCanvas, 0, 0, pixelWidth, pixelHeight, 0, 0, width, height);
+    ctx.drawImage(featherCanvas, 0, 0, mw, mh, 0, 0, width, height);
   }
 
   // Wall faces: reveal each wall entirely, then paint back the shadows cast
@@ -381,16 +382,21 @@ function drawVision(cameraX, cameraY) {
     }
   };
   for (const wall of opaque) {
-    const rx = wall.x - cameraX;
-    const ry = wall.y - cameraY;
-    if (rx > width || ry > height || rx + wall.w < 0 || ry + wall.h < 0) continue;
+    // Align wall faces to the device-pixel grid to avoid repeated partial
+    // alpha coverage when clearing the wall and clipping shadows back onto it.
+    const sp = (v) => Math.round(v * dpr) / dpr;
+    const rx = sp(wall.x - cameraX);
+    const ry = sp(wall.y - cameraY);
+    const rw = sp(wall.x + wall.w - cameraX) - rx;
+    const rh = sp(wall.y + wall.h - cameraY) - ry;
+    if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(rx, ry, wall.w, wall.h);
+    ctx.rect(rx, ry, rw, rh);
     ctx.clip();
     ctx.globalCompositeOperation = "destination-out";
     ctx.fillStyle = "#000";
-    ctx.fillRect(rx, ry, wall.w, wall.h);
+    ctx.fillRect(rx, ry, rw, rh);
     ctx.globalCompositeOperation = "source-over";
     ctx.beginPath();
     for (const other of opaque) if (other !== wall) addShadow(other);
@@ -426,11 +432,19 @@ function updateScene() {
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
   playerEl.style.top = `${py - cameraY}px`;
   drawVision(cameraX, cameraY);
-  coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
+  const coordText = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
+  if (coordText !== updateScene.lastCoord) {
+    updateScene.lastCoord = coordText;
+    coordinates.textContent = coordText;
+  }
   if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
     state.gateCrossed = true;
   }
-  updateQuestUI();
+  const questKey = `${state.markerInspected}|${state.gateOpen}|${state.gateCrossed}|${state.secretFound}`;
+  if (questKey !== updateScene.lastQuest) {
+    updateScene.lastQuest = questKey;
+    updateQuestUI();
+  }
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
     .sort((a, b) => a.distance - b.distance)[0] || null;
