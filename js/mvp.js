@@ -334,6 +334,48 @@ function drawVision(cameraX, cameraY) {
     ctx.drawImage(featherCanvas, 0, 0, pixelWidth, pixelHeight, 0, 0, width, height);
   }
 
+  // Restore explicit wall-face occlusion. The visibility polygon alone cannot
+  // keep a wall face opaque when the feathered mask crosses its edge.
+  const FAR = 4000;
+  const addShadow = (o) => {
+    const c = [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]];
+    const p = c.map(([x, y]) => {
+      const dx = x - sourceX, dy = y - sourceY, l = Math.hypot(dx, dy) || 1;
+      return [x + dx / l * FAR, y + dy / l * FAR];
+    });
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      const q = [c[i], c[j], p[j], p[i]];
+      let area = 0;
+      for (let k = 0; k < 4; k++) {
+        const a = q[k], b = q[(k + 1) % 4];
+        area += a[0] * b[1] - b[0] * a[1];
+      }
+      if (area < 0) q.reverse(); // consistent winding so nonzero fill never cancels out
+      ctx.moveTo(q[0][0] - cameraX, q[0][1] - cameraY);
+      for (let k = 1; k < 4; k++) ctx.lineTo(q[k][0] - cameraX, q[k][1] - cameraY);
+      ctx.closePath();
+    }
+  };
+  for (const wall of opaque) {
+    const rx = wall.x - cameraX;
+    const ry = wall.y - cameraY;
+    if (rx > width || ry > height || rx + wall.w < 0 || ry + wall.h < 0) continue;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rx, ry, wall.w, wall.h);
+    ctx.clip();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, wall.w, wall.h);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.beginPath();
+    for (const other of opaque) if (other !== wall) addShadow(other);
+    ctx.fill();
+    ctx.restore();
+  }
+
+
   // Keep the player readable even at the edge of the visibility mask.
   ctx.globalCompositeOperation = "destination-out";
   ctx.beginPath();
