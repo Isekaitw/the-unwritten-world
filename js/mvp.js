@@ -251,7 +251,10 @@ function drawVision(cameraX, cameraY) {
   const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
   const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
-  const view = { x: cameraX, y: cameraY, w: width, h: height };
+  // Extend the ray-casting bounds beyond the viewport so wall corners near
+  // the screen edge do not create artificial chords along the visible border.
+  const M = 200; // CSS pixels; comfortably larger than the 5px feather radius.
+  const view = { x: cameraX - M, y: cameraY - M, w: width + M * 2, h: height + M * 2 };
 
   // The overlay is fully opaque. Only space reachable by a ray before its
   // first wall (or vision radius) is removed from the overlay.
@@ -264,10 +267,10 @@ function drawVision(cameraX, cameraY) {
     const angle = Math.atan2(y - sourceY, x - sourceX);
     angles.push(angle - epsilon, angle, angle + epsilon);
   };
-  addCorner(cameraX, cameraY);
-  addCorner(cameraX + width, cameraY);
-  addCorner(cameraX + width, cameraY + height);
-  addCorner(cameraX, cameraY + height);
+  addCorner(view.x, view.y);
+  addCorner(view.x + view.w, view.y);
+  addCorner(view.x + view.w, view.y + view.h);
+  addCorner(view.x, view.y + view.h);
   for (const o of opaque) {
     addCorner(o.x, o.y);
     addCorner(o.x + o.w, o.y);
