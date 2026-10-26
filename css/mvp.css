@@ -19,12 +19,24 @@
   background:
     radial-gradient(ellipse at 25% 30%, rgba(195,215,177,.16), transparent 28%),
     radial-gradient(ellipse at 75% 65%, rgba(129,180,162,.12), transparent 34%),
-    repeating-linear-gradient(32deg, transparent 0 74px, rgba(220,238,211,.035) 75px 77px, transparent 78px 150px),
+    repeating-linear-gradient(32deg,
+      transparent 0 70px,
+      rgba(220,238,211,.02) 73px,
+      rgba(220,238,211,.04) 76px,
+      rgba(220,238,211,.02) 79px,
+      transparent 82px 150px),
     linear-gradient(135deg,#31575a,#1d3b43 60%,#284b4b);
 }
 .world-water {
   position:absolute;left:0;right:0;bottom:0;height:170px;
-  background:repeating-linear-gradient(174deg,transparent 0 20px,rgba(184,230,219,.13) 21px 23px,transparent 24px 45px),linear-gradient(180deg,rgba(27,79,86,.25),#102a36);
+  background:
+    repeating-linear-gradient(174deg,
+      transparent 0 17px,
+      rgba(184,230,219,.05) 20px,
+      rgba(184,230,219,.12) 22px,
+      rgba(184,230,219,.05) 24px,
+      transparent 27px 45px),
+    linear-gradient(180deg,rgba(27,79,86,.25),#102a36);
 }
 .world-landmark {
   position:absolute; padding:20px 28px; border:1px solid rgba(214,244,224,.17);
