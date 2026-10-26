@@ -195,88 +195,100 @@ function movePlayer(dx, dy) {
 // Return the first positive intersection with an opaque rectangle. If the
 // origin is inside a rectangle, use its exit edge so the ray never produces
 // Infinity/NaN geometry or a discontinuous polygon.
+// Ray/rectangle intersection in world coordinates. Returns the first non-negative
+// hit distance, including the exit edge when the ray starts inside a rectangle.
 function rayRectDistance(originX, originY, dirX, dirY, rect) {
   let near = -Infinity;
   let far = Infinity;
-  for (const axis of [
+  const axes = [
     { origin: originX, dir: dirX, min: rect.x, max: rect.x + rect.w },
     { origin: originY, dir: dirY, min: rect.y, max: rect.y + rect.h }
-  ]) {
-    if (Math.abs(axis.dir) < 1e-8) {
+  ];
+  for (const axis of axes) {
+    if (Math.abs(axis.dir) < 1e-9) {
       if (axis.origin < axis.min || axis.origin > axis.max) return Infinity;
       continue;
     }
-    let t1 = (axis.min - axis.origin) / axis.dir;
-    let t2 = (axis.max - axis.origin) / axis.dir;
-    if (t1 > t2) [t1, t2] = [t2, t1];
-    near = Math.max(near, t1);
-    far = Math.min(far, t2);
-    if (near > far + 1e-8) return Infinity;
+    let a = (axis.min - axis.origin) / axis.dir;
+    let b = (axis.max - axis.origin) / axis.dir;
+    if (a > b) [a, b] = [b, a];
+    near = Math.max(near, a);
+    far = Math.min(far, b);
+    if (near > far) return Infinity;
   }
-  if (far <= 1e-6) return Infinity;
-  return near > 1e-6 ? near : far;
+  if (far < 0) return Infinity;
+  return near >= 0 ? near : far;
 }
-function rayViewportDistance(originX, originY, dirX, dirY, rect) {
+
+function rayBoundsDistance(originX, originY, dirX, dirY, bounds) {
   let distance = Infinity;
-  if (dirX > 0.000001) distance = Math.min(distance, (rect.x + rect.w - originX) / dirX);
-  else if (dirX < -0.000001) distance = Math.min(distance, (rect.x - originX) / dirX);
-  if (dirY > 0.000001) distance = Math.min(distance, (rect.y + rect.h - originY) / dirY);
-  else if (dirY < -0.000001) distance = Math.min(distance, (rect.y - originY) / dirY);
-  return distance > 0 ? distance : 0;
+  if (dirX > 1e-9) distance = Math.min(distance, (bounds.x + bounds.w - originX) / dirX);
+  else if (dirX < -1e-9) distance = Math.min(distance, (bounds.x - originX) / dirX);
+  if (dirY > 1e-9) distance = Math.min(distance, (bounds.y + bounds.h - originY) / dirY);
+  else if (dirY < -1e-9) distance = Math.min(distance, (bounds.y - originY) / dirY);
+  return Number.isFinite(distance) && distance >= 0 ? distance : 0;
 }
+
+// One visibility system owns both light reach and wall occlusion. We draw a
+// dark overlay, then cut out the visibility polygon. Rays stop at the nearest
+// wall, viewport edge, or configured radius; no second wall-shadow pass runs.
 function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
   if (!width || !height) return;
+
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const pixelWidth = Math.round(width * dpr);
-  const pixelHeight = Math.round(height * dpr);
-  if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
-    visionCanvas.width = pixelWidth;
-    visionCanvas.height = pixelHeight;
+  const pixelWidth = Math.max(1, Math.round(width * dpr));
+  const pixelHeight = Math.max(1, Math.round(height * dpr));
+  for (const canvas of [visionCanvas, maskCanvas, featherCanvas]) {
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
   }
 
   const ctx = visionContext;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.globalCompositeOperation = "source-over";
+  ctx.filter = "none";
   ctx.clearRect(0, 0, width, height);
 
-  // All occlusion decisions use one world-space source: the player's foot /
-  // collision anchor. Camera coordinates are used only when drawing to canvas.
   const sourceX = state.x;
   const sourceY = state.y + PLAYER.height - PLAYER.hitHeight / 2;
   const screenX = sourceX - cameraX;
   const brightness = Math.max(0.12, Math.min(1, VISION.brightness));
   const fog = Math.max(0, Math.min(1, VISION.fog));
-  const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
-  const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
+  const darkness = Math.max(0, Math.min(1, VISION.darkness));
+  const blockers = obstacles.filter((o) => !(o.gate && state.gateOpen));
   const view = { x: cameraX, y: cameraY, w: width, h: height };
 
-  // The overlay is fully opaque. Only space reachable by a ray before its
-  // first wall (or vision radius) is removed from the overlay.
-  ctx.fillStyle = "#000";
+  // Darkness remains consistent; only the polygon of visible space is removed.
+  ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
   ctx.fillRect(0, 0, width, height);
 
   const angles = [];
   const epsilon = 1e-5;
-  const addCorner = (x, y) => {
+  const addAngle = (x, y) => {
     const angle = Math.atan2(y - sourceY, x - sourceX);
     angles.push(angle - epsilon, angle, angle + epsilon);
   };
-  addCorner(cameraX, cameraY);
-  addCorner(cameraX + width, cameraY);
-  addCorner(cameraX + width, cameraY + height);
-  addCorner(cameraX, cameraY + height);
-  for (const o of opaque) {
-    addCorner(o.x, o.y);
-    addCorner(o.x + o.w, o.y);
-    addCorner(o.x + o.w, o.y + o.h);
-    addCorner(o.x, o.y + o.h);
+  // Rays at regular intervals keep the range edge circular; corner-adjacent
+  // rays make the visibility silhouette wrap tightly around each blocker.
+  const radialSteps = 128;
+  for (let i = 0; i < radialSteps; i++) angles.push((i / radialSteps) * Math.PI * 2);
+  addAngle(cameraX, cameraY);
+  addAngle(cameraX + width, cameraY);
+  addAngle(cameraX + width, cameraY + height);
+  addAngle(cameraX, cameraY + height);
+  for (const wall of blockers) {
+    addAngle(wall.x, wall.y);
+    addAngle(wall.x + wall.w, wall.y);
+    addAngle(wall.x + wall.w, wall.y + wall.h);
+    addAngle(wall.x, wall.y + wall.h);
   }
   angles.sort((a, b) => a - b);
 
-  // Deduplicate near-identical angles to avoid zero-area spikes at corners.
   const uniqueAngles = [];
   for (const angle of angles) {
     if (!uniqueAngles.length || Math.abs(angle - uniqueAngles[uniqueAngles.length - 1]) > 1e-7) {
@@ -288,74 +300,42 @@ function drawVision(cameraX, cameraY) {
   for (const angle of uniqueAngles) {
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
-    let distance = rayViewportDistance(sourceX, sourceY, dirX, dirY, view);
-    if (restricted) distance = Math.min(distance, radius);
-    for (const obstacle of opaque) {
-      const hit = rayRectDistance(sourceX, sourceY, dirX, dirY, obstacle);
+    let distance = Math.min(radius, rayBoundsDistance(sourceX, sourceY, dirX, dirY, view));
+    for (const wall of blockers) {
+      const hit = rayRectDistance(sourceX, sourceY, dirX, dirY, wall);
       if (hit < distance) distance = hit;
     }
     if (!Number.isFinite(distance) || distance < 0) continue;
-
-    // Snap ray endpoints to exact obstacle corners when the first hit lands
-    // numerically on one. This prevents tiny floating-point offsets from
-    // drawing a dark seam that appears detached from the wall corner.
-    let hitX = sourceX + dirX * distance;
-    let hitY = sourceY + dirY * distance;
-    let nearestCorner = null;
-    let nearestCornerError = 0.75;
-    for (const wall of opaque) {
-      for (const corner of [
-        { x: wall.x, y: wall.y },
-        { x: wall.x + wall.w, y: wall.y },
-        { x: wall.x + wall.w, y: wall.y + wall.h },
-        { x: wall.x, y: wall.y + wall.h }
-      ]) {
-        const error = Math.hypot(hitX - corner.x, hitY - corner.y);
-        if (error < nearestCornerError) {
-          nearestCorner = corner;
-          nearestCornerError = error;
-        }
-      }
-    }
-    if (nearestCorner) {
-      hitX = nearestCorner.x;
-      hitY = nearestCorner.y;
-    }
-    points.push({ x: hitX - cameraX, y: hitY - cameraY });
+    points.push({ x: sourceX + dirX * distance - cameraX, y: sourceY + dirY * distance - cameraY });
   }
 
-  // Feather the silhouette edge by rendering the visibility polygon to a
-  // mask and blurring only that mask. Offscreen canvases are reused every frame.
   if (points.length >= 3) {
-    for (const c of [maskCanvas, featherCanvas]) {
-      if (c.width !== pixelWidth || c.height !== pixelHeight) {
-        c.width = pixelWidth;
-        c.height = pixelHeight;
-      }
-    }
-    maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    maskCtx.clearRect(0, 0, width, height);
-    maskCtx.fillStyle = "#fff";
-    maskCtx.beginPath();
-    maskCtx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) maskCtx.lineTo(points[i].x, points[i].y);
-    maskCtx.closePath();
-    maskCtx.fill();
+    const mctx = maskCtx;
+    mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    mctx.globalCompositeOperation = "source-over";
+    mctx.clearRect(0, 0, width, height);
+    mctx.fillStyle = "#fff";
+    mctx.beginPath();
+    mctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) mctx.lineTo(points[i].x, points[i].y);
+    mctx.closePath();
+    mctx.fill();
 
-    // Blur radius is expressed in CSS pixels and stays subtle on high-DPI screens.
-    featherCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    featherCtx.clearRect(0, 0, width, height);
-    featherCtx.filter = "blur(5px)";
-    featherCtx.drawImage(maskCanvas, 0, 0, width, height);
-    featherCtx.filter = "none";
+    const fctx = featherCtx;
+    fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fctx.globalCompositeOperation = "source-over";
+    fctx.filter = "none";
+    fctx.clearRect(0, 0, width, height);
+    fctx.filter = `blur(${Math.max(0, VISION.shadowBlur / 2)}px)`;
+    fctx.drawImage(maskCanvas, 0, 0, width, height);
+    fctx.filter = "none";
 
     ctx.globalCompositeOperation = "destination-out";
     ctx.drawImage(featherCanvas, 0, 0, pixelWidth, pixelHeight, 0, 0, width, height);
   }
 
-  // Wall faces: reveal each wall entirely, then paint back the shadows cast
-  // onto it by every OTHER wall (clipped to this wall). Replaces the old
-  // 0.5px per-sample ray test: same result, far cheaper, and anti-aliased.
+  // Restore explicit wall-face occlusion. The visibility polygon alone cannot
+  // keep a wall face opaque when the feathered mask crosses its edge.
   const FAR = 4000;
   const addShadow = (o) => {
     const c = [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]];
@@ -395,13 +375,12 @@ function drawVision(cameraX, cameraY) {
     ctx.restore();
   }
 
-  // The player sprite is UI-visible regardless of wall-edge rasterization.
-  ctx.clearRect(
-    screenX - PLAYER.width / 2 - 2,
-    state.y - cameraY - 2,
-    PLAYER.width + 4,
-    PLAYER.height + 4
-  );
+
+  // Keep the player readable even at the edge of the visibility mask.
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.ellipse(screenX, state.y + PLAYER.height / 2 - cameraY, PLAYER.width * 0.62, PLAYER.height * 0.62, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.globalCompositeOperation = "source-over";
 }
 function updateScene() {
