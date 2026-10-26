@@ -453,15 +453,41 @@ function updateScene() {
   interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
+const perf = { el: null, last: 0, jsSum: 0, frames: 0, worst: 0, slow: 0, mark: 0 };
+function perfShow(now) {
+  if (!perf.el) {
+    perf.el = document.createElement("div");
+    perf.el.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:2147483647;padding:6px 8px;background:#000c;color:#0f0;font:12px monospace;pointer-events:none;white-space:pre";
+    document.body.appendChild(perf.el);
+  }
+  if (now - perf.mark < 500) return;
+  const secs = (now - perf.mark) / 1000;
+  perf.el.textContent =
+    `FPS ${(perf.frames / secs).toFixed(0)}\n` +
+    `JS ${(perf.jsSum / perf.frames).toFixed(1)}ms\n` +
+    `最長幀 ${perf.worst.toFixed(0)}ms\n` +
+    `>25ms 幀數 ${perf.slow}`;
+  perf.mark = now; perf.frames = 0; perf.jsSum = 0; perf.worst = 0; perf.slow = 0;
+}
 function tick(timestamp) {
   if (!state.started) return;
   const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.05) : 0;
   state.lastTime = timestamp;
+  if (perf.last) {
+    const gap = timestamp - perf.last;
+    perf.worst = Math.max(perf.worst, gap);
+    if (gap > 25) perf.slow++;
+  }
+  perf.last = timestamp;
   if (!state.dialogueOpen) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
+    const t0 = performance.now();
     updateScene();
+    perf.jsSum += performance.now() - t0;
+    perf.frames++;
   }
+  perfShow(timestamp);
   state.frame = requestAnimationFrame(tick);
 }
 function interact() {
