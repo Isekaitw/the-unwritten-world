@@ -186,10 +186,17 @@ function movePlayer(dx, dy) {
   const maxX = WORLD.width - PLAYER.width / 2;
   const minY = 0;
   const maxY = WORLD.height - PLAYER.height;
-  const nextX = Math.max(minX, Math.min(maxX, state.x + dx));
-  if (!collides(nextX, state.y)) state.x = nextX;
-  const nextY = Math.max(minY, Math.min(maxY, state.y + dy));
-  if (!collides(state.x, nextY)) state.y = nextY;
+  // Substep larger frame deltas so collision resolution cannot skip across a
+  // thin wall after a dropped frame. This does not change the intended speed.
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
+  const stepX = dx / steps;
+  const stepY = dy / steps;
+  for (let i = 0; i < steps; i++) {
+    const nextX = Math.max(minX, Math.min(maxX, state.x + stepX));
+    if (!collides(nextX, state.y)) state.x = nextX;
+    const nextY = Math.max(minY, Math.min(maxY, state.y + stepY));
+    if (!collides(state.x, nextY)) state.y = nextY;
+  }
 }
 
 // Return the first positive intersection with an opaque rectangle. If the
@@ -228,16 +235,19 @@ function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
   if (!width || !height) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const pixelWidth = Math.round(width * dpr);
-  const pixelHeight = Math.round(height * dpr);
+  // Use the full device pixel ratio, then derive the actual canvas scale from
+  // its rounded backing dimensions. At fractional Windows scaling, backing
+  // dimensions may not equal CSS size × DPR exactly.
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const pixelWidth = Math.max(1, Math.round(width * dpr));
+  const pixelHeight = Math.max(1, Math.round(height * dpr));
   if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
   }
 
   const ctx = visionContext;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.setTransform(pixelWidth / width, 0, 0, pixelHeight / height, 0, 0);
   ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(0, 0, width, height);
 
@@ -382,13 +392,13 @@ function drawVision(cameraX, cameraY) {
     }
   };
   for (const wall of opaque) {
-    // Align wall faces to the device-pixel grid to avoid repeated partial
-    // alpha coverage when clearing the wall and clipping shadows back onto it.
-    const sp = (v) => Math.round(v * dpr) / dpr;
-    const rx = sp(wall.x - cameraX);
-    const ry = sp(wall.y - cameraY);
-    const rw = sp(wall.x + wall.w - cameraX) - rx;
-    const rh = sp(wall.y + wall.h - cameraY) - ry;
+    // Keep geometry in CSS/world coordinates. Snapping each rectangle edge
+    // independently can change wall dimensions at fractional DPR values and
+    // leave thin shadow seams around the clipped face.
+    const rx = wall.x - cameraX;
+    const ry = wall.y - cameraY;
+    const rw = wall.w;
+    const rh = wall.h;
     if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
     ctx.save();
     ctx.beginPath();
@@ -419,14 +429,13 @@ function updateScene() {
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
 
-  // Player and camera share the same device-pixel grid so the sprite's
-  // on-screen offset stays constant while the camera follows (no sub-pixel jitter).
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const snap = (v) => Math.round(v * dpr) / dpr;
-  const px = snap(state.x);
-  const py = snap(state.y);
-  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
-  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
+  // Keep simulation and camera positions in continuous CSS/world units.
+  // Pixel snapping at fractional DPR can quantize camera/player movement and
+  // make motion look uneven at Windows 125% / 150% scaling.
+  const px = state.x;
+  const py = state.y;
+  const cameraX = Math.max(0, Math.min(maxX, px - viewW / 2));
+  const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
@@ -471,7 +480,9 @@ function perfShow(now) {
 }
 function tick(timestamp) {
   if (!state.started) return;
-  const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.05) : 0;
+  // Allow a slightly larger frame delta; movePlayer subdivides it before
+  // collision checks, reducing apparent slowdown after brief frame stalls.
+  const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.1) : 0;
   state.lastTime = timestamp;
   if (perf.last) {
     const gap = timestamp - perf.last;
