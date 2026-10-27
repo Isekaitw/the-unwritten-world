@@ -235,21 +235,29 @@ function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
   if (!width || !height) return;
-  // Use the full device pixel ratio, then derive the actual canvas scale from
-  // its rounded backing dimensions. At fractional Windows scaling, backing
-  // dimensions may not equal CSS size × DPR exactly.
+  // Render beyond each viewport edge. The scene itself remains clipped by
+  // the viewport, but ray/shadow geometry can finish outside the visible area
+  // instead of terminating exactly at the canvas boundary.
+  const M = 200;
+  const canvasWidth = width + M * 2;
+  const canvasHeight = height + M * 2;
+  // Use the full device pixel ratio and derive scale from rounded backing size.
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const pixelWidth = Math.max(1, Math.round(width * dpr));
-  const pixelHeight = Math.max(1, Math.round(height * dpr));
+  const pixelWidth = Math.max(1, Math.round(canvasWidth * dpr));
+  const pixelHeight = Math.max(1, Math.round(canvasHeight * dpr));
   if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
   }
 
   const ctx = visionContext;
-  ctx.setTransform(pixelWidth / width, 0, 0, pixelHeight / height, 0, 0);
+  const scaleX = pixelWidth / canvasWidth;
+  const scaleY = pixelHeight / canvasHeight;
+  // CSS canvas bounds are expanded by M on every side; translate viewport
+  // coordinates into that larger backing surface.
+  ctx.setTransform(scaleX, 0, 0, scaleY, M * scaleX, M * scaleY);
   ctx.globalCompositeOperation = "source-over";
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(-M, -M, canvasWidth, canvasHeight);
 
   // All occlusion decisions use one world-space source: the player's foot /
   // collision anchor. Camera coordinates are used only when drawing to canvas.
@@ -261,10 +269,9 @@ function drawVision(cameraX, cameraY) {
   const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
   const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
-  // Extend the ray-casting bounds beyond the viewport so wall corners near
-  // the screen edge do not create artificial chords along the visible border.
-  const M = 200; // CSS pixels; comfortably larger than the 5px feather radius.
-  const view = { x: cameraX - M, y: cameraY - M, w: width + M * 2, h: height + M * 2 };
+  // Ray-casting bounds match the expanded canvas, preventing the visibility
+  // polygon from closing along the visible viewport edge.
+  const view = { x: cameraX - M, y: cameraY - M, w: canvasWidth, h: canvasHeight };
 
   // The overlay is fully opaque. Only space reachable by a ray before its
   // first wall (or vision radius) is removed from the overlay.
