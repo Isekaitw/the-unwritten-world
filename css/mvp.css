@@ -16,15 +16,12 @@
 }
 .world-ground {
   position: absolute; inset: 0;
-  background:
-    radial-gradient(ellipse at 25% 30%, rgba(195,215,177,.16), transparent 28%),
-    radial-gradient(ellipse at 75% 65%, rgba(129,180,162,.12), transparent 34%),
-    linear-gradient(135deg,#31575a,#1d3b43 60%,#284b4b);
+  /* Flat fill avoids overlapping gradient bands that can shimmer at fractional DPR. */
+  background: #29494b;
 }
 .world-water {
   position:absolute;left:0;right:0;bottom:0;height:170px;
-  background:
-    linear-gradient(180deg,rgba(27,79,86,.25),#102a36);
+  background: #183641;
 }
 .world-landmark {
   position:absolute; padding:20px 28px; border:1px solid rgba(214,244,224,.17);
@@ -84,10 +81,11 @@
 }
 @media(prefers-reduced-motion:reduce){.gate{transition:none}}
 
-/* Keep the darkness mask behind walls and gates so it cannot cover their edges. */
+/* The canvas clears wall faces before painting cast shadows onto them,
+   so it must sit above wall sprites but below the player sprite. */
 .vision-canvas {
   position: absolute;
-  z-index: 2;
+  z-index: 5;
   inset: 0;
   width: 100%;
   height: 100%;
