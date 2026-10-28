@@ -444,15 +444,15 @@ function updateScene() {
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
 
-  // Keep simulation and camera positions in continuous CSS/world units.
-  // Pixel snapping at fractional DPR can quantize camera/player movement and
-  // make motion look uneven at Windows 125% / 150% scaling.
+  // Keep the camera in the same continuous CSS-pixel coordinate space as
+  // the world transform and the canvas geometry. Snapping only the camera to
+  // the device-pixel grid makes its motion discontinuous while DOM walls and
+  // canvas shadow edges are rasterized by different pipelines; at fractional
+  // DPR this can show up as a transient wall-face cut during vertical scroll.
   const px = state.x;
   const py = state.y;
-  const dprNow = Math.max(1, window.devicePixelRatio || 1);
-  const snap = (value) => Math.round(value * dprNow) / dprNow;
-  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
-  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
+  const cameraX = Math.max(0, Math.min(maxX, px - viewW / 2));
+  const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
