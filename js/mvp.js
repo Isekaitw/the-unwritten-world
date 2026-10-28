@@ -402,14 +402,25 @@ function drawVision(cameraX, cameraY) {
     // Keep geometry in CSS/world coordinates. Snapping each rectangle edge
     // independently can change wall dimensions at fractional DPR values and
     // leave thin shadow seams around the clipped face.
-    const rx = wall.x - cameraX;
-    const ry = wall.y - cameraY;
-    const rw = wall.w;
-    const rh = wall.h;
-    if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
-    // Clear the wall face before applying the clip. Clipping the clear to the
-    // exact same rectangle can rasterize the shared edge twice at fractional
-    // device-pixel ratios, leaving a thin fringe that looks like wall clipping.
+    const rawX = wall.x - cameraX;
+    const rawY = wall.y - cameraY;
+    const rawRight = rawX + wall.w;
+    const rawBottom = rawY + wall.h;
+    if (rawX > width || rawY > height || rawRight < 0 || rawBottom < 0) continue;
+
+    // Round the wall face outward in the canvas backing-store pixel grid.
+    // This ensures the clear covers every physical pixel touched by the DOM
+    // wall at fractional DPR, while keeping the player's world coordinates
+    // and collision geometry untouched.
+    const floorPx = (value, scale) => Math.floor(value * scale) / scale;
+    const ceilPx = (value, scale) => Math.ceil(value * scale) / scale;
+    const rx = floorPx(rawX, scaleX);
+    const ry = floorPx(rawY, scaleY);
+    const right = ceilPx(rawRight, scaleX);
+    const bottom = ceilPx(rawBottom, scaleY);
+    const rw = right - rx;
+    const rh = bottom - ry;
+
     ctx.globalCompositeOperation = "destination-out";
     ctx.fillStyle = "#000";
     ctx.fillRect(rx, ry, rw, rh);
@@ -440,13 +451,15 @@ function updateScene() {
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
 
-  // Keep simulation and camera positions in continuous CSS/world units.
-  // Pixel snapping at fractional DPR can quantize camera/player movement and
-  // make motion look uneven at Windows 125% / 150% scaling.
+  // Keep player/world simulation in continuous units, but align the camera
+  // translation to physical pixels so DOM walls and the vision canvas share
+  // the same raster boundary at fractional Windows display scales.
   const px = state.x;
   const py = state.y;
-  const cameraX = Math.max(0, Math.min(maxX, px - viewW / 2));
-  const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const snap = (value) => Math.round(value * dpr) / dpr;
+  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
+  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
