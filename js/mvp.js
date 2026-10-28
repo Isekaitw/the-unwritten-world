@@ -408,6 +408,16 @@ function drawVision(cameraX, cameraY) {
     const rh = wall.h;
     if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
     ctx.save();
+    // A wall face may only punch through the darkness inside the player's
+    // visibility polygon. Clearing the entire rectangle reveals slivers of
+    // walls behind nearer blockers along their silhouettes.
+    if (points.length >= 3) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.closePath();
+      ctx.clip();
+    }
     ctx.beginPath();
     ctx.rect(rx, ry, rw, rh);
     ctx.clip();
