@@ -232,15 +232,18 @@ function rayViewportDistance(originX, originY, dirX, dirY, rect) {
   return distance > 0 ? distance : 0;
 }
 function drawVision(cameraX, cameraY) {
-  const width = viewport.clientWidth;
-  const height = viewport.clientHeight;
-  if (!width || !height) return;
-  // Render beyond each viewport edge. The scene itself remains clipped by
-  // the viewport, but ray/shadow geometry can finish outside the visible area
-  // instead of terminating exactly at the canvas boundary.
-  const M = 200;
-  const canvasWidth = width + M * 2;
-  const canvasHeight = height + M * 2;
+  const viewportRect = viewport.getBoundingClientRect();
+  const canvasRect = visionCanvas.getBoundingClientRect();
+  const width = viewportRect.width;
+  const height = viewportRect.height;
+  if (!width || !height || !canvasRect.width || !canvasRect.height) return;
+  // Derive the canvas origin and dimensions from the actual layout rectangles.
+  // Assuming a fixed -200px offset can drift from the rendered DOM geometry
+  // under fractional layout/DPR while the camera is scrolling.
+  const offsetX = viewportRect.left - canvasRect.left;
+  const offsetY = viewportRect.top - canvasRect.top;
+  const canvasWidth = canvasRect.width;
+  const canvasHeight = canvasRect.height;
   // Use the full device pixel ratio and derive scale from rounded backing size.
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   const pixelWidth = Math.max(1, Math.round(canvasWidth * dpr));
@@ -253,11 +256,11 @@ function drawVision(cameraX, cameraY) {
   const ctx = visionContext;
   const scaleX = pixelWidth / canvasWidth;
   const scaleY = pixelHeight / canvasHeight;
-  // CSS canvas bounds are expanded by M on every side; translate viewport
-  // coordinates into that larger backing surface.
-  ctx.setTransform(scaleX, 0, 0, scaleY, M * scaleX, M * scaleY);
+  // Translate viewport-local coordinates using the canvas's measured origin,
+  // so Canvas and DOM share the same reference even if CSS layout is fractional.
+  ctx.setTransform(scaleX, 0, 0, scaleY, offsetX * scaleX, offsetY * scaleY);
   ctx.globalCompositeOperation = "source-over";
-  ctx.clearRect(-M, -M, canvasWidth, canvasHeight);
+  ctx.clearRect(-offsetX, -offsetY, canvasWidth, canvasHeight);
 
   // All occlusion decisions use one world-space source: the player's foot /
   // collision anchor. Camera coordinates are used only when drawing to canvas.
@@ -271,7 +274,12 @@ function drawVision(cameraX, cameraY) {
   const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
   // Ray-casting bounds match the expanded canvas, preventing the visibility
   // polygon from closing along the visible viewport edge.
-  const view = { x: cameraX - M, y: cameraY - M, w: canvasWidth, h: canvasHeight };
+  const view = {
+    x: cameraX - offsetX,
+    y: cameraY - offsetY,
+    w: canvasWidth,
+    h: canvasHeight
+  };
 
   // The overlay is fully opaque. Only space reachable by a ray before its
   // first wall (or vision radius) is removed from the overlay.
