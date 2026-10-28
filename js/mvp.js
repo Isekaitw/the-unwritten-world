@@ -398,33 +398,22 @@ function drawVision(cameraX, cameraY) {
       ctx.closePath();
     }
   };
-  // Painter order: render wall-shadow layers from farthest to nearest.
-  // Each layer is clipped to its own host wall, so shadows from another wall
-  // cannot paint outside that wall's face. Nearer host walls are painted last
-  // and therefore win any overlap at fractional-DPR edge pixels.
-  const wallShadowOrder = [...opaque].sort((a, b) => {
-    const da = Math.hypot(a.x + a.w / 2 - sourceX, a.y + a.h / 2 - sourceY);
-    const db = Math.hypot(b.x + b.w / 2 - sourceX, b.y + b.h / 2 - sourceY);
-    return db - da;
-  });
-  for (const wall of wallShadowOrder) {
+  for (const wall of opaque) {
+    // Keep geometry in CSS/world coordinates. Snapping each rectangle edge
+    // independently can change wall dimensions at fractional DPR values and
+    // leave thin shadow seams around the clipped face.
     const rx = wall.x - cameraX;
     const ry = wall.y - cameraY;
     const rw = wall.w;
     const rh = wall.h;
     if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
-
-    // Clear the host wall face before clipping. Applying destination-out
-    // under the same clip can anti-alias the exact same boundary twice and
-    // leave a dark fringe that resembles a shadow cutting into the wall.
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "#000";
-    ctx.fillRect(rx, ry, rw, rh);
-
     ctx.save();
     ctx.beginPath();
     ctx.rect(rx, ry, rw, rh);
     ctx.clip();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, rw, rh);
     ctx.globalCompositeOperation = "source-over";
     ctx.beginPath();
     for (const other of opaque) if (other !== wall) addShadow(other);
