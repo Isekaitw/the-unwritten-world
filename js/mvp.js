@@ -238,24 +238,33 @@ function drawVision(cameraX, cameraY) {
   // Render beyond each viewport edge. The scene itself remains clipped by
   // the viewport, but ray/shadow geometry can finish outside the visible area
   // instead of terminating exactly at the canvas boundary.
-  const M = 200;
-  const canvasWidth = width + M * 2;
-  const canvasHeight = height + M * 2;
-  // Use the full device pixel ratio and derive scale from rounded backing size.
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const pixelWidth = Math.max(1, Math.round(canvasWidth * dpr));
-  const pixelHeight = Math.max(1, Math.round(canvasHeight * dpr));
-  if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
+  // Keep the canvas expansion and backing store aligned to whole physical
+  // pixels. This avoids a rounded backing-store scale drifting from the DOM
+  // raster grid at fractional display scaling (for example, 150%).
+  const Mpx = Math.ceil(200 * dpr);
+  const M = Mpx / dpr;
+  const pixelWidth = Math.ceil(width * dpr) + Mpx * 2;
+  const pixelHeight = Math.ceil(height * dpr) + Mpx * 2;
+  const canvasWidth = pixelWidth / dpr;
+  const canvasHeight = pixelHeight / dpr;
+  if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight ||
+      visionCanvas.style.width !== `${canvasWidth}px` || visionCanvas.style.height !== `${canvasHeight}px`) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
+    // Size the CSS canvas to match its backing store in CSS units.
+    visionCanvas.style.inset = "auto";
+    visionCanvas.style.left = `${-M}px`;
+    visionCanvas.style.top = `${-M}px`;
+    visionCanvas.style.width = `${canvasWidth}px`;
+    visionCanvas.style.height = `${canvasHeight}px`;
   }
 
   const ctx = visionContext;
-  const scaleX = pixelWidth / canvasWidth;
-  const scaleY = pixelHeight / canvasHeight;
-  // CSS canvas bounds are expanded by M on every side; translate viewport
-  // coordinates into that larger backing surface.
-  ctx.setTransform(scaleX, 0, 0, scaleY, M * scaleX, M * scaleY);
+  const scaleX = dpr;
+  const scaleY = dpr;
+  // Translate viewport coordinates by an integer number of backing pixels.
+  ctx.setTransform(dpr, 0, 0, dpr, Mpx, Mpx);
   ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(-M, -M, canvasWidth, canvasHeight);
 
@@ -412,8 +421,8 @@ function drawVision(cameraX, cameraY) {
     // This ensures the clear covers every physical pixel touched by the DOM
     // wall at fractional DPR, while keeping the player's world coordinates
     // and collision geometry untouched.
-    const floorPx = (value, scale) => Math.floor(value * scale) / scale;
-    const ceilPx = (value, scale) => Math.ceil(value * scale) / scale;
+    const floorPx = (value, scale) => Math.floor(value * scale + 1e-4) / scale;
+    const ceilPx = (value, scale) => Math.ceil(value * scale - 1e-4) / scale;
     const rx = floorPx(rawX, scaleX);
     const ry = floorPx(rawY, scaleY);
     const right = ceilPx(rawRight, scaleX);
