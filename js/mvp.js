@@ -398,22 +398,30 @@ function drawVision(cameraX, cameraY) {
       ctx.closePath();
     }
   };
+  const padX = 1 / scaleX;
+  const padY = 1 / scaleY;
   for (const wall of opaque) {
-    // Keep geometry in CSS/world coordinates. Snapping each rectangle edge
-    // independently can change wall dimensions at fractional DPR values and
-    // leave thin shadow seams around the clipped face.
-    const rx = wall.x - cameraX;
-    const ry = wall.y - cameraY;
-    const rw = wall.w;
-    const rh = wall.h;
-    if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
+    // Expand the clear region to whole backing pixels. At fractional DPR,
+    // clipping and clearing the same half-covered edge compounds alpha and
+    // leaves a dark fringe on the visible wall face.
+    const rx = Math.floor((wall.x - cameraX) * scaleX) / scaleX - padX;
+    const ry = Math.floor((wall.y - cameraY) * scaleY) / scaleY - padY;
+    const rr = Math.ceil((wall.x + wall.w - cameraX) * scaleX) / scaleX + padX;
+    const rb = Math.ceil((wall.y + wall.h - cameraY) * scaleY) / scaleY + padY;
+    const rw = rr - rx;
+    const rh = rb - ry;
+    if (rx > width || ry > height || rr < 0 || rb < 0) continue;
+
+    // Clear before clipping: the expanded wall face remains fully visible,
+    // while the shadow polygons are still constrained to the wall rectangle.
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, rw, rh);
+
     ctx.save();
     ctx.beginPath();
     ctx.rect(rx, ry, rw, rh);
     ctx.clip();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "#000";
-    ctx.fillRect(rx, ry, rw, rh);
     ctx.globalCompositeOperation = "source-over";
     ctx.beginPath();
     for (const other of opaque) if (other !== wall) addShadow(other);
@@ -441,8 +449,10 @@ function updateScene() {
   // make motion look uneven at Windows 125% / 150% scaling.
   const px = state.x;
   const py = state.y;
-  const cameraX = Math.max(0, Math.min(maxX, px - viewW / 2));
-  const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
+  const dprNow = Math.max(1, window.devicePixelRatio || 1);
+  const snap = (value) => Math.round(value * dprNow) / dprNow;
+  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
+  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
