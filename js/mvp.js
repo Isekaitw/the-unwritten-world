@@ -407,13 +407,17 @@ function drawVision(cameraX, cameraY) {
     const rw = wall.w;
     const rh = wall.h;
     if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
+    // Clear the wall face before applying the clip. Clipping the clear to the
+    // exact same rectangle can rasterize the shared edge twice at fractional
+    // device-pixel ratios, leaving a thin fringe that looks like wall clipping.
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, rw, rh);
+
     ctx.save();
     ctx.beginPath();
     ctx.rect(rx, ry, rw, rh);
     ctx.clip();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "#000";
-    ctx.fillRect(rx, ry, rw, rh);
     ctx.globalCompositeOperation = "source-over";
     ctx.beginPath();
     for (const other of opaque) if (other !== wall) addShadow(other);
