@@ -238,38 +238,26 @@ function drawVision(cameraX, cameraY) {
   // Render beyond each viewport edge. The scene itself remains clipped by
   // the viewport, but ray/shadow geometry can finish outside the visible area
   // instead of terminating exactly at the canvas boundary.
+  const M = 200;
+  const canvasWidth = width + M * 2;
+  const canvasHeight = height + M * 2;
+  // Use the full device pixel ratio and derive scale from rounded backing size.
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  // Keep the canvas expansion and backing store aligned to whole physical
-  // pixels. This avoids a rounded backing-store scale drifting from the DOM
-  // raster grid at fractional display scaling (for example, 150%).
-  const Mpx = Math.ceil(200 * dpr);
-  const M = Mpx / dpr;
-  const pixelWidth = Math.ceil(width * dpr) + Mpx * 2;
-  const pixelHeight = Math.ceil(height * dpr) + Mpx * 2;
-  const canvasWidth = pixelWidth / dpr;
-  const canvasHeight = pixelHeight / dpr;
-  if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight ||
-      visionCanvas.style.width !== `${canvasWidth}px` || visionCanvas.style.height !== `${canvasHeight}px`) {
+  const pixelWidth = Math.max(1, Math.round(canvasWidth * dpr));
+  const pixelHeight = Math.max(1, Math.round(canvasHeight * dpr));
+  if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
-    // Size the CSS canvas to match its backing store in CSS units.
-    visionCanvas.style.inset = "auto";
-    visionCanvas.style.left = `${-M}px`;
-    visionCanvas.style.top = `${-M}px`;
-    visionCanvas.style.width = `${canvasWidth}px`;
-    visionCanvas.style.height = `${canvasHeight}px`;
   }
 
   const ctx = visionContext;
-  const scaleX = dpr;
-  const scaleY = dpr;
-  // Translate viewport coordinates by an integer number of backing pixels.
-  ctx.setTransform(dpr, 0, 0, dpr, Mpx, Mpx);
+  const scaleX = pixelWidth / canvasWidth;
+  const scaleY = pixelHeight / canvasHeight;
+  // CSS canvas bounds are expanded by M on every side; translate viewport
+  // coordinates into that larger backing surface.
+  ctx.setTransform(scaleX, 0, 0, scaleY, M * scaleX, M * scaleY);
   ctx.globalCompositeOperation = "source-over";
-  // Only the viewport is visible because the canvas is clipped by #scene.
-  // Clearing the expanded backing store every frame touches several million
-  // extra pixels at 150% display scaling without affecting visible output.
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(-M, -M, canvasWidth, canvasHeight);
 
   // All occlusion decisions use one world-space source: the player's foot /
   // collision anchor. Camera coordinates are used only when drawing to canvas.
@@ -414,33 +402,18 @@ function drawVision(cameraX, cameraY) {
     // Keep geometry in CSS/world coordinates. Snapping each rectangle edge
     // independently can change wall dimensions at fractional DPR values and
     // leave thin shadow seams around the clipped face.
-    const rawX = wall.x - cameraX;
-    const rawY = wall.y - cameraY;
-    const rawRight = rawX + wall.w;
-    const rawBottom = rawY + wall.h;
-    if (rawX > width || rawY > height || rawRight < 0 || rawBottom < 0) continue;
-
-    // Round the wall face outward in the canvas backing-store pixel grid.
-    // This ensures the clear covers every physical pixel touched by the DOM
-    // wall at fractional DPR, while keeping the player's world coordinates
-    // and collision geometry untouched.
-    const floorPx = (value, scale) => Math.floor(value * scale + 1e-4) / scale;
-    const ceilPx = (value, scale) => Math.ceil(value * scale - 1e-4) / scale;
-    const rx = floorPx(rawX, scaleX);
-    const ry = floorPx(rawY, scaleY);
-    const right = ceilPx(rawRight, scaleX);
-    const bottom = ceilPx(rawBottom, scaleY);
-    const rw = right - rx;
-    const rh = bottom - ry;
-
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "#000";
-    ctx.fillRect(rx, ry, rw, rh);
-
+    const rx = wall.x - cameraX;
+    const ry = wall.y - cameraY;
+    const rw = wall.w;
+    const rh = wall.h;
+    if (rx > width || ry > height || rx + rw < 0 || ry + rh < 0) continue;
     ctx.save();
     ctx.beginPath();
     ctx.rect(rx, ry, rw, rh);
     ctx.clip();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, rw, rh);
     ctx.globalCompositeOperation = "source-over";
     ctx.beginPath();
     for (const other of opaque) if (other !== wall) addShadow(other);
@@ -463,15 +436,13 @@ function updateScene() {
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
 
-  // Keep player/world simulation in continuous units, but align the camera
-  // translation to physical pixels so DOM walls and the vision canvas share
-  // the same raster boundary at fractional Windows display scales.
+  // Keep simulation and camera positions in continuous CSS/world units.
+  // Pixel snapping at fractional DPR can quantize camera/player movement and
+  // make motion look uneven at Windows 125% / 150% scaling.
   const px = state.x;
   const py = state.y;
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const snap = (value) => Math.round(value * dpr) / dpr;
-  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
-  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
+  const cameraX = Math.max(0, Math.min(maxX, px - viewW / 2));
+  const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
 
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
