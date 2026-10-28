@@ -266,7 +266,10 @@ function drawVision(cameraX, cameraY) {
   // Translate viewport coordinates by an integer number of backing pixels.
   ctx.setTransform(dpr, 0, 0, dpr, Mpx, Mpx);
   ctx.globalCompositeOperation = "source-over";
-  ctx.clearRect(-M, -M, canvasWidth, canvasHeight);
+  // Only the viewport is visible because the canvas is clipped by #scene.
+  // Clearing the expanded backing store every frame touches several million
+  // extra pixels at 150% display scaling without affecting visible output.
+  ctx.clearRect(0, 0, width, height);
 
   // All occlusion decisions use one world-space source: the player's foot /
   // collision anchor. Camera coordinates are used only when drawing to canvas.
