@@ -623,7 +623,7 @@ function tick(timestamp) {
     if (gap > 25) perf.slow++;
   }
   perf.last = timestamp;
-  if (!state.dialogueOpen) {
+  if (!state.dialogueOpen && !state.inventoryOpen) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
     const t0 = performance.now();
@@ -695,6 +695,7 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   const shouldOpen = !state[stateKey];
 
   if (shouldOpen) {
+    if (stateKey === "inventoryOpen") stopInput();
     overlayPanels.forEach((item) => {
       if (item.stateKey === stateKey) return;
       state[item.stateKey] = false;
@@ -743,6 +744,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
   if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
+  if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
 });
