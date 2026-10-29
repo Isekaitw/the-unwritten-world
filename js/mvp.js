@@ -408,14 +408,21 @@ function drawVision(cameraX, cameraY) {
   };
   const padX = 1 / scaleX;
   const padY = 1 / scaleY;
+  // Pixel snapping must use the canvas backing-store origin, not viewport
+  // coordinates. The canvas begins outside the viewport, so omitting this
+  // offset aligns the clear edge to a different pixel grid at fractional DPR.
+  const snapX = (x) => Math.floor((x + offsetX) * scaleX) / scaleX - offsetX;
+  const snapY = (y) => Math.floor((y + offsetY) * scaleY) / scaleY - offsetY;
+  const ceilX = (x) => Math.ceil((x + offsetX) * scaleX) / scaleX - offsetX;
+  const ceilY = (y) => Math.ceil((y + offsetY) * scaleY) / scaleY - offsetY;
   for (const wall of opaque) {
-    // Expand the clear region to whole backing pixels. At fractional DPR,
-    // clipping and clearing the same half-covered edge compounds alpha and
-    // leaves a dark fringe on the visible wall face.
-    const rx = Math.floor((wall.x - cameraX) * scaleX) / scaleX - padX;
-    const ry = Math.floor((wall.y - cameraY) * scaleY) / scaleY - padY;
-    const rr = Math.ceil((wall.x + wall.w - cameraX) * scaleX) / scaleX + padX;
-    const rb = Math.ceil((wall.y + wall.h - cameraY) * scaleY) / scaleY + padY;
+    // Expand the clear region to whole backing pixels using the same origin
+    // as the context transform; this avoids a fractional-DPR seam as the
+    // camera continuously scrolls the wall across device pixels.
+    const rx = snapX(wall.x - cameraX) - padX;
+    const ry = snapY(wall.y - cameraY) - padY;
+    const rr = ceilX(wall.x + wall.w - cameraX) + padX;
+    const rb = ceilY(wall.y + wall.h - cameraY) + padY;
     const rw = rr - rx;
     const rh = rb - ry;
     if (rx > width || ry > height || rr < 0 || rb < 0) continue;
