@@ -147,7 +147,8 @@ function renderInventory() {
     inventoryDetail.innerHTML = '<div class="inventory-detail-icon" aria-hidden="true">◇</div><p class="inventory-detail-kicker">尚未選取物品</p><h4>選擇一件物品</h4><p class="inventory-detail-copy">探索時取得的線索、遺物與工具，都會收錄在這裡。</p>';
   }
 }
-\nfunction updateQuestUI() {
+
+function updateQuestUI() {
   const objectives = [
     { id: "quest-marker", done: state.markerInspected },
     { id: "quest-gate", done: state.gateOpen },
@@ -208,7 +209,10 @@ function startExploration() {
   state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
   state.secretFound = saved ? Boolean(saved.secretFound) : false;
   state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
-  state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;\n  state.inventory = saved && Array.isArray(saved.inventory) ? saved.inventory.filter((id) => inventoryCatalog.some((item) => item.id === id)) : [];\n  selectedInventoryItem = state.inventory[0] || null;\n  renderInventory();
+  state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;
+  state.inventory = saved && Array.isArray(saved.inventory) ? saved.inventory.filter((id) => inventoryCatalog.some((item) => item.id === id)) : [];
+  selectedInventoryItem = state.inventory[0] || null;
+  renderInventory();
   state.target = null;
   state.started = true;
   state.lastTime = 0;
@@ -598,9 +602,12 @@ function perfShow(now) {
   if (now - perf.mark < 500) return;
   const secs = (now - perf.mark) / 1000;
   perf.el.textContent =
-    `FPS ${(perf.frames / secs).toFixed(0)}\n` +
-    `JS ${(perf.jsSum / perf.frames).toFixed(1)}ms\n` +
-    `最長幀 ${perf.worst.toFixed(0)}ms\n` +
+    `FPS ${(perf.frames / secs).toFixed(0)}
+` +
+    `JS ${(perf.jsSum / perf.frames).toFixed(1)}ms
+` +
+    `最長幀 ${perf.worst.toFixed(0)}ms
+` +
     `>25ms 幀數 ${perf.slow}`;
   perf.mark = now; perf.frames = 0; perf.jsSum = 0; perf.worst = 0; perf.slow = 0;
 }
@@ -633,19 +640,22 @@ function interact() {
   if (!state.target) return;
   const target = state.target;
   if (target.id === "test_interactable_tide_marker") {
-    state.markerInspected = true;\n    addInventoryItem("tide_imprint");
+    state.markerInspected = true;
+    addInventoryItem("tide_imprint");
     openDialogue("潮痕標記", "石面上留著一道不自然的刻痕。這是技術測試用互動物件；不新增正式劇情或世界觀設定。");
     setStatus("已調查潮痕標記。");
   } else if (target.id === "test_secret_tide_echo") {
     if (!state.secretFound) {
-      state.secretFound = true;\n      addInventoryItem("echo_fragment");
+      state.secretFound = true;
+      addInventoryItem("echo_fragment");
       target.el.classList.add("is-found");
       openDialogue("發現一次性秘密", "你捕捉到藏在遺跡角落的微弱回聲。秘密 ID：test_secret_tide_echo。本局只會記錄這一次發現。");
       setStatus("已發現一次性秘密：微弱回聲。");
     }
   } else if (target.id === "test_puzzle_measurement_device") {
     if (!state.gateOpen) {
-      state.gateOpen = true;\n      addInventoryItem("device_record");
+      state.gateOpen = true;
+      addInventoryItem("device_record");
       gate.classList.add("is-open");
       $("#switch").classList.add("is-active");
       statusChip.lastChild.textContent = " 機關已啟動 · 通路開啟";
@@ -709,7 +719,19 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   saveProgress();
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
-inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));\ninventoryClose.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));\ndocument.querySelectorAll("[data-inventory-filter]").forEach((button) => {\n  button.addEventListener("click", () => {\n    inventoryFilter = button.dataset.inventoryFilter;\n    document.querySelectorAll("[data-inventory-filter]").forEach((filter) => {\n      const active = filter === button;\n      filter.classList.toggle("is-selected", active);\n      filter.setAttribute("aria-pressed", String(active));\n    });\n    renderInventory();\n  });\n});
+inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
+inventoryClose.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
+document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    inventoryFilter = button.dataset.inventoryFilter;
+    document.querySelectorAll("[data-inventory-filter]").forEach((filter) => {
+      const active = filter === button;
+      filter.classList.toggle("is-selected", active);
+      filter.setAttribute("aria-pressed", String(active));
+    });
+    renderInventory();
+  });
+});
 interactButton.addEventListener("click", interact);
 objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
