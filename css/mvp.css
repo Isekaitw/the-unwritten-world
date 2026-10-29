@@ -29,6 +29,10 @@
   transform:rotate(-7deg); background:rgba(9,28,33,.15);
 }
 .landmark-one{left:90px;top:330px}.landmark-two{left:1020px;top:400px}
+/* Keep rendered wall bounds identical to the world-space rectangles used by
+   collision and vision casting. Without border-box, borders enlarge each wall
+   beyond the geometry in js/mvp.js and scrolling exposes a mismatched edge. */
+.obstacle, .gate { box-sizing: border-box; }
 .obstacle {
   position:absolute; z-index:3; border:2px solid #8a9a8d; border-radius:7px;
   background:linear-gradient(145deg,#62766e,#344d4c 68%,#263e40);
