@@ -438,11 +438,13 @@ function drawVision(cameraX, cameraY) {
     // scene; this avoids a hard, abruptly cut lower edge while the camera moves.
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
-    ctx.shadowColor = "rgba(0,0,0,0.32)";
-    ctx.shadowBlur = 12;
+    ctx.shadowColor = "rgba(0,0,0,0.38)";
+    ctx.shadowBlur = 14;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 9;
-    ctx.fillStyle = "rgba(0,0,0,0.01)";
+    // Canvas shadow alpha follows the source shape's alpha; near-transparent
+    // fill makes the shadow effectively disappear. The face is cleared below.
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.fillRect(wall.x - cameraX, wall.y - cameraY, wall.w, wall.h);
     ctx.restore();
 
