@@ -656,6 +656,7 @@ function interact() {
     }
   }
   updateScene();
+  saveProgress();
 }
 document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
   tab.addEventListener("click", () => {
