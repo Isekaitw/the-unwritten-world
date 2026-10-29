@@ -7,6 +7,17 @@ const questToggle = $("#quest-toggle");
 const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
+const inventoryGrid = $("#inventory-grid");
+const inventoryDetail = $("#inventory-detail");
+const inventoryCount = $("#inventory-count");
+const inventoryClose = $("#inventory-close");
+const inventoryCatalog = [
+  { id: "tide_imprint", category: "clue", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
+  { id: "echo_fragment", category: "relic", icon: "✧", name: "微弱回聲", subtitle: "隱藏發現", description: "從遺跡角落捕捉到的一段微弱回響。內容尚不完整，暫時無法判讀。", source: "發現隱藏回聲" },
+  { id: "device_record", category: "tool", icon: "◎", name: "機關記錄", subtitle: "裝置資料", description: "測量裝置啟動時留下的狀態記錄。通路已解除封鎖，這份記錄可供之後查閱。", source: "啟動測量機關" }
+];
+let inventoryFilter = "all";
+let selectedInventoryItem = null;
 const SAVE_KEY = "unwritten-world-exploration-save-v1";
 const viewport = $("#scene");
 const world = $("#world");
@@ -71,7 +82,71 @@ const keyMap = {
 function setStatus(message) {
   statusMessage.textContent = message;
 }
-function updateQuestUI() {
+
+function addInventoryItem(id) {
+  if (!state.inventory.includes(id)) {
+    state.inventory.push(id);
+    renderInventory();
+    setStatus(`已收進行囊：${inventoryCatalog.find((item) => item.id === id)?.name || "新物件"}。`);
+  }
+}
+function renderInventory() {
+  const owned = inventoryCatalog.filter((item) => state.inventory.includes(item.id));
+  const visible = owned.filter((item) => inventoryFilter === "all" || item.category === inventoryFilter);
+  inventoryCount.textContent = String(owned.length);
+  inventoryGrid.replaceChildren();
+  if (!visible.length) {
+    const empty = document.createElement("p");
+    empty.className = "inventory-empty";
+    empty.textContent = owned.length ? "這個分類目前沒有物品。" : "行囊目前是空的。探索場景、調查標記或發現隱藏回聲，就能收集新的物件。";
+    inventoryGrid.append(empty);
+  } else {
+    visible.forEach((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "inventory-slot";
+      button.classList.toggle("is-selected", selectedInventoryItem === item.id);
+      button.setAttribute("aria-label", item.name);
+      button.setAttribute("aria-pressed", String(selectedInventoryItem === item.id));
+      const icon = document.createElement("span");
+      icon.className = "inventory-slot-icon";
+      icon.textContent = item.icon;
+      const name = document.createElement("span");
+      name.className = "inventory-slot-name";
+      name.textContent = item.name;
+      button.append(icon, name);
+      button.addEventListener("click", () => {
+        selectedInventoryItem = item.id;
+        renderInventory();
+      });
+      inventoryGrid.append(button);
+    });
+  }
+  const selected = owned.find((item) => item.id === selectedInventoryItem) || visible[0] || null;
+  if (selected) {
+    selectedInventoryItem = selected.id;
+    inventoryDetail.replaceChildren();
+    const icon = document.createElement("div");
+    icon.className = "inventory-detail-icon";
+    icon.textContent = selected.icon;
+    const kicker = document.createElement("p");
+    kicker.className = "inventory-detail-kicker";
+    kicker.textContent = selected.subtitle;
+    const title = document.createElement("h4");
+    title.textContent = selected.name;
+    const description = document.createElement("p");
+    description.className = "inventory-detail-copy";
+    description.textContent = selected.description;
+    const source = document.createElement("p");
+    source.className = "inventory-detail-source";
+    source.textContent = `取得方式：${selected.source}`;
+    inventoryDetail.append(icon, kicker, title, description, source);
+  } else {
+    selectedInventoryItem = null;
+    inventoryDetail.innerHTML = '<div class="inventory-detail-icon" aria-hidden="true">◇</div><p class="inventory-detail-kicker">尚未選取物品</p><h4>選擇一件物品</h4><p class="inventory-detail-copy">探索時取得的線索、遺物與工具，都會收錄在這裡。</p>';
+  }
+}
+\nfunction updateQuestUI() {
   const objectives = [
     { id: "quest-marker", done: state.markerInspected },
     { id: "quest-gate", done: state.gateOpen },
@@ -132,7 +207,7 @@ function startExploration() {
   state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
   state.secretFound = saved ? Boolean(saved.secretFound) : false;
   state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
-  state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;
+  state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;\n  state.inventory = saved && Array.isArray(saved.inventory) ? saved.inventory.filter((id) => inventoryCatalog.some((item) => item.id === id)) : [];\n  selectedInventoryItem = state.inventory[0] || null;\n  renderInventory();
   state.target = null;
   state.started = true;
   state.lastTime = 0;
@@ -557,19 +632,19 @@ function interact() {
   if (!state.target) return;
   const target = state.target;
   if (target.id === "test_interactable_tide_marker") {
-    state.markerInspected = true;
+    state.markerInspected = true;\n    addInventoryItem("tide_imprint");
     openDialogue("潮痕標記", "石面上留著一道不自然的刻痕。這是技術測試用互動物件；不新增正式劇情或世界觀設定。");
     setStatus("已調查潮痕標記。");
   } else if (target.id === "test_secret_tide_echo") {
     if (!state.secretFound) {
-      state.secretFound = true;
+      state.secretFound = true;\n      addInventoryItem("echo_fragment");
       target.el.classList.add("is-found");
       openDialogue("發現一次性秘密", "你捕捉到藏在遺跡角落的微弱回聲。秘密 ID：test_secret_tide_echo。本局只會記錄這一次發現。");
       setStatus("已發現一次性秘密：微弱回聲。");
     }
   } else if (target.id === "test_puzzle_measurement_device") {
     if (!state.gateOpen) {
-      state.gateOpen = true;
+      state.gateOpen = true;\n      addInventoryItem("device_record");
       gate.classList.add("is-open");
       $("#switch").classList.add("is-active");
       statusChip.lastChild.textContent = " 機關已啟動 · 通路開啟";
@@ -632,7 +707,7 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   saveProgress();
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
-inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
+inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));\ninventoryClose.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));\ndocument.querySelectorAll("[data-inventory-filter]").forEach((button) => {\n  button.addEventListener("click", () => {\n    inventoryFilter = button.dataset.inventoryFilter;\n    document.querySelectorAll("[data-inventory-filter]").forEach((filter) => {\n      const active = filter === button;\n      filter.classList.toggle("is-selected", active);\n      filter.setAttribute("aria-pressed", String(active));\n    });\n    renderInventory();\n  });\n});
 interactButton.addEventListener("click", interact);
 objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
@@ -673,7 +748,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) stopI
 window.addEventListener("resize", () => { if (state.started) updateScene(); });
 
 function saveProgress() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen })); } catch (error) {}
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen, inventory: state.inventory })); } catch (error) { console.warn("Unable to save exploration progress:", error); }
 }
 function loadProgress() {
   try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); return data; } catch (error) { return null; }
