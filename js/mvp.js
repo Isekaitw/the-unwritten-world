@@ -57,7 +57,8 @@ const state = {
   lastTime: 0,
   frame: 0,
   questOpen: true,
-  inventoryOpen: false
+  inventoryOpen: false,
+  inventory: []
 };
 
 const obstacles = [
