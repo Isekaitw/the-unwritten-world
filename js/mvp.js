@@ -427,10 +427,26 @@ function drawVision(cameraX, cameraY) {
     const rh = rb - ry;
     if (rx > width || ry > height || rr < 0 || rb < 0) continue;
 
-    // Clear before clipping: the expanded wall face remains fully visible,
-    // while the shadow polygons are still constrained to the wall rectangle.
+    // Reveal the wall face first. The DOM wall's CSS drop-shadow is hidden
+    // by this opaque canvas, so render its contact shadow on the overlay itself.
     ctx.globalCompositeOperation = "destination-out";
     ctx.fillStyle = "#000";
+    ctx.fillRect(rx, ry, rw, rh);
+
+    // Paint a subtle downward shadow around the wall on the overlay. Clear
+    // the face again afterwards so the shadow affects only the surrounding
+    // scene; this avoids a hard, abruptly cut lower edge while the camera moves.
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.shadowColor = "rgba(0,0,0,0.32)";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 9;
+    ctx.fillStyle = "rgba(0,0,0,0.01)";
+    ctx.fillRect(wall.x - cameraX, wall.y - cameraY, wall.w, wall.h);
+    ctx.restore();
+
+    ctx.globalCompositeOperation = "destination-out";
     ctx.fillRect(rx, ry, rw, rh);
 
     ctx.save();
