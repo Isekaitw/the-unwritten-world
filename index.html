@@ -64,7 +64,28 @@
       </div>
 
       <div class="mvp-controls"><button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（F）</button></div>
-      <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title"><h3 id="inventory-title">背包</h3><p>背包功能尚未開放，這裡會放置物品與裝備。</p></section>
+      <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title">
+        <header class="inventory-heading">
+          <div><p class="eyebrow">探索紀錄 · 隨身收納</p><h3 id="inventory-title">行囊</h3></div>
+          <button id="inventory-close" class="inventory-close" type="button" aria-label="關閉背包">×</button>
+        </header>
+        <div class="inventory-summary"><span>已收集 <strong id="inventory-count">0</strong> 件</span><span>探索途中取得的物件</span></div>
+        <nav class="inventory-filters" aria-label="物品分類">
+          <button class="inventory-filter is-selected" type="button" data-inventory-filter="all" aria-pressed="true">全部</button>
+          <button class="inventory-filter" type="button" data-inventory-filter="clue" aria-pressed="false">線索</button>
+          <button class="inventory-filter" type="button" data-inventory-filter="relic" aria-pressed="false">遺物</button>
+          <button class="inventory-filter" type="button" data-inventory-filter="tool" aria-pressed="false">工具</button>
+        </nav>
+        <div class="inventory-layout">
+          <div id="inventory-grid" class="inventory-grid" aria-label="物品格"></div>
+          <aside id="inventory-detail" class="inventory-detail" aria-live="polite">
+            <div class="inventory-detail-icon" aria-hidden="true">◇</div>
+            <p class="inventory-detail-kicker">尚未選取物品</p><h4>選擇一件物品</h4>
+            <p class="inventory-detail-copy">探索時取得的線索、遺物與工具，都會收錄在這裡。</p>
+          </aside>
+        </div>
+        <p class="inventory-hint">選取物品格可查看詳細記錄。背包可隨時開啟，不會中斷探索進度。</p>
+      </section>
       <section id="quest-panel" class="quest-panel" aria-labelledby="quest-title">
         <div class="quest-heading">
           <div>
