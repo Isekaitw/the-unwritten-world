@@ -647,3 +647,14 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   #game-screen .inventory-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
   #game-screen .player-stats { grid-template-columns:1fr; }
 }
+
+
+/* Empty backpack slots: clear, visible outlines without placeholder symbols. */
+#game-screen .inventory-slot.is-empty {
+  border: 2px solid rgba(189, 205, 188, .48);
+  background: rgba(3, 12, 16, .28);
+}
+#game-screen .inventory-slot.is-empty:hover {
+  transform: none;
+  border-color: rgba(189, 205, 188, .48);
+}
