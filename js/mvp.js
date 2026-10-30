@@ -8,9 +8,11 @@ const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryGrid = $("#inventory-grid");
-const inventoryDetail = $("#inventory-detail");
 const inventoryCount = $("#inventory-count");
-const inventoryClose = $("#inventory-close");
+const inventoryCapacityLabel = $("#inventory-capacity");
+const playerStats = { health: 100, hunger: 100, water: 100, energy: 100 };
+let inventoryCapacity = 20;
+const MAX_INVENTORY_CAPACITY = 40;
 const inventoryCatalog = [
   { id: "tide_imprint", category: "important", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
   { id: "echo_fragment", category: "important", icon: "✧", name: "微弱回聲", subtitle: "隱藏發現", description: "從遺跡角落捕捉到的一段微弱回響。內容尚不完整，暫時無法判讀。", source: "發現隱藏回聲" },
@@ -85,69 +87,62 @@ function setStatus(message) {
 }
 
 function addInventoryItem(id) {
-  if (!state.inventory.includes(id)) {
-    state.inventory.push(id);
-    renderInventory();
-    setStatus(`已收進行囊：${inventoryCatalog.find((item) => item.id === id)?.name || "新物件"}。`);
+  if (state.inventory.includes(id)) return;
+  if (state.inventory.length >= inventoryCapacity) {
+    setStatus("背包已滿。需要先擴充背包空間，才能收納更多物品。");
+    return;
   }
+  state.inventory.push(id);
+  renderInventory();
+  saveProgress();
+  setStatus(`已放入背包：${inventoryCatalog.find((item) => item.id === id)?.name || "新物件"}。`);
 }
+
+// Story events can call this when a capacity upgrade is earned.
+function expandInventoryCapacity(additionalSlots = 4) {
+  const amount = Math.max(1, Math.floor(Number(additionalSlots) || 0));
+  const nextCapacity = Math.min(MAX_INVENTORY_CAPACITY, inventoryCapacity + amount);
+  if (nextCapacity === inventoryCapacity) return false;
+  inventoryCapacity = nextCapacity;
+  renderInventory();
+  saveProgress();
+  return true;
+}
+
 function renderInventory() {
   const owned = inventoryCatalog.filter((item) => state.inventory.includes(item.id));
   const visible = owned.filter((item) => item.category === inventoryFilter);
   inventoryCount.textContent = String(owned.length);
+  inventoryCapacityLabel.textContent = `${owned.length} / ${inventoryCapacity}`;
   inventoryGrid.replaceChildren();
-  if (!visible.length) {
-    const empty = document.createElement("p");
-    empty.className = "inventory-empty";
-    empty.textContent = owned.length ? "這個分類目前沒有物品。" : "行囊目前是空的。探索場景、調查標記或發現隱藏回聲，就能收集新的物件。";
-    inventoryGrid.append(empty);
-  } else {
-    visible.forEach((item) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "inventory-slot";
-      button.classList.toggle("is-selected", selectedInventoryItem === item.id);
-      button.setAttribute("aria-label", item.name);
-      button.setAttribute("aria-pressed", String(selectedInventoryItem === item.id));
+
+  for (let index = 0; index < inventoryCapacity; index++) {
+    const item = visible[index] || null;
+    const slot = document.createElement(item ? "button" : "div");
+    if (item) {
+      slot.type = "button";
+      slot.className = "inventory-slot";
+      slot.setAttribute("aria-label", `${item.name}。懸停查看物品介紹`);
+      slot.dataset.tooltip = `${item.name}｜${item.description} 取得方式：${item.source}`;
+      slot.title = `${item.name}\n${item.description}\n取得方式：${item.source}`;
       const icon = document.createElement("span");
       icon.className = "inventory-slot-icon";
       icon.textContent = item.icon;
       const name = document.createElement("span");
       name.className = "inventory-slot-name";
       name.textContent = item.name;
-      button.append(icon, name);
-      button.addEventListener("click", () => {
-        selectedInventoryItem = item.id;
-        renderInventory();
-      });
-      inventoryGrid.append(button);
-    });
-  }
-  const selected = owned.find((item) => item.id === selectedInventoryItem) || visible[0] || null;
-  if (selected) {
-    selectedInventoryItem = selected.id;
-    inventoryDetail.replaceChildren();
-    const icon = document.createElement("div");
-    icon.className = "inventory-detail-icon";
-    icon.textContent = selected.icon;
-    const kicker = document.createElement("p");
-    kicker.className = "inventory-detail-kicker";
-    kicker.textContent = selected.subtitle;
-    const title = document.createElement("h4");
-    title.textContent = selected.name;
-    const description = document.createElement("p");
-    description.className = "inventory-detail-copy";
-    description.textContent = selected.description;
-    const source = document.createElement("p");
-    source.className = "inventory-detail-source";
-    source.textContent = `取得方式：${selected.source}`;
-    inventoryDetail.append(icon, kicker, title, description, source);
-  } else {
-    selectedInventoryItem = null;
-    inventoryDetail.innerHTML = '<div class="inventory-detail-icon" aria-hidden="true">◇</div><p class="inventory-detail-kicker">尚未選取物品</p><h4>選擇一件物品</h4><p class="inventory-detail-copy">探索時取得的線索、遺物與工具，都會收錄在這裡。</p>';
+      slot.append(icon, name);
+    } else {
+      slot.className = "inventory-slot is-empty";
+      slot.setAttribute("aria-hidden", "true");
+      const mark = document.createElement("span");
+      mark.className = "inventory-empty-mark";
+      mark.textContent = "＋";
+      slot.append(mark);
+    }
+    inventoryGrid.append(slot);
   }
 }
-
 function updateQuestUI() {
   const objectives = [
     { id: "quest-marker", done: state.markerInspected },
@@ -210,7 +205,8 @@ function startExploration() {
   state.secretFound = saved ? Boolean(saved.secretFound) : false;
   state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
   state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;
-  state.inventory = saved && Array.isArray(saved.inventory) ? saved.inventory.filter((id) => inventoryCatalog.some((item) => item.id === id)) : [];
+  state.inventory = saved && Array.isArray(saved.inventory) ? saved.inventory.filter((id, index, list) => inventoryCatalog.some((item) => item.id === id) && list.indexOf(id) === index) : [];
+  inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(saved?.inventoryCapacity) ? saved.inventoryCapacity : 20, state.inventory.length));
   selectedInventoryItem = state.inventory[0] || null;
   renderInventory();
   state.target = null;
@@ -592,46 +588,12 @@ function updateScene() {
   interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
-const perf = { el: null, last: 0, jsSum: 0, frames: 0, worst: 0, slow: 0, mark: 0 };
-function perfShow(now) {
-  if (!perf.el) {
-    perf.el = document.createElement("div");
-    perf.el.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:2147483647;padding:6px 8px;background:#000c;color:#0f0;font:12px monospace;pointer-events:none;white-space:pre";
-    document.body.appendChild(perf.el);
-  }
-  if (now - perf.mark < 500) return;
-  const secs = (now - perf.mark) / 1000;
-  perf.el.textContent =
-    `FPS ${(perf.frames / secs).toFixed(0)}
-` +
-    `JS ${(perf.jsSum / perf.frames).toFixed(1)}ms
-` +
-    `最長幀 ${perf.worst.toFixed(0)}ms
-` +
-    `>25ms 幀數 ${perf.slow}`;
-  perf.mark = now; perf.frames = 0; perf.jsSum = 0; perf.worst = 0; perf.slow = 0;
-}
 function tick(timestamp) {
   if (!state.started) return;
   // Allow a slightly larger frame delta; movePlayer subdivides it before
   // collision checks, reducing apparent slowdown after brief frame stalls.
   const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.1) : 0;
   state.lastTime = timestamp;
-  if (perf.last) {
-    const gap = timestamp - perf.last;
-    perf.worst = Math.max(perf.worst, gap);
-    if (gap > 25) perf.slow++;
-  }
-  perf.last = timestamp;
-  if (!state.dialogueOpen && !state.inventoryOpen) {
-    const input = getInput();
-    if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
-    const t0 = performance.now();
-    updateScene();
-    perf.jsSum += performance.now() - t0;
-    perf.frames++;
-  }
-  perfShow(timestamp);
   state.frame = requestAnimationFrame(tick);
 }
 function interact() {
@@ -721,7 +683,6 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
-inventoryClose.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
 document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     inventoryFilter = button.dataset.inventoryFilter;
@@ -774,8 +735,8 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) stopI
 window.addEventListener("resize", () => { if (state.started) updateScene(); });
 
 function saveProgress() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen, inventory: state.inventory })); } catch (error) { console.warn("Unable to save exploration progress:", error); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen, inventoryCapacity, inventory: state.inventory })); } catch (error) { console.warn("Unable to save exploration progress:", error); }
 }
 function loadProgress() {
-  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); return data; } catch (error) { return null; }
+  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20)); return data; } catch (error) { return null; }
 }
