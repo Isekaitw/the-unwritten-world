@@ -328,58 +328,33 @@ function rayViewportDistance(originX, originY, dirX, dirY, rect) {
   else if (dirY < -0.000001) distance = Math.min(distance, (rect.y - originY) / dirY);
   return distance > 0 ? distance : 0;
 }
-function drawVision(cameraX, cameraY) {
-  const viewportRect = viewport.getBoundingClientRect();
-  const canvasRect = visionCanvas.getBoundingClientRect();
-  const width = viewportRect.width;
-  const height = viewportRect.height;
-  if (!width || !height || !canvasRect.width || !canvasRect.height) return;
-  // Derive the canvas origin and dimensions from the actual layout rectangles.
-  // Assuming a fixed -200px offset can drift from the rendered DOM geometry
-  // under fractional layout/DPR while the camera is scrolling.
-  const offsetX = viewportRect.left - canvasRect.left;
-  const offsetY = viewportRect.top - canvasRect.top;
-  const canvasWidth = canvasRect.width;
-  const canvasHeight = canvasRect.height;
-  // Use the full device pixel ratio and derive scale from rounded backing size.
+function drawVision() {
+  const width = WORLD.width;
+  const height = WORLD.height;
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const pixelWidth = Math.max(1, Math.round(canvasWidth * dpr));
-  const pixelHeight = Math.max(1, Math.round(canvasHeight * dpr));
+  const pixelWidth = Math.max(1, Math.round(width * dpr));
+  const pixelHeight = Math.max(1, Math.round(height * dpr));
   if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
   }
 
   const ctx = visionContext;
-  const scaleX = pixelWidth / canvasWidth;
-  const scaleY = pixelHeight / canvasHeight;
-  // Translate viewport-local coordinates using the canvas's measured origin,
-  // so Canvas and DOM share the same reference even if CSS layout is fractional.
-  ctx.setTransform(scaleX, 0, 0, scaleY, offsetX * scaleX, offsetY * scaleY);
+  const scaleX = pixelWidth / width;
+  const scaleY = pixelHeight / height;
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
   ctx.globalCompositeOperation = "source-over";
-  ctx.clearRect(-offsetX, -offsetY, canvasWidth, canvasHeight);
+  ctx.clearRect(0, 0, width, height);
 
-  // All occlusion decisions use one world-space source: the player's foot /
-  // collision anchor. Camera coordinates are used only when drawing to canvas.
   const sourceX = state.x;
   const sourceY = state.y + PLAYER.height - PLAYER.hitHeight / 2;
-  const screenX = sourceX - cameraX;
   const brightness = Math.max(0.12, Math.min(1, VISION.brightness));
   const fog = Math.max(0, Math.min(1, VISION.fog));
   const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
   const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
-  // Ray-casting bounds match the expanded canvas, preventing the visibility
-  // polygon from closing along the visible viewport edge.
-  const view = {
-    x: cameraX - offsetX,
-    y: cameraY - offsetY,
-    w: canvasWidth,
-    h: canvasHeight
-  };
+  const view = { x: 0, y: 0, w: width, h: height };
 
-  // The overlay is fully opaque. Only space reachable by a ray before its
-  // first wall (or vision radius) is removed from the overlay.
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
@@ -401,7 +376,6 @@ function drawVision(cameraX, cameraY) {
   }
   angles.sort((a, b) => a - b);
 
-  // Deduplicate near-identical angles to avoid zero-area spikes at corners.
   const uniqueAngles = [];
   for (const angle of angles) {
     if (!uniqueAngles.length || Math.abs(angle - uniqueAngles[uniqueAngles.length - 1]) > 1e-7) {
@@ -421,9 +395,6 @@ function drawVision(cameraX, cameraY) {
     }
     if (!Number.isFinite(distance) || distance < 0) continue;
 
-    // Snap ray endpoints to exact obstacle corners when the first hit lands
-    // numerically on one. This prevents tiny floating-point offsets from
-    // drawing a dark seam that appears detached from the wall corner.
     let hitX = sourceX + dirX * distance;
     let hitY = sourceY + dirY * distance;
     let nearestCorner = null;
@@ -446,19 +417,18 @@ function drawVision(cameraX, cameraY) {
       hitX = nearestCorner.x;
       hitY = nearestCorner.y;
     }
-    points.push({ x: hitX - cameraX, y: hitY - cameraY });
+    points.push({ x: hitX, y: hitY });
   }
 
-  // Feather the silhouette edge by rendering the visibility polygon to a
-  // mask and blurring only that mask. Offscreen canvases are reused every frame.
   if (points.length >= 3) {
-    // The mask is a soft-edged overlay, so half-resolution rendering greatly
-    // reduces blur work while preserving the feathered silhouette.
     const S = 0.5;
     const mw = Math.max(1, Math.round(width * S));
     const mh = Math.max(1, Math.round(height * S));
     for (const c of [maskCanvas, featherCanvas]) {
-      if (c.width !== mw || c.height !== mh) { c.width = mw; c.height = mh; }
+      if (c.width !== mw || c.height !== mh) {
+        c.width = mw;
+        c.height = mh;
+      }
     }
     maskCtx.setTransform(S, 0, 0, S, 0, 0);
     maskCtx.clearRect(0, 0, width, height);
@@ -479,66 +449,63 @@ function drawVision(cameraX, cameraY) {
     ctx.drawImage(featherCanvas, 0, 0, mw, mh, 0, 0, width, height);
   }
 
-  // Wall faces: reveal each wall entirely, then paint back the shadows cast
-  // onto it by every OTHER wall (clipped to this wall). Replaces the old
-  // 0.5px per-sample ray test: same result, far cheaper, and anti-aliased.
   const FAR = 4000;
   const addShadow = (o) => {
-    const c = [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]];
-    const p = c.map(([x, y]) => {
-      const dx = x - sourceX, dy = y - sourceY, l = Math.hypot(dx, dy) || 1;
-      return [x + dx / l * FAR, y + dy / l * FAR];
+    const corners = [
+      [o.x, o.y],
+      [o.x + o.w, o.y],
+      [o.x + o.w, o.y + o.h],
+      [o.x, o.y + o.h]
+    ];
+    const projected = corners.map(([x, y]) => {
+      const dx = x - sourceX;
+      const dy = y - sourceY;
+      const length = Math.hypot(dx, dy) || 1;
+      return [x + dx / length * FAR, y + dy / length * FAR];
     });
     for (let i = 0; i < 4; i++) {
       const j = (i + 1) % 4;
-      const q = [c[i], c[j], p[j], p[i]];
+      const polygon = [corners[i], corners[j], projected[j], projected[i]];
       let area = 0;
       for (let k = 0; k < 4; k++) {
-        const a = q[k], b = q[(k + 1) % 4];
+        const a = polygon[k];
+        const b = polygon[(k + 1) % 4];
         area += a[0] * b[1] - b[0] * a[1];
       }
-      if (area < 0) q.reverse(); // consistent winding so nonzero fill never cancels out
-      ctx.moveTo(q[0][0] - cameraX, q[0][1] - cameraY);
-      for (let k = 1; k < 4; k++) ctx.lineTo(q[k][0] - cameraX, q[k][1] - cameraY);
+      if (area < 0) polygon.reverse();
+      ctx.moveTo(polygon[0][0], polygon[0][1]);
+      for (let k = 1; k < 4; k++) ctx.lineTo(polygon[k][0], polygon[k][1]);
       ctx.closePath();
     }
   };
+
   const padX = 1 / scaleX;
   const padY = 1 / scaleY;
-  // Snap wall edges in the same backing-store coordinate space used by the
-  // Canvas transform, while keeping the wall and camera in world coordinates.
-  const snapX = (x) => Math.floor((x + offsetX) * scaleX) / scaleX - offsetX;
-  const snapY = (y) => Math.floor((y + offsetY) * scaleY) / scaleY - offsetY;
-  const ceilX = (x) => Math.ceil((x + offsetX) * scaleX) / scaleX - offsetX;
-  const ceilY = (y) => Math.ceil((y + offsetY) * scaleY) / scaleY - offsetY;
+  const snapX = (x) => Math.floor(x * scaleX) / scaleX;
+  const snapY = (y) => Math.floor(y * scaleY) / scaleY;
+  const ceilX = (x) => Math.ceil(x * scaleX) / scaleX;
+  const ceilY = (y) => Math.ceil(y * scaleY) / scaleY;
+
   for (const wall of opaque) {
-    const rx = snapX(wall.x - cameraX) - padX;
-    const ry = snapY(wall.y - cameraY) - padY;
-    const rr = ceilX(wall.x + wall.w - cameraX) + padX;
-    const rb = ceilY(wall.y + wall.h - cameraY) + padY;
+    const rx = snapX(wall.x) - padX;
+    const ry = snapY(wall.y) - padY;
+    const rr = ceilX(wall.x + wall.w) + padX;
+    const rb = ceilY(wall.y + wall.h) + padY;
     const rw = rr - rx;
     const rh = rb - ry;
-    if (rx > width || ry > height || rr < 0 || rb < 0) continue;
 
-    // Reveal the wall face first. The DOM wall's CSS drop-shadow is hidden
-    // by this opaque canvas, so render its contact shadow on the overlay itself.
     ctx.globalCompositeOperation = "destination-out";
     ctx.fillStyle = "#000";
     ctx.fillRect(rx, ry, rw, rh);
 
-    // Paint a subtle downward shadow around the wall on the overlay. Clear
-    // the face again afterwards so the shadow affects only the surrounding
-    // scene; this avoids a hard, abruptly cut lower edge while the camera moves.
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
     ctx.shadowColor = "rgba(0,0,0,0.38)";
     ctx.shadowBlur = 14;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 9;
-    // Canvas shadow alpha follows the source shape's alpha; near-transparent
-    // fill makes the shadow effectively disappear. The face is cleared below.
     ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(wall.x - cameraX, wall.y - cameraY, wall.w, wall.h);
+    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
     ctx.restore();
 
     ctx.globalCompositeOperation = "destination-out";
@@ -550,18 +517,14 @@ function drawVision(cameraX, cameraY) {
     ctx.clip();
     ctx.globalCompositeOperation = "source-over";
     ctx.beginPath();
-    for (const other of opaque) if (other !== wall) addShadow(other);
+    for (const other of opaque) {
+      if (other !== wall) addShadow(other);
+    }
     ctx.fill();
     ctx.restore();
   }
 
-  // The player sprite is UI-visible regardless of wall-edge rasterization.
-  ctx.clearRect(
-    screenX - PLAYER.width / 2 - 2,
-    state.y - cameraY - 2,
-    PLAYER.width + 4,
-    PLAYER.height + 4
-  );
+  // The player is a sibling of #world and remains above this world-space overlay.
   ctx.globalCompositeOperation = "source-over";
 }
 function updateScene() {
@@ -583,7 +546,7 @@ function updateScene() {
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
   playerEl.style.top = `${py - cameraY}px`;
-  drawVision(cameraX, cameraY);
+  drawVision();
   const coordText = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   if (coordText !== updateScene.lastCoord) {
     updateScene.lastCoord = coordText;
