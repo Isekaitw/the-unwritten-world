@@ -189,7 +189,7 @@ function updateQuestUI() {
       ? "通路已開啟，沿著機關旁的通路向上穿越。"
       : state.markerInspected
         ? "線索已記錄。接著找到測量機關，啟動它以打開通路。"
-        : "先找到潮痕標記，調查這處測試區留下的線索。";
+        : "先找到潮痕標記，調查留下的線索。";
   $("#quest-secret").classList.toggle("is-complete", state.secretFound);
   $("#quest-secret-status").textContent = state.secretFound ? "已發現" : "未發現";
 }
@@ -650,7 +650,7 @@ function interact() {
       gate.classList.add("is-open");
       $("#switch").classList.add("is-active");
       statusChip.lastChild.textContent = " 機關已啟動 · 通路開啟";
-      openDialogue("機關已啟動", "測量裝置已改變測試區狀態。封閉通路已解除碰撞，可以實際走過去。");
+      openDialogue("機關已啟動", "測量裝置已啟動，封閉通路隨之開啟。");
       setStatus("通路已開啟；障礙外觀與碰撞狀態均已更新。");
     } else {
       openDialogue("測量機關", "機關已經啟動，通路保持開啟。");
