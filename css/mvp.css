@@ -447,3 +447,18 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 #game-screen:not([hidden]) .dialogue-panel[hidden] {
   display: none !important;
 }
+
+
+/* The playable world is rendered by Canvas; HTML remains responsible for UI. */
+.game-world,
+#game-screen .player { display: none !important; }
+.world-canvas {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.vision-canvas { z-index: 5; }
