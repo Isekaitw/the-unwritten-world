@@ -9,7 +9,7 @@ const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryGrid = $("#inventory-grid");
 const inventoryCapacityLabel = $("#inventory-capacity");
-const playerStats = { health: 100, hunger: 100, water: 100, energy: 100 };
+const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, oxygen: 100 };
 let inventoryCapacity = 20;
 const MAX_INVENTORY_CAPACITY = 40;
 const inventoryCatalog = [
@@ -32,6 +32,9 @@ const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
 const coordinates = $("#coordinates");
+const oxygenIndicator = $("#oxygen-indicator");
+const oxygenValue = $("#oxygen-value");
+const oxygenBar = $("#oxygen-bar");
 const gate = $("#gate");
 
 // 離屏 canvas 只建立一次，每幀重複使用（避免每幀配置兩張全解析度 canvas）
@@ -59,6 +62,7 @@ const state = {
   frame: 0,
   questOpen: true,
   inventoryOpen: false,
+  diving: false,
   inventory: []
 };
 
@@ -115,6 +119,22 @@ function renderPlayerStats() {
     if (label) label.textContent = `${value} / 100`;
     if (bar) bar.style.width = `${value}%`;
   }
+  updateOxygenIndicator();
+}
+
+function updateOxygenIndicator() {
+  if (!oxygenIndicator) return;
+  oxygenIndicator.hidden = !state.diving;
+  if (oxygenValue) oxygenValue.textContent = `${playerStats.oxygen} / 100`;
+  if (oxygenBar) oxygenBar.style.width = `${playerStats.oxygen}%`;
+}
+
+// Story and exploration events can toggle the diving display without
+// introducing oxygen drain or recovery mechanics yet.
+function setDivingState(isDiving) {
+  state.diving = Boolean(isDiving);
+  updateOxygenIndicator();
+  return state.diving;
 }
 
 // Future food, water and sleep interactions can update a parameter through
@@ -162,6 +182,7 @@ function renderInventory() {
 // Public hooks for future story rewards and survival-system events.
 window.expandInventoryCapacity = expandInventoryCapacity;
 window.setPlayerStat = setPlayerStat;
+window.setDivingState = setDivingState;
 
 function updateQuestUI() {
   const objectives = [
@@ -221,6 +242,7 @@ function startExploration() {
   stopInput();
   const saved = loadProgress();
   state.x = saved ? saved.x : 180; state.y = saved ? saved.y : 180;
+  state.diving = false;
   state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
   state.secretFound = saved ? Boolean(saved.secretFound) : false;
   state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
@@ -546,6 +568,11 @@ function updateScene() {
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
   playerEl.style.top = `${py - cameraY}px`;
+  if (oxygenIndicator) {
+    oxygenIndicator.style.left = `${px - cameraX + PLAYER.width / 2 + 10}px`;
+    oxygenIndicator.style.top = `${py - cameraY + 4}px`;
+    updateOxygenIndicator();
+  }
   drawVision();
   const coordText = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   if (coordText !== updateScene.lastCoord) {
