@@ -66,10 +66,9 @@
       <div class="mvp-controls"><button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（F）</button></div>
       <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title">
         <header class="inventory-heading">
-          <div><p class="eyebrow">探索紀錄 · 隨身收納</p><h3 id="inventory-title">行囊</h3></div>
-          <button id="inventory-close" class="inventory-close" type="button" aria-label="關閉背包">×</button>
+          <div><p class="eyebrow">隨身裝備 · 物資管理</p><h3 id="inventory-title">背包</h3></div>
         </header>
-        <div class="inventory-summary"><span>已收集 <strong id="inventory-count">0</strong> 件</span><span>探索途中取得的物件</span></div>
+        <div class="inventory-summary"><span>背包空間 <strong id="inventory-capacity">0 / 20</strong></span><span>空格可用；容量可透過劇情擴充</span></div>
         <nav class="inventory-filters" aria-label="物品分類">
           <button class="inventory-filter is-selected" type="button" data-inventory-filter="equipment" aria-pressed="true">裝備</button>
           <button class="inventory-filter" type="button" data-inventory-filter="weapon" aria-pressed="false">武器</button>
@@ -80,14 +79,17 @@
           <button class="inventory-filter" type="button" data-inventory-filter="important" aria-pressed="false">重要物品</button>
         </nav>
         <div class="inventory-layout">
-          <div id="inventory-grid" class="inventory-grid" aria-label="物品格"></div>
-          <aside id="inventory-detail" class="inventory-detail" aria-live="polite">
-            <div class="inventory-detail-icon" aria-hidden="true">◇</div>
-            <p class="inventory-detail-kicker">尚未選取物品</p><h4>選擇一件物品</h4>
-            <p class="inventory-detail-copy">探索時取得的線索、遺物與工具，都會收錄在這裡。</p>
+          <div id="inventory-grid" class="inventory-grid" aria-label="背包格子"></div>
+          <aside class="player-stats" aria-labelledby="player-stats-title">
+            <div class="player-stats-heading"><p class="eyebrow">角色狀態</p><h4 id="player-stats-title">生存參數</h4></div>
+            <div class="stat-row"><div class="stat-label"><span>生命值</span><strong id="stat-health-value">100 / 100</strong></div><div class="stat-track"><span id="stat-health-bar" class="stat-fill stat-health" style="width:100%"></span></div></div>
+            <div class="stat-row"><div class="stat-label"><span>飢餓度</span><strong id="stat-hunger-value">100 / 100</strong></div><div class="stat-track"><span id="stat-hunger-bar" class="stat-fill stat-hunger" style="width:100%"></span></div><p class="stat-note">進食可補充</p></div>
+            <div class="stat-row"><div class="stat-label"><span>水分</span><strong id="stat-water-value">100 / 100</strong></div><div class="stat-track"><span id="stat-water-bar" class="stat-fill stat-water" style="width:100%"></span></div><p class="stat-note">飲水可補充</p></div>
+            <div class="stat-row"><div class="stat-label"><span>精力值</span><strong id="stat-energy-value">100 / 100</strong></div><div class="stat-track"><span id="stat-energy-bar" class="stat-fill stat-energy" style="width:100%"></span></div><p class="stat-note">睡眠可恢復</p></div>
+            <p class="stats-placeholder-note">目前僅顯示基礎參數；消耗、恢復與狀態效果尚未啟用。</p>
           </aside>
         </div>
-        <p class="inventory-hint">選取物品格可查看詳細記錄。背包可隨時開啟，不會中斷探索進度。</p>
+        <p class="inventory-hint">懸停在物品上可查看介紹。背包容量有限，後續可透過劇情獲得擴充。</p>
       </section>
       <section id="quest-panel" class="quest-panel" aria-labelledby="quest-title">
         <div class="quest-heading">
