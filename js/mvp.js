@@ -11,6 +11,8 @@ const SAVE_KEY = "unwritten-world-exploration-save-v1";
 const viewport = $("#scene");
 const world = $("#world");
 const playerEl = $("#player");
+const worldCanvas = $("#world-canvas");
+const worldContext = worldCanvas.getContext("2d");
 const visionCanvas = $("#vision-canvas");
 const visionContext = visionCanvas.getContext("2d");
 const statusMessage = $("#status-message");
@@ -224,6 +226,197 @@ function rayViewportDistance(originX, originY, dirX, dirY, rect) {
   else if (dirY < -0.000001) distance = Math.min(distance, (rect.y - originY) / dirY);
   return distance > 0 ? distance : 0;
 }
+function drawWorld(cameraX, cameraY) {
+  const width = viewport.clientWidth;
+  const height = viewport.clientHeight;
+  if (!width || !height) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const pixelWidth = Math.round(width * dpr);
+  const pixelHeight = Math.round(height * dpr);
+  if (worldCanvas.width !== pixelWidth || worldCanvas.height !== pixelHeight) {
+    worldCanvas.width = pixelWidth;
+    worldCanvas.height = pixelHeight;
+  }
+  const ctx = worldContext;
+  ctx.setTransform(dpr, 0, 0, dpr, -cameraX * dpr, -cameraY * dpr);
+  ctx.clearRect(cameraX, cameraY, width, height);
+
+  // Ground and water are drawn in world coordinates; camera movement only
+  // changes the canvas transform, never the underlying game positions.
+  const ground = ctx.createLinearGradient(0, 0, WORLD.width, WORLD.height);
+  ground.addColorStop(0, "#31575a");
+  ground.addColorStop(0.6, "#1d3b43");
+  ground.addColorStop(1, "#284b4b");
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  const glowA = ctx.createRadialGradient(400, 300, 20, 400, 300, 470);
+  glowA.addColorStop(0, "rgba(195,215,177,.16)");
+  glowA.addColorStop(1, "rgba(195,215,177,0)");
+  ctx.fillStyle = glowA;
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  const glowB = ctx.createRadialGradient(1200, 650, 10, 1200, 650, 520);
+  glowB.addColorStop(0, "rgba(129,180,162,.12)");
+  glowB.addColorStop(1, "rgba(129,180,162,0)");
+  ctx.fillStyle = glowB;
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(220,238,211,.035)";
+  ctx.lineWidth = 2;
+  for (let y = -100; y < WORLD.height + 160; y += 150) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(WORLD.width, y + 620);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.fillStyle = "rgba(27,79,86,.25)";
+  ctx.fillRect(0, WORLD.height - 170, WORLD.width, 170);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, WORLD.height - 170, WORLD.width, 170);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(184,230,219,.13)";
+  ctx.lineWidth = 2;
+  for (let y = WORLD.height - 170; y < WORLD.height + 30; y += 45) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 20);
+    ctx.lineTo(WORLD.width, y - 40);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const drawLandmark = (x, y, label, angle) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = "rgba(9,28,33,.15)";
+    ctx.fillRect(0, 0, 150, 64);
+    ctx.strokeStyle = "rgba(214,244,224,.17)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, 150, 64);
+    ctx.fillStyle = "rgba(224,244,229,.42)";
+    ctx.font = "20px sans-serif";
+    ctx.letterSpacing = "6px";
+    ctx.fillText(label, 22, 39);
+    ctx.restore();
+  };
+  drawLandmark(90, 330, "潮痕", -7 * Math.PI / 180);
+  drawLandmark(1020, 400, "遺跡", -7 * Math.PI / 180);
+
+  obstacles.forEach((obstacle) => {
+    if (obstacle.gate && state.gateOpen) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.translate(0, -24);
+    }
+    const x = obstacle.x, y = obstacle.y, w = obstacle.w, h = obstacle.h;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.32)";
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 9;
+    const wall = ctx.createLinearGradient(x, y, x + w, y + h);
+    wall.addColorStop(0, obstacle.gate ? "#c0b48b" : "#62766e");
+    wall.addColorStop(0.68, obstacle.gate ? "#8c8165" : "#344d4c");
+    wall.addColorStop(1, obstacle.gate ? "#655f4e" : "#263e40");
+    ctx.fillStyle = wall;
+    ctx.strokeStyle = obstacle.gate ? "#d2c7a0" : "#8a9a8d";
+    ctx.lineWidth = obstacle.gate ? 3 : 2;
+    const radius = obstacle.gate ? 5 : 7;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, radius);
+    ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.stroke();
+    if (obstacle.gate) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, radius);
+      ctx.clip();
+      ctx.strokeStyle = "rgba(42,38,29,.55)";
+      ctx.lineWidth = 4;
+      for (let stripe = x + 12; stripe < x + w; stripe += 20) {
+        ctx.beginPath();
+        ctx.moveTo(stripe, y);
+        ctx.lineTo(stripe, y + h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "rgba(233,245,218,.12)";
+      ctx.fillRect(x + 4, y + 4, Math.max(0, w - 8), 5);
+    }
+    ctx.restore();
+    if (obstacle.gate && state.gateOpen) ctx.restore();
+  });
+
+  const drawObject = (object) => {
+    if (object.id === "test_secret_tide_echo" && state.secretFound) return;
+    const active = Boolean(state.target && state.target.id === object.id);
+    const x = object.x, y = object.y;
+    ctx.save();
+    ctx.shadowColor = object.id === "test_secret_tide_echo" ? "rgba(255,230,162,.55)" : "rgba(171,239,213,.35)";
+    ctx.shadowBlur = active ? 26 : 18;
+    ctx.fillStyle = object.id === "test_secret_tide_echo" ? "rgba(68,53,27,.88)" : "rgba(12,33,38,.88)";
+    ctx.strokeStyle = active ? "#fff4bb" : object.id === "test_secret_tide_echo" ? "rgba(255,230,162,.8)" : "rgba(203,255,229,.75)";
+    ctx.lineWidth = active ? 3 : 1.5;
+    ctx.beginPath();
+    ctx.arc(x, y, active ? 27 : 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = object.id === "test_secret_tide_echo" ? "#ffe6a2" : "#e8fff4";
+    ctx.font = "26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const symbol = object.id === "test_interactable_tide_marker" ? "◇" : object.id === "test_secret_tide_echo" ? "✧" : "◎";
+    ctx.fillText(symbol, x, y);
+    ctx.font = "12px sans-serif";
+    ctx.fillStyle = "#e8fff4";
+    ctx.fillText(object.title, x, y + 43);
+    ctx.restore();
+  };
+  objects.forEach(drawObject);
+
+  ctx.fillStyle = "rgba(237,246,230,.7)";
+  ctx.font = "13px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("起始區域", 105, 120);
+  ctx.fillText("封閉通路", 790, 560);
+
+  // Draw the player last so the sprite remains above world objects.
+  const px = state.x - PLAYER.width / 2;
+  const py = state.y;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.32)";
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 5;
+  const body = ctx.createLinearGradient(px, py, px + PLAYER.width, py + PLAYER.height);
+  body.addColorStop(0, "#e1f4dd");
+  body.addColorStop(.7, "#8bbeb2");
+  body.addColorStop(1, "#507b7c");
+  ctx.fillStyle = body;
+  ctx.strokeStyle = "rgba(239,255,235,.9)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(px, py, PLAYER.width, PLAYER.height, [14, 14, 11, 11]);
+  ctx.fill();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#d6e7d9";
+  ctx.strokeStyle = "#769d96";
+  ctx.beginPath();
+  ctx.arc(state.x, py + 1, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "rgba(4,18,22,.35)";
+  ctx.beginPath();
+  ctx.ellipse(state.x, py + PLAYER.height + 1, 11, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawVision(cameraX, cameraY) {
   const width = viewport.clientWidth;
   const height = viewport.clientHeight;
@@ -419,9 +612,7 @@ function updateScene() {
   const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
   const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
 
-  world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
-  playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
-  playerEl.style.top = `${py - cameraY}px`;
+  drawWorld(cameraX, cameraY);
   drawVision(cameraX, cameraY);
   coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
