@@ -8,7 +8,6 @@ const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryGrid = $("#inventory-grid");
-const inventoryCount = $("#inventory-count");
 const inventoryCapacityLabel = $("#inventory-capacity");
 const playerStats = { health: 100, hunger: 100, water: 100, energy: 100 };
 let inventoryCapacity = 20;
@@ -109,10 +108,29 @@ function expandInventoryCapacity(additionalSlots = 4) {
   return true;
 }
 
+function renderPlayerStats() {
+  for (const [key, value] of Object.entries(playerStats)) {
+    const label = document.querySelector(`#stat-${key}-value`);
+    const bar = document.querySelector(`#stat-${key}-bar`);
+    if (label) label.textContent = `${value} / 100`;
+    if (bar) bar.style.width = `${value}%`;
+  }
+}
+
+// Future food, water and sleep interactions can update a parameter through
+// this single entry point; no automatic drain or recovery is active yet.
+function setPlayerStat(stat, value) {
+  if (!Object.prototype.hasOwnProperty.call(playerStats, stat)) return false;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return false;
+  playerStats[stat] = Math.max(0, Math.min(100, Math.round(numericValue)));
+  renderPlayerStats();
+  return true;
+}
+
 function renderInventory() {
   const owned = inventoryCatalog.filter((item) => state.inventory.includes(item.id));
   const visible = owned.filter((item) => item.category === inventoryFilter);
-  inventoryCount.textContent = String(owned.length);
   inventoryCapacityLabel.textContent = `${owned.length} / ${inventoryCapacity}`;
   inventoryGrid.replaceChildren();
 
@@ -209,6 +227,7 @@ function startExploration() {
   inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(saved?.inventoryCapacity) ? saved.inventoryCapacity : 20, state.inventory.length));
   selectedInventoryItem = state.inventory[0] || null;
   renderInventory();
+  renderPlayerStats();
   state.target = null;
   state.started = true;
   state.lastTime = 0;
