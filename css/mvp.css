@@ -658,3 +658,8 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   transform: none;
   border-color: rgba(189, 205, 188, .48);
 }
+
+/* Backpack slots stay the same size while hovered. */
+#game-screen .inventory-slot:hover {
+  transform: none;
+}
