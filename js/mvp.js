@@ -154,10 +154,7 @@ function renderInventory() {
     } else {
       slot.className = "inventory-slot is-empty";
       slot.setAttribute("aria-hidden", "true");
-      const mark = document.createElement("span");
-      mark.className = "inventory-empty-mark";
-      mark.textContent = "＋";
-      slot.append(mark);
+
     }
     inventoryGrid.append(slot);
   }
