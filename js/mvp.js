@@ -69,12 +69,6 @@ const obstacles = [
   { x: 1180, y: 560, w: 90, h: 190 },
   { x: 760, y: 600, w: 180, h: 44, gate: true }
 ];
-// Pair world-space occlusion geometry with the corresponding rendered DOM wall.
-// Vision rays still use world coordinates; wall-face compositing uses measured
-// DOM bounds so CSS and Canvas share the exact same on-screen rectangle.
-const obstacleElements = new Map(
-  obstacles.map((obstacle, index) => [obstacle, world.querySelectorAll(".obstacle, .gate")[index]])
-);
 const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 72, title: "潮痕標記" },
   { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 76, title: "微弱回聲" },
@@ -509,27 +503,21 @@ function drawVision(cameraX, cameraY) {
       ctx.closePath();
     }
   };
-  // Clear from the actual rendered wall bounds, not a separately rounded
-  // world/camera calculation. This keeps the DOM wall face and Canvas mask
-  // aligned at fractional browser zoom and Windows display scaling.
   const padX = 1 / scaleX;
   const padY = 1 / scaleY;
+  // Snap wall edges in the same backing-store coordinate space used by the
+  // Canvas transform, while keeping the wall and camera in world coordinates.
+  const snapX = (x) => Math.floor((x + offsetX) * scaleX) / scaleX - offsetX;
+  const snapY = (y) => Math.floor((y + offsetY) * scaleY) / scaleY - offsetY;
+  const ceilX = (x) => Math.ceil((x + offsetX) * scaleX) / scaleX - offsetX;
+  const ceilY = (y) => Math.ceil((y + offsetY) * scaleY) / scaleY - offsetY;
   for (const wall of opaque) {
-    const wallElement = obstacleElements.get(wall);
-    if (!wallElement) continue;
-    const wallRect = wallElement.getBoundingClientRect();
-    const wallX = wallRect.left - viewportRect.left;
-    const wallY = wallRect.top - viewportRect.top;
-    const wallW = wallRect.width;
-    const wallH = wallRect.height;
-    // Extend by one backing-store pixel so antialiased edge coverage cannot
-    // leave a thin strip of the opaque vision overlay on top of the wall.
-    const rx = wallX - padX;
-    const ry = wallY - padY;
-    const rw = wallW + padX * 2;
-    const rh = wallH + padY * 2;
-    const rr = rx + rw;
-    const rb = ry + rh;
+    const rx = snapX(wall.x - cameraX) - padX;
+    const ry = snapY(wall.y - cameraY) - padY;
+    const rr = ceilX(wall.x + wall.w - cameraX) + padX;
+    const rb = ceilY(wall.y + wall.h - cameraY) + padY;
+    const rw = rr - rx;
+    const rh = rb - ry;
     if (rx > width || ry > height || rr < 0 || rb < 0) continue;
 
     // Reveal the wall face first. The DOM wall's CSS drop-shadow is hidden
@@ -550,7 +538,7 @@ function drawVision(cameraX, cameraY) {
     // Canvas shadow alpha follows the source shape's alpha; near-transparent
     // fill makes the shadow effectively disappear. The face is cleared below.
     ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(wallX, wallY, wallW, wallH);
+    ctx.fillRect(wall.x - cameraX, wall.y - cameraY, wall.w, wall.h);
     ctx.restore();
 
     ctx.globalCompositeOperation = "destination-out";
