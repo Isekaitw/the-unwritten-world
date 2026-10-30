@@ -162,6 +162,10 @@ function renderInventory() {
     inventoryGrid.append(slot);
   }
 }
+// Public hooks for future story rewards and survival-system events.
+window.expandInventoryCapacity = expandInventoryCapacity;
+window.setPlayerStat = setPlayerStat;
+
 function updateQuestUI() {
   const objectives = [
     { id: "quest-marker", done: state.markerInspected },
