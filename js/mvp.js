@@ -125,6 +125,7 @@ function setPlayerStat(stat, value) {
   if (!Number.isFinite(numericValue)) return false;
   playerStats[stat] = Math.max(0, Math.min(100, Math.round(numericValue)));
   renderPlayerStats();
+  saveProgress();
   return true;
 }
 
@@ -754,8 +755,15 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) stopI
 window.addEventListener("resize", () => { if (state.started) updateScene(); });
 
 function saveProgress() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen, inventoryCapacity, inventory: state.inventory })); } catch (error) { console.warn("Unable to save exploration progress:", error); }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen, inventoryCapacity, inventory: state.inventory, stats: playerStats })); } catch (error) { console.warn("Unable to save exploration progress:", error); }
 }
 function loadProgress() {
-  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20)); return data; } catch (error) { return null; }
+  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20));
+    if (data.stats && typeof data.stats === "object") {
+      for (const key of Object.keys(playerStats)) {
+        const value = Number(data.stats[key]);
+        if (Number.isFinite(value)) playerStats[key] = Math.max(0, Math.min(100, Math.round(value)));
+      }
+    }
+    return data; } catch (error) { return null; }
 }
