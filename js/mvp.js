@@ -618,6 +618,11 @@ function tick(timestamp) {
   // collision checks, reducing apparent slowdown after brief frame stalls.
   const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.1) : 0;
   state.lastTime = timestamp;
+  if (!state.dialogueOpen && !state.inventoryOpen) {
+    const input = getInput();
+    if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
+    updateScene();
+  }
   state.frame = requestAnimationFrame(tick);
 }
 function interact() {
