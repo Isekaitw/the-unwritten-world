@@ -92,11 +92,11 @@
    so it must sit above wall sprites but below the player sprite. */
 .vision-canvas {
   position: absolute;
-  z-index: 5;
-  left: -200px;
-  top: -200px;
-  width: calc(100% + 400px);
-  height: calc(100% + 400px);
+  z-index: 6;
+  left: 0;
+  top: 0;
+  width: 1600px;
+  height: 1000px;
   pointer-events: none;
 }
 
