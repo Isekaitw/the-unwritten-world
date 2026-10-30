@@ -12,11 +12,11 @@ const inventoryDetail = $("#inventory-detail");
 const inventoryCount = $("#inventory-count");
 const inventoryClose = $("#inventory-close");
 const inventoryCatalog = [
-  { id: "tide_imprint", category: "clue", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
-  { id: "echo_fragment", category: "relic", icon: "✧", name: "微弱回聲", subtitle: "隱藏發現", description: "從遺跡角落捕捉到的一段微弱回響。內容尚不完整，暫時無法判讀。", source: "發現隱藏回聲" },
-  { id: "device_record", category: "tool", icon: "◎", name: "機關記錄", subtitle: "裝置資料", description: "測量裝置啟動時留下的狀態記錄。通路已解除封鎖，這份記錄可供之後查閱。", source: "啟動測量機關" }
+  { id: "tide_imprint", category: "important", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
+  { id: "echo_fragment", category: "important", icon: "✧", name: "微弱回聲", subtitle: "隱藏發現", description: "從遺跡角落捕捉到的一段微弱回響。內容尚不完整，暫時無法判讀。", source: "發現隱藏回聲" },
+  { id: "device_record", category: "important", icon: "◎", name: "機關記錄", subtitle: "裝置資料", description: "測量裝置啟動時留下的狀態記錄。通路已解除封鎖，這份記錄可供之後查閱。", source: "啟動測量機關" }
 ];
-let inventoryFilter = "all";
+let inventoryFilter = "equipment";
 let selectedInventoryItem = null;
 const SAVE_KEY = "unwritten-world-exploration-save-v1";
 const viewport = $("#scene");
@@ -93,7 +93,7 @@ function addInventoryItem(id) {
 }
 function renderInventory() {
   const owned = inventoryCatalog.filter((item) => state.inventory.includes(item.id));
-  const visible = owned.filter((item) => inventoryFilter === "all" || item.category === inventoryFilter);
+  const visible = owned.filter((item) => item.category === inventoryFilter);
   inventoryCount.textContent = String(owned.length);
   inventoryGrid.replaceChildren();
   if (!visible.length) {
