@@ -583,3 +583,67 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   #game-screen .inventory-filters { justify-content:flex-start; }
   #game-screen .inventory-filter { flex:0 0 auto; min-width:68px; }
 }
+
+
+/* Limited-slot backpack with a compact character status panel. */
+#game-screen .inventory-panel { z-index: 2147483002; }
+#game-screen .inventory-heading { justify-content: flex-start; }
+#game-screen .inventory-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(250px, .8fr);
+  align-items: stretch;
+  gap: clamp(18px, 3vw, 32px);
+}
+#game-screen .inventory-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-rows: minmax(104px, 1fr);
+  min-height: 0;
+  align-content: stretch;
+}
+#game-screen .inventory-slot { position: relative; min-height: 104px; }
+#game-screen .inventory-slot.is-empty {
+  display: grid; place-items: center; border-style: dashed;
+  border-color: rgba(189,205,188,.13); background: rgba(3,12,16,.18); cursor: default;
+}
+#game-screen .inventory-empty-mark { color: rgba(189,205,188,.24); font-size: 1.35rem; }
+#game-screen .inventory-slot[data-tooltip]:hover::after,
+#game-screen .inventory-slot[data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip); position: absolute; z-index: 5; left: 50%; bottom: calc(100% + 9px);
+  width: min(280px, 72vw); padding: 12px 14px; border: 1px solid rgba(201,184,137,.42);
+  border-radius: 9px; background: rgba(7,17,22,.98); color: #e8eee9;
+  box-shadow: 0 12px 34px rgba(0,0,0,.48); font-size: .78rem; font-weight: 400;
+  line-height: 1.65; text-align: left; white-space: normal; pointer-events: none;
+  transform: translateX(-50%);
+}
+#game-screen .player-stats {
+  align-self: stretch; padding: clamp(16px, 2.5vw, 24px);
+  border: 1px solid rgba(201,184,137,.26); border-radius: 12px;
+  background: linear-gradient(155deg,rgba(126,132,103,.11),rgba(4,14,18,.48));
+}
+#game-screen .player-stats-heading { margin-bottom: 24px; padding-bottom: 14px; border-bottom: 1px solid rgba(194,211,195,.15); }
+#game-screen .player-stats-heading .eyebrow { margin-bottom: 5px; color: #b5c5ae; }
+#game-screen .player-stats-heading h4 { margin: 0; color: #f0e5c9; font-size: 1.2rem; }
+#game-screen .stat-row { margin: 0 0 22px; }
+#game-screen .stat-label { display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; color:#d5dfd8; font-size:.88rem; }
+#game-screen .stat-label strong { color:#e9d9a8; font-variant-numeric:tabular-nums; }
+#game-screen .stat-track { height:9px; overflow:hidden; border-radius:99px; background:rgba(1,8,11,.7); box-shadow:inset 0 1px 3px #0008; }
+#game-screen .stat-fill { display:block; height:100%; border-radius:inherit; background:#9bc8a9; }
+#game-screen .stat-hunger { background:#d4b878; }
+#game-screen .stat-water { background:#79b9d1; }
+#game-screen .stat-energy { background:#b2a0d4; }
+#game-screen .stat-note { margin-top:6px !important; color:#83978f !important; font-size:.72rem; }
+#game-screen .stats-placeholder-note { margin-top:10px; padding-top:12px; border-top:1px solid rgba(194,211,195,.15); color:#7f938c; font-size:.72rem; line-height:1.6; }
+@media(max-width:760px) {
+  #game-screen .inventory-layout { grid-template-columns:1fr; }
+  #game-screen .inventory-grid { grid-template-columns:repeat(4,minmax(0,1fr)); grid-auto-rows:minmax(82px,auto); gap:8px; padding:10px; }
+  #game-screen .inventory-slot { min-height:82px; }
+  #game-screen .inventory-slot-icon { width:42px; height:42px; }
+  #game-screen .player-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 18px; }
+  #game-screen .player-stats-heading, #game-screen .stats-placeholder-note { grid-column:1/-1; }
+  #game-screen .player-stats-heading { margin-bottom:4px; }
+  #game-screen .stat-row { margin-bottom:4px; }
+}
+@media(max-width:420px) {
+  #game-screen .inventory-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  #game-screen .player-stats { grid-template-columns:1fr; }
+}
