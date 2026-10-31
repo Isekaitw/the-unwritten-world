@@ -23,6 +23,48 @@
   position:absolute;left:0;right:0;bottom:0;height:170px;
   background: #183641;
 }
+.test-water-area {
+  position: absolute;
+  z-index: 2;
+  left: 1040px;
+  top: 790px;
+  width: 430px;
+  height: 150px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 3px solid rgba(133, 220, 231, .78);
+  border-radius: 42px 28px 36px 30px;
+  background: linear-gradient(145deg, rgba(61, 164, 183, .82), rgba(22, 91, 119, .9) 58%, rgba(12, 57, 82, .94));
+  box-shadow: inset 0 0 28px rgba(180, 245, 245, .2), 0 0 24px rgba(54, 178, 204, .2);
+}
+.test-water-area::before,
+.test-water-area::after {
+  content: "";
+  position: absolute;
+  width: 125%;
+  height: 45%;
+  left: -12%;
+  border-top: 2px solid rgba(205, 249, 245, .32);
+  border-radius: 50%;
+  transform: rotate(-8deg);
+}
+.test-water-area::before { top: 22%; }
+.test-water-area::after { top: 52%; left: -4%; }
+.test-water-area span {
+  position: relative;
+  z-index: 1;
+  padding: 7px 12px;
+  border: 1px solid rgba(208, 247, 245, .4);
+  border-radius: 999px;
+  color: #e2fbfa;
+  background: rgba(6, 39, 55, .58);
+  font-size: 13px;
+  letter-spacing: .12em;
+  text-shadow: 0 1px 4px #082d3a;
+  pointer-events: none;
+}
 .world-landmark {
   position:absolute; padding:20px 28px; border:1px solid rgba(214,244,224,.17);
   color:rgba(224,244,229,.42); letter-spacing:.3em; font-size:20px;
