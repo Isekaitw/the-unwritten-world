@@ -66,6 +66,10 @@ const state = {
   inventory: []
 };
 
+const waterAreas = [
+  // A shallow, walkable test pool near the lower-right side of the map.
+  { id: "test-water-area", x: 1040, y: 790, w: 430, h: 150 }
+];
 const obstacles = [
   { x: 330, y: 220, w: 210, h: 65 },
   { x: 610, y: 350, w: 80, h: 220 },
@@ -568,6 +572,12 @@ function updateScene() {
   world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
   playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
   playerEl.style.top = `${py - cameraY}px`;
+  const playerCenter = { x: px, y: py + PLAYER.height / 2 };
+  const isInWater = waterAreas.some((area) => playerCenter.x >= area.x && playerCenter.x <= area.x + area.w && playerCenter.y >= area.y && playerCenter.y <= area.y + area.h);
+  if (isInWater !== state.diving) {
+    setDivingState(isInWater);
+    setStatus(isInWater ? "已進入測試水域，角色現在處於潛水狀態。" : "已離開測試水域，角色結束潛水。");
+  }
   if (oxygenIndicator) {
     oxygenIndicator.style.left = `${px - cameraX + PLAYER.width / 2 + 10}px`;
     oxygenIndicator.style.top = `${py - cameraY + 4}px`;
