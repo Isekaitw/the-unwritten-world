@@ -126,9 +126,13 @@ function renderPlayerStats() {
 }
 
 function updateOxygenIndicator() {
-  if (!oxygenIndicator) return;
-  oxygenIndicator.hidden = !state.diving;
-  if (oxygenBar) oxygenBar.style.height = `${playerStats.oxygen}%`;
+  const oxygen = playerStats.oxygen;
+  const oxygenLabel = document.querySelector("#stat-oxygen-value");
+  const oxygenStatBar = document.querySelector("#stat-oxygen-bar");
+  if (oxygenLabel) oxygenLabel.textContent = `${oxygen.toFixed(1)} / 100`;
+  if (oxygenStatBar) oxygenStatBar.style.width = `${oxygen}%`;
+  if (oxygenIndicator) oxygenIndicator.hidden = !state.diving;
+  if (oxygenBar) oxygenBar.style.height = `${oxygen}%`;
 }
 
 // Story and exploration events can toggle the diving display. Oxygen drains
@@ -618,7 +622,8 @@ function tick(timestamp) {
   if (!state.started || state.dead) return;
   // Allow a slightly larger frame delta; movePlayer subdivides it before
   // collision checks, reducing apparent slowdown after brief frame stalls.
-  const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.1) : 0;
+  const elapsedSeconds = state.lastTime ? Math.max(0, (timestamp - state.lastTime) / 1000) : 0;
+  const dt = Math.min(elapsedSeconds, 0.1);
   state.lastTime = timestamp;
   if (!state.dialogueOpen && !state.inventoryOpen) {
     const input = getInput();
@@ -627,12 +632,12 @@ function tick(timestamp) {
   }
   if (state.diving) {
     const previousOxygen = playerStats.oxygen;
-    playerStats.oxygen = Math.max(0, playerStats.oxygen - (100 / 60) * dt);
+    playerStats.oxygen = Math.max(0, playerStats.oxygen - (100 / 60) * elapsedSeconds);
     updateOxygenIndicator();
     if (playerStats.oxygen === 0 && previousOxygen > 0) handlePlayerDeath();
   } else if (playerStats.oxygen < 100) {
     // Recover continuously on land; an empty oxygen tank takes 30 seconds to refill.
-    playerStats.oxygen = Math.min(100, playerStats.oxygen + (100 / 30) * dt);
+    playerStats.oxygen = Math.min(100, playerStats.oxygen + (100 / 30) * elapsedSeconds);
     updateOxygenIndicator();
   }
   state.frame = requestAnimationFrame(tick);
