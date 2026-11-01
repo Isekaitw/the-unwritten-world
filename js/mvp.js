@@ -129,12 +129,11 @@ function renderPlayerStats() {
 function updateOxygenIndicator() {
   if (!oxygenIndicator) return;
   oxygenIndicator.hidden = !state.diving;
-  if (oxygenValue) oxygenValue.textContent = `${playerStats.oxygen} / 100`;
-  if (oxygenBar) oxygenBar.style.width = `${playerStats.oxygen}%`;
+  if (oxygenBar) oxygenBar.style.height = `${playerStats.oxygen}%`;
 }
 
-// Story and exploration events can toggle the diving display without
-// introducing oxygen drain or recovery mechanics yet.
+// Story and exploration events can toggle the diving display. Oxygen drains
+// at a steady rate while diving: a full tank lasts exactly 60 seconds.
 function setDivingState(isDiving) {
   state.diving = Boolean(isDiving);
   updateOxygenIndicator();
@@ -615,6 +614,12 @@ function tick(timestamp) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
     updateScene();
+  }
+  if (state.diving && playerStats.oxygen > 0) {
+    const previousOxygen = playerStats.oxygen;
+    playerStats.oxygen = Math.max(0, playerStats.oxygen - (100 / 60) * dt);
+    updateOxygenIndicator();
+    if (playerStats.oxygen === 0 && previousOxygen > 0) saveProgress();
   }
   state.frame = requestAnimationFrame(tick);
 }
