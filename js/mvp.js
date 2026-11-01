@@ -625,11 +625,15 @@ function tick(timestamp) {
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
     updateScene();
   }
-  if (state.diving && playerStats.oxygen > 0) {
+  if (state.diving) {
     const previousOxygen = playerStats.oxygen;
     playerStats.oxygen = Math.max(0, playerStats.oxygen - (100 / 60) * dt);
     updateOxygenIndicator();
     if (playerStats.oxygen === 0 && previousOxygen > 0) handlePlayerDeath();
+  } else if (playerStats.oxygen < 100) {
+    // Recover continuously on land; an empty oxygen tank takes 30 seconds to refill.
+    playerStats.oxygen = Math.min(100, playerStats.oxygen + (100 / 30) * dt);
+    updateOxygenIndicator();
   }
   state.frame = requestAnimationFrame(tick);
 }
