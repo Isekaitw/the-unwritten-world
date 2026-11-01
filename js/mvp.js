@@ -8,8 +8,7 @@ const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryGrid = $("#inventory-grid");
-const inventoryCapacityLabel = $("#inventory-capacity");
-const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, oxygen: 100 };
+const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, fatigue: 100, oxygen: 100 };
 let inventoryCapacity = 20;
 const MAX_INVENTORY_CAPACITY = 40;
 const inventoryCatalog = [
@@ -33,7 +32,6 @@ const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
 const coordinates = $("#coordinates");
 const oxygenIndicator = $("#oxygen-indicator");
-const oxygenValue = $("#oxygen-value");
 const oxygenBar = $("#oxygen-bar");
 const gate = $("#gate");
 
@@ -63,6 +61,7 @@ const state = {
   questOpen: true,
   inventoryOpen: false,
   diving: false,
+  dead: false,
   inventory: []
 };
 
@@ -155,7 +154,6 @@ function setPlayerStat(stat, value) {
 function renderInventory() {
   const owned = inventoryCatalog.filter((item) => state.inventory.includes(item.id));
   const visible = owned.filter((item) => item.category === inventoryFilter);
-  inventoryCapacityLabel.textContent = `${owned.length} / ${inventoryCapacity}`;
   inventoryGrid.replaceChildren();
 
   for (let index = 0; index < inventoryCapacity; index++) {
@@ -604,8 +602,19 @@ function updateScene() {
   interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
+function handlePlayerDeath() {
+  if (state.dead) return;
+  state.dead = true;
+  state.diving = false;
+  stopInput();
+  playerStats.health = 0;
+  renderPlayerStats();
+  saveProgress();
+  // TODO: Add the death screen, death consequences, and restart flow here.
+}
+
 function tick(timestamp) {
-  if (!state.started) return;
+  if (!state.started || state.dead) return;
   // Allow a slightly larger frame delta; movePlayer subdivides it before
   // collision checks, reducing apparent slowdown after brief frame stalls.
   const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.1) : 0;
@@ -619,7 +628,7 @@ function tick(timestamp) {
     const previousOxygen = playerStats.oxygen;
     playerStats.oxygen = Math.max(0, playerStats.oxygen - (100 / 60) * dt);
     updateOxygenIndicator();
-    if (playerStats.oxygen === 0 && previousOxygen > 0) saveProgress();
+    if (playerStats.oxygen === 0 && previousOxygen > 0) handlePlayerDeath();
   }
   state.frame = requestAnimationFrame(tick);
 }
