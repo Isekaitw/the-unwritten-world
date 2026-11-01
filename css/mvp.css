@@ -673,6 +673,7 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 #game-screen .stat-hunger { background:#d4b878; }
 #game-screen .stat-water { background:#79b9d1; }
 #game-screen .stat-energy { background:#b2a0d4; }
+#game-screen .stat-fatigue { background:#c58d78; }
 #game-screen .stat-oxygen { background:#75cbd8; }
 
 /* Oxygen HUD appears beside the player only while diving. */
