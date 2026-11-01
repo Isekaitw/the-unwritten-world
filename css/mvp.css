@@ -706,7 +706,7 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   height: 100%;
   border-radius: inherit;
   background: #75cbd8;
-  transition: height .12s linear;
+  /* Updated directly every animation frame; no stepped CSS easing. */
 }
 #game-screen .stat-note { margin-top:6px !important; color:#83978f !important; font-size:.72rem; }
 #game-screen .stats-placeholder-note { margin-top:10px; padding-top:12px; border-top:1px solid rgba(194,211,195,.15); color:#7f938c; font-size:.72rem; line-height:1.6; }
