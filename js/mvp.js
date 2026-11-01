@@ -8,7 +8,7 @@ const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryGrid = $("#inventory-grid");
-const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, fatigue: 100, oxygen: 100 };
+const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, fatigue: 0, oxygen: 100 };
 let inventoryCapacity = 20;
 const MAX_INVENTORY_CAPACITY = 40;
 const inventoryCatalog = [
@@ -244,6 +244,7 @@ function startExploration() {
   const saved = loadProgress();
   state.x = saved ? saved.x : 180; state.y = saved ? saved.y : 180;
   state.diving = false;
+  state.dead = false;
   state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
   state.secretFound = saved ? Boolean(saved.secretFound) : false;
   state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
