@@ -66,9 +66,8 @@
       <div class="mvp-controls"><button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（F）</button></div>
       <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title">
         <header class="inventory-heading">
-          <div><p class="eyebrow">隨身裝備 · 物資管理</p><h3 id="inventory-title">背包</h3></div>
+          <div><h3 id="inventory-title">背包</h3></div>
         </header>
-        <div class="inventory-summary"><span>背包空間 <strong id="inventory-capacity">0 / 20</strong></span></div>
         <nav class="inventory-filters" aria-label="物品分類">
           <button class="inventory-filter is-selected" type="button" data-inventory-filter="equipment" aria-pressed="true">裝備</button>
           <button class="inventory-filter" type="button" data-inventory-filter="weapon" aria-pressed="false">武器</button>
@@ -81,11 +80,12 @@
         <div class="inventory-layout">
           <div id="inventory-grid" class="inventory-grid" aria-label="背包格子"></div>
           <aside class="player-stats" aria-labelledby="player-stats-title">
-            <div class="player-stats-heading"><p class="eyebrow">角色狀態</p><h4 id="player-stats-title">生存參數</h4></div>
-            <div class="stat-row"><div class="stat-label"><span>生命值</span><strong id="stat-health-value">100 / 100</strong></div><div class="stat-track"><span id="stat-health-bar" class="stat-fill stat-health" style="width:100%"></span></div></div>
-            <div class="stat-row"><div class="stat-label"><span>飢餓度</span><strong id="stat-hunger-value">100 / 100</strong></div><div class="stat-track"><span id="stat-hunger-bar" class="stat-fill stat-hunger" style="width:100%"></span></div></div>
+            <div class="player-stats-heading"><h4 id="player-stats-title">角色狀態</h4></div>
+            <div class="stat-row"><div class="stat-label"><span>生命</span><strong id="stat-health-value">100 / 100</strong></div><div class="stat-track"><span id="stat-health-bar" class="stat-fill stat-health" style="width:100%"></span></div></div>
+            <div class="stat-row"><div class="stat-label"><span>飽食</span><strong id="stat-hunger-value">100 / 100</strong></div><div class="stat-track"><span id="stat-hunger-bar" class="stat-fill stat-hunger" style="width:100%"></span></div></div>
             <div class="stat-row"><div class="stat-label"><span>水分</span><strong id="stat-water-value">100 / 100</strong></div><div class="stat-track"><span id="stat-water-bar" class="stat-fill stat-water" style="width:100%"></span></div></div>
-            <div class="stat-row"><div class="stat-label"><span>精力值</span><strong id="stat-energy-value">100 / 100</strong></div><div class="stat-track"><span id="stat-energy-bar" class="stat-fill stat-energy" style="width:100%"></span></div></div>
+            <div class="stat-row"><div class="stat-label"><span>體力</span><strong id="stat-energy-value">100 / 100</strong></div><div class="stat-track"><span id="stat-energy-bar" class="stat-fill stat-energy" style="width:100%"></span></div></div>
+            <div class="stat-row"><div class="stat-label"><span>疲勞</span><strong id="stat-fatigue-value">100 / 100</strong></div><div class="stat-track"><span id="stat-fatigue-bar" class="stat-fill stat-fatigue" style="width:100%"></span></div></div>
             <div class="stat-row"><div class="stat-label"><span>氧氣</span><strong id="stat-oxygen-value">100 / 100</strong></div><div class="stat-track"><span id="stat-oxygen-bar" class="stat-fill stat-oxygen" style="width:100%"></span></div></div>
           </aside>
         </div>
@@ -93,7 +93,6 @@
       <section id="quest-panel" class="quest-panel" aria-labelledby="quest-title">
         <div class="quest-heading">
           <div>
-            <p class="eyebrow">本局進度</p>
             <h3 id="quest-title">任務</h3>
           </div>
           <span id="quest-progress" class="quest-progress" aria-live="polite">0 / 3 完成</span>
@@ -116,7 +115,6 @@
           <p class="quest-message">探索遺跡角落，尋找可選的隱藏線索。</p>
         </div>
         <div class="quest-category" data-quest-category="challenge" role="tabpanel" hidden>
-          <p class="quest-message">暫無挑戰任務。</p>
         </div>
       </section>
       <p class="mvp-help">操作：WASD／方向鍵移動，靠近物件後按 E／Enter 互動；按 F 或 Esc 關閉對話。進度會儲存在本機，下次可以接續遊玩。</p>
