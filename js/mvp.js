@@ -556,24 +556,23 @@ function drawVision() {
   ctx.globalCompositeOperation = "source-over";
 }
 function updateScene() {
-  const viewW = viewport.clientWidth;
-  const viewH = viewport.clientHeight;
+  // Use a fixed 960x540 world-space camera on every display. The viewport
+  // only changes the presentation scale, never the amount of world revealed.
+  const zoom = Math.min(viewport.clientWidth / 960, viewport.clientHeight / 540);
+  const viewW = 960;
+  const viewH = 540;
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
-
-  // Keep the camera in the same continuous CSS-pixel coordinate space as
-  // the world transform and the canvas geometry. Snapping only the camera to
-  // the device-pixel grid makes its motion discontinuous while DOM walls and
-  // canvas shadow edges are rasterized by different pipelines; at fractional
-  // DPR this can show up as a transient wall-face cut during vertical scroll.
   const px = state.x;
   const py = state.y;
   const cameraX = Math.max(0, Math.min(maxX, px - viewW / 2));
   const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
 
-  world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
-  playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
-  playerEl.style.top = `${py - cameraY}px`;
+  world.style.transform = `scale(${zoom}) translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
+  playerEl.style.left = `${(px - cameraX) * zoom - PLAYER.width * zoom / 2}px`;
+  playerEl.style.top = `${(py - cameraY) * zoom}px`;
+  playerEl.style.transform = `scale(${zoom})`;
+  playerEl.style.transformOrigin = "top left";
   const playerCenter = { x: px, y: py + PLAYER.height / 2 };
   const isInWater = waterAreas.some((area) => playerCenter.x >= area.x && playerCenter.x <= area.x + area.w && playerCenter.y >= area.y && playerCenter.y <= area.y + area.h);
   if (isInWater !== state.diving) {
@@ -581,8 +580,10 @@ function updateScene() {
     setStatus(isInWater ? "已進入測試水域，角色現在處於潛水狀態。" : "已離開測試水域，角色結束潛水。");
   }
   if (oxygenIndicator) {
-    oxygenIndicator.style.left = `${px - cameraX + PLAYER.width / 2 + 10}px`;
-    oxygenIndicator.style.top = `${py - cameraY + 4}px`;
+    oxygenIndicator.style.left = `${(px - cameraX + PLAYER.width / 2 + 10) * zoom}px`;
+    oxygenIndicator.style.top = `${(py - cameraY + 4) * zoom}px`;
+    oxygenIndicator.style.transform = `translateY(-100%) scale(${zoom})`;
+    oxygenIndicator.style.transformOrigin = "top left";
     updateOxygenIndicator();
   }
   drawVision();
@@ -591,21 +592,13 @@ function updateScene() {
     updateScene.lastCoord = coordText;
     coordinates.textContent = coordText;
   }
-  if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
+  if (state.gateOpen && !state.gateCrossed && state.y < 560 && state.x > 760 && state.x < 940) {
     state.gateCrossed = true;
-  }
-  const questKey = `${state.markerInspected}|${state.gateOpen}|${state.gateCrossed}|${state.secretFound}`;
-  if (questKey !== updateScene.lastQuest) {
-    updateScene.lastQuest = questKey;
     updateQuestUI();
+    saveProgress();
+    setStatus("你已穿越通路，探索流程完成。");
   }
-  const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
-    .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
-    .sort((a, b) => a.distance - b.distance)[0] || null;
-  state.target = nearest;
-  interactButton.disabled = !nearest || state.dialogueOpen;
-  interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
-  objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
+  updateTarget();
 }
 function handlePlayerDeath() {
   if (state.dead) return;
