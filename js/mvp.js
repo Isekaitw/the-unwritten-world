@@ -559,8 +559,8 @@ function updateScene() {
   // Keep the horizontal world-space view fixed while adapting the vertical
   // view to the viewport's actual height. This preserves object proportions
   // and avoids revealing more world just because the display is wider.
-  const zoom = viewport.clientWidth / 960;
-  const viewW = 960;
+  const zoom = viewport.clientWidth / 1200;
+  const viewW = 1200;
   const viewH = Math.min(WORLD.height, viewport.clientHeight / zoom);
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
