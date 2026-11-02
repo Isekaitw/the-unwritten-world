@@ -765,5 +765,5 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   height: 100%;
   max-width: none;
   max-height: none;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: auto;
 }
