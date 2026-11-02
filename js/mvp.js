@@ -557,7 +557,7 @@ function drawVision() {
 }
 function updateScene() {
   // Use a fixed 960x540 world-space camera on every display. The viewport
-  // only changes the presentation scale, never the amount of world revealed.
+  // only changes presentation scale, never the amount of world revealed.
   const zoom = Math.min(viewport.clientWidth / 960, viewport.clientHeight / 540);
   const viewW = 960;
   const viewH = 540;
@@ -569,7 +569,7 @@ function updateScene() {
   const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
 
   world.style.transform = `scale(${zoom}) translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
-  playerEl.style.left = `${(px - cameraX) * zoom - PLAYER.width * zoom / 2}px`;
+  playerEl.style.left = `${(px - cameraX - PLAYER.width / 2) * zoom}px`;
   playerEl.style.top = `${(py - cameraY) * zoom}px`;
   playerEl.style.transform = `scale(${zoom})`;
   playerEl.style.transformOrigin = "top left";
@@ -592,13 +592,21 @@ function updateScene() {
     updateScene.lastCoord = coordText;
     coordinates.textContent = coordText;
   }
-  if (state.gateOpen && !state.gateCrossed && state.y < 560 && state.x > 760 && state.x < 940) {
+  if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
     state.gateCrossed = true;
-    updateQuestUI();
-    saveProgress();
-    setStatus("你已穿越通路，探索流程完成。");
   }
-  updateTarget();
+  const questKey = `${state.markerInspected}|${state.gateOpen}|${state.gateCrossed}|${state.secretFound}`;
+  if (questKey !== updateScene.lastQuest) {
+    updateScene.lastQuest = questKey;
+    updateQuestUI();
+  }
+  const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
+    .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
+    .sort((a, b) => a.distance - b.distance)[0] || null;
+  state.target = nearest;
+  interactButton.disabled = !nearest || state.dialogueOpen;
+  interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
+  objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
 function handlePlayerDeath() {
   if (state.dead) return;
