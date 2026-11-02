@@ -556,11 +556,12 @@ function drawVision() {
   ctx.globalCompositeOperation = "source-over";
 }
 function updateScene() {
-  // Use a fixed 960x540 world-space camera on every display. The viewport
-  // only changes presentation scale, never the amount of world revealed.
-  const zoom = Math.min(viewport.clientWidth / 960, viewport.clientHeight / 540);
+  // Keep the horizontal world-space view fixed while adapting the vertical
+  // view to the viewport's actual height. This preserves object proportions
+  // and avoids revealing more world just because the display is wider.
+  const zoom = viewport.clientWidth / 960;
   const viewW = 960;
-  const viewH = 540;
+  const viewH = Math.min(WORLD.height, viewport.clientHeight / zoom);
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
   const px = state.x;
