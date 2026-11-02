@@ -1,6 +1,11 @@
 .game-viewport {
-  height: clamp(360px, 62vh, 650px);
-  min-height: 360px;
+  width: 100%;
+  max-width: 960px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  min-height: 0;
+  margin-inline: auto;
+  box-sizing: border-box;
   background: #122b34;
   touch-action: pan-y;
 }
@@ -123,7 +128,7 @@
 .interact-button:disabled {opacity:.45;cursor:not-allowed;box-shadow:none}
 .mvp-help {margin:8px 0 0;color:var(--muted);font-size:.78rem;line-height:1.7}
 @media(max-width:540px){
- .game-viewport{height:min(55vh,520px);min-height:350px;border-radius:12px}
+ .game-viewport{height:auto;min-height:0;border-radius:12px}
  .mvp-controls{gap:10px}.dpad{grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px);gap:4px}
  .interact-button{max-width:54%;padding:8px 12px;font-size:.82rem}
  .scene-overlay{font-size:10px}.world-object span{font-size:11px}
