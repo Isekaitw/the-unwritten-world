@@ -131,8 +131,15 @@ function updateOxygenIndicator() {
   const oxygenStatBar = document.querySelector("#stat-oxygen-bar");
   if (oxygenLabel) oxygenLabel.textContent = `${oxygen.toFixed(1)} / 100`;
   if (oxygenStatBar) oxygenStatBar.style.width = `${oxygen}%`;
-  if (oxygenIndicator) oxygenIndicator.hidden = !state.diving;
-  if (oxygenBar) oxygenBar.style.height = `${oxygen}%`;
+  // Keep the character-side oxygen gauge visible underwater and until
+  // the tank has fully recovered on land. Use a compositor transform so
+  // fractional per-frame changes are not quantized to whole layout pixels.
+  if (oxygenIndicator) oxygenIndicator.hidden = !state.diving && oxygen >= 100;
+  if (oxygenBar) {
+    oxygenBar.style.height = "100%";
+    oxygenBar.style.transformOrigin = "bottom";
+    oxygenBar.style.transform = `scaleY(`${Math.max(0, Math.min(100, oxygen)) / 100}`)`;
+  }
 }
 
 // Story and exploration events can toggle the diving display. Oxygen drains
