@@ -7,6 +7,17 @@ const questToggle = $("#quest-toggle");
 const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
+const inventoryGrid = $("#inventory-grid");
+const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, fatigue: 100, oxygen: 100 };
+let inventoryCapacity = 20;
+const MAX_INVENTORY_CAPACITY = 40;
+const inventoryCatalog = [
+  { id: "tide_imprint", category: "important", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
+  { id: "echo_fragment", category: "important", icon: "✧", name: "微弱回聲", subtitle: "隱藏發現", description: "從遺跡角落捕捉到的一段微弱回響。內容尚不完整，暫時無法判讀。", source: "發現隱藏回聲" },
+  { id: "device_record", category: "important", icon: "◎", name: "機關記錄", subtitle: "裝置資料", description: "測量裝置啟動時留下的狀態記錄。通路已解除封鎖，這份記錄可供之後查閱。", source: "啟動測量機關" }
+];
+let inventoryFilter = "equipment";
+let selectedInventoryItem = null;
 const SAVE_KEY = "unwritten-world-exploration-save-v1";
 const viewport = $("#scene");
 const world = $("#world");
@@ -20,6 +31,8 @@ const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
 const coordinates = $("#coordinates");
+const oxygenIndicator = $("#oxygen-indicator");
+const oxygenBar = $("#oxygen-bar");
 const gate = $("#gate");
 
 // 離屏 canvas 只建立一次，每幀重複使用（避免每幀配置兩張全解析度 canvas）
@@ -46,9 +59,16 @@ const state = {
   lastTime: 0,
   frame: 0,
   questOpen: true,
-  inventoryOpen: false
+  inventoryOpen: false,
+  diving: false,
+  dead: false,
+  inventory: []
 };
 
+const waterAreas = [
+  // A shallow, walkable test pool near the lower-right side of the map.
+  { id: "test-water-area", x: 1040, y: 790, w: 430, h: 150 }
+];
 const obstacles = [
   { x: 330, y: 220, w: 210, h: 65 },
   { x: 610, y: 350, w: 80, h: 220 },
@@ -71,6 +91,104 @@ const keyMap = {
 function setStatus(message) {
   statusMessage.textContent = message;
 }
+
+function addInventoryItem(id) {
+  if (state.inventory.includes(id)) return;
+  if (state.inventory.length >= inventoryCapacity) {
+    setStatus("背包已滿。需要先擴充背包空間，才能收納更多物品。");
+    return;
+  }
+  state.inventory.push(id);
+  renderInventory();
+  saveProgress();
+  setStatus(`已放入背包：${inventoryCatalog.find((item) => item.id === id)?.name || "新物件"}。`);
+}
+
+// Story events can call this when a capacity upgrade is earned.
+function expandInventoryCapacity(additionalSlots = 4) {
+  const amount = Math.max(1, Math.floor(Number(additionalSlots) || 0));
+  const nextCapacity = Math.min(MAX_INVENTORY_CAPACITY, inventoryCapacity + amount);
+  if (nextCapacity === inventoryCapacity) return false;
+  inventoryCapacity = nextCapacity;
+  renderInventory();
+  saveProgress();
+  return true;
+}
+
+function renderPlayerStats() {
+  for (const [key, value] of Object.entries(playerStats)) {
+    const label = document.querySelector(`#stat-${key}-value`);
+    const bar = document.querySelector(`#stat-${key}-bar`);
+    if (label) label.textContent = `${value} / 100`;
+    if (bar) bar.style.width = `${value}%`;
+  }
+  updateOxygenIndicator();
+}
+
+function updateOxygenIndicator() {
+  const oxygen = playerStats.oxygen;
+  const oxygenLabel = document.querySelector("#stat-oxygen-value");
+  const oxygenStatBar = document.querySelector("#stat-oxygen-bar");
+  if (oxygenLabel) oxygenLabel.textContent = `${oxygen.toFixed(1)} / 100`;
+  if (oxygenStatBar) oxygenStatBar.style.width = `${oxygen}%`;
+  if (oxygenIndicator) oxygenIndicator.hidden = !state.diving;
+  if (oxygenBar) oxygenBar.style.height = `${oxygen}%`;
+}
+
+// Story and exploration events can toggle the diving display. Oxygen drains
+// at a steady rate while diving: a full tank lasts exactly 60 seconds.
+function setDivingState(isDiving) {
+  state.diving = Boolean(isDiving);
+  updateOxygenIndicator();
+  return state.diving;
+}
+
+// Future food, water and sleep interactions can update a parameter through
+// this single entry point; no automatic drain or recovery is active yet.
+function setPlayerStat(stat, value) {
+  if (!Object.prototype.hasOwnProperty.call(playerStats, stat)) return false;
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return false;
+  playerStats[stat] = Math.max(0, Math.min(100, Math.round(numericValue)));
+  renderPlayerStats();
+  saveProgress();
+  return true;
+}
+
+function renderInventory() {
+  const owned = inventoryCatalog.filter((item) => state.inventory.includes(item.id));
+  const visible = owned.filter((item) => item.category === inventoryFilter);
+  inventoryGrid.replaceChildren();
+
+  for (let index = 0; index < inventoryCapacity; index++) {
+    const item = visible[index] || null;
+    const slot = document.createElement(item ? "button" : "div");
+    if (item) {
+      slot.type = "button";
+      slot.className = "inventory-slot";
+      slot.setAttribute("aria-label", `${item.name}。懸停查看物品介紹`);
+      slot.dataset.tooltip = `${item.name}｜${item.description} 取得方式：${item.source}`;
+      slot.title = `${item.name}\n${item.description}\n取得方式：${item.source}`;
+      const icon = document.createElement("span");
+      icon.className = "inventory-slot-icon";
+      icon.textContent = item.icon;
+      const name = document.createElement("span");
+      name.className = "inventory-slot-name";
+      name.textContent = item.name;
+      slot.append(icon, name);
+    } else {
+      slot.className = "inventory-slot is-empty";
+      slot.setAttribute("aria-hidden", "true");
+
+    }
+    inventoryGrid.append(slot);
+  }
+}
+// Public hooks for future story rewards and survival-system events.
+window.expandInventoryCapacity = expandInventoryCapacity;
+window.setPlayerStat = setPlayerStat;
+window.setDivingState = setDivingState;
+
 function updateQuestUI() {
   const objectives = [
     { id: "quest-marker", done: state.markerInspected },
@@ -94,7 +212,7 @@ function updateQuestUI() {
       ? "通路已開啟，沿著機關旁的通路向上穿越。"
       : state.markerInspected
         ? "線索已記錄。接著找到測量機關，啟動它以打開通路。"
-        : "先找到潮痕標記，調查這處測試區留下的線索。";
+        : "先找到潮痕標記，調查留下的線索。";
   $("#quest-secret").classList.toggle("is-complete", state.secretFound);
   $("#quest-secret-status").textContent = state.secretFound ? "已發現" : "未發現";
 }
@@ -129,10 +247,17 @@ function startExploration() {
   stopInput();
   const saved = loadProgress();
   state.x = saved ? saved.x : 180; state.y = saved ? saved.y : 180;
+  state.diving = false;
+  state.dead = false;
   state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
   state.secretFound = saved ? Boolean(saved.secretFound) : false;
   state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
   state.gateCrossed = saved ? Boolean(saved.gateCrossed) : false;
+  state.inventory = saved && Array.isArray(saved.inventory) ? saved.inventory.filter((id, index, list) => inventoryCatalog.some((item) => item.id === id) && list.indexOf(id) === index) : [];
+  inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(saved?.inventoryCapacity) ? saved.inventoryCapacity : 20, state.inventory.length));
+  selectedInventoryItem = state.inventory[0] || null;
+  renderInventory();
+  renderPlayerStats();
   state.target = null;
   state.started = true;
   state.lastTime = 0;
@@ -186,10 +311,17 @@ function movePlayer(dx, dy) {
   const maxX = WORLD.width - PLAYER.width / 2;
   const minY = 0;
   const maxY = WORLD.height - PLAYER.height;
-  const nextX = Math.max(minX, Math.min(maxX, state.x + dx));
-  if (!collides(nextX, state.y)) state.x = nextX;
-  const nextY = Math.max(minY, Math.min(maxY, state.y + dy));
-  if (!collides(state.x, nextY)) state.y = nextY;
+  // Substep larger frame deltas so collision resolution cannot skip across a
+  // thin wall after a dropped frame. This does not change the intended speed.
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
+  const stepX = dx / steps;
+  const stepY = dy / steps;
+  for (let i = 0; i < steps; i++) {
+    const nextX = Math.max(minX, Math.min(maxX, state.x + stepX));
+    if (!collides(nextX, state.y)) state.x = nextX;
+    const nextY = Math.max(minY, Math.min(maxY, state.y + stepY));
+    if (!collides(state.x, nextY)) state.y = nextY;
+  }
 }
 
 // Return the first positive intersection with an opaque rectangle. If the
@@ -224,37 +356,33 @@ function rayViewportDistance(originX, originY, dirX, dirY, rect) {
   else if (dirY < -0.000001) distance = Math.min(distance, (rect.y - originY) / dirY);
   return distance > 0 ? distance : 0;
 }
-function drawVision(cameraX, cameraY) {
-  const width = viewport.clientWidth;
-  const height = viewport.clientHeight;
-  if (!width || !height) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const pixelWidth = Math.round(width * dpr);
-  const pixelHeight = Math.round(height * dpr);
+function drawVision() {
+  const width = WORLD.width;
+  const height = WORLD.height;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const pixelWidth = Math.max(1, Math.round(width * dpr));
+  const pixelHeight = Math.max(1, Math.round(height * dpr));
   if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
   }
 
   const ctx = visionContext;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const scaleX = pixelWidth / width;
+  const scaleY = pixelHeight / height;
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
   ctx.globalCompositeOperation = "source-over";
   ctx.clearRect(0, 0, width, height);
 
-  // All occlusion decisions use one world-space source: the player's foot /
-  // collision anchor. Camera coordinates are used only when drawing to canvas.
   const sourceX = state.x;
   const sourceY = state.y + PLAYER.height - PLAYER.hitHeight / 2;
-  const screenX = sourceX - cameraX;
   const brightness = Math.max(0.12, Math.min(1, VISION.brightness));
   const fog = Math.max(0, Math.min(1, VISION.fog));
   const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
   const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
-  const view = { x: cameraX, y: cameraY, w: width, h: height };
+  const view = { x: 0, y: 0, w: width, h: height };
 
-  // The overlay is fully opaque. Only space reachable by a ray before its
-  // first wall (or vision radius) is removed from the overlay.
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
@@ -264,10 +392,10 @@ function drawVision(cameraX, cameraY) {
     const angle = Math.atan2(y - sourceY, x - sourceX);
     angles.push(angle - epsilon, angle, angle + epsilon);
   };
-  addCorner(cameraX, cameraY);
-  addCorner(cameraX + width, cameraY);
-  addCorner(cameraX + width, cameraY + height);
-  addCorner(cameraX, cameraY + height);
+  addCorner(view.x, view.y);
+  addCorner(view.x + view.w, view.y);
+  addCorner(view.x + view.w, view.y + view.h);
+  addCorner(view.x, view.y + view.h);
   for (const o of opaque) {
     addCorner(o.x, o.y);
     addCorner(o.x + o.w, o.y);
@@ -276,7 +404,6 @@ function drawVision(cameraX, cameraY) {
   }
   angles.sort((a, b) => a - b);
 
-  // Deduplicate near-identical angles to avoid zero-area spikes at corners.
   const uniqueAngles = [];
   for (const angle of angles) {
     if (!uniqueAngles.length || Math.abs(angle - uniqueAngles[uniqueAngles.length - 1]) > 1e-7) {
@@ -296,9 +423,6 @@ function drawVision(cameraX, cameraY) {
     }
     if (!Number.isFinite(distance) || distance < 0) continue;
 
-    // Snap ray endpoints to exact obstacle corners when the first hit lands
-    // numerically on one. This prevents tiny floating-point offsets from
-    // drawing a dark seam that appears detached from the wall corner.
     let hitX = sourceX + dirX * distance;
     let hitY = sourceY + dirY * distance;
     let nearestCorner = null;
@@ -321,19 +445,20 @@ function drawVision(cameraX, cameraY) {
       hitX = nearestCorner.x;
       hitY = nearestCorner.y;
     }
-    points.push({ x: hitX - cameraX, y: hitY - cameraY });
+    points.push({ x: hitX, y: hitY });
   }
 
-  // Feather the silhouette edge by rendering the visibility polygon to a
-  // mask and blurring only that mask. Offscreen canvases are reused every frame.
   if (points.length >= 3) {
+    const S = 0.5;
+    const mw = Math.max(1, Math.round(width * S));
+    const mh = Math.max(1, Math.round(height * S));
     for (const c of [maskCanvas, featherCanvas]) {
-      if (c.width !== pixelWidth || c.height !== pixelHeight) {
-        c.width = pixelWidth;
-        c.height = pixelHeight;
+      if (c.width !== mw || c.height !== mh) {
+        c.width = mw;
+        c.height = mh;
       }
     }
-    maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    maskCtx.setTransform(S, 0, 0, S, 0, 0);
     maskCtx.clearRect(0, 0, width, height);
     maskCtx.fillStyle = "#fff";
     maskCtx.beginPath();
@@ -342,92 +467,140 @@ function drawVision(cameraX, cameraY) {
     maskCtx.closePath();
     maskCtx.fill();
 
-    // Blur radius is expressed in CSS pixels and stays subtle on high-DPI screens.
-    featherCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    featherCtx.clearRect(0, 0, width, height);
-    featherCtx.filter = "blur(5px)";
-    featherCtx.drawImage(maskCanvas, 0, 0, width, height);
+    featherCtx.setTransform(1, 0, 0, 1, 0, 0);
+    featherCtx.clearRect(0, 0, mw, mh);
+    featherCtx.filter = "blur(2.5px)";
+    featherCtx.drawImage(maskCanvas, 0, 0);
     featherCtx.filter = "none";
 
     ctx.globalCompositeOperation = "destination-out";
-    ctx.drawImage(featherCanvas, 0, 0, pixelWidth, pixelHeight, 0, 0, width, height);
+    ctx.drawImage(featherCanvas, 0, 0, mw, mh, 0, 0, width, height);
   }
 
-  // Wall faces: reveal each wall entirely, then paint back the shadows cast
-  // onto it by every OTHER wall (clipped to this wall). Replaces the old
-  // 0.5px per-sample ray test: same result, far cheaper, and anti-aliased.
   const FAR = 4000;
   const addShadow = (o) => {
-    const c = [[o.x, o.y], [o.x + o.w, o.y], [o.x + o.w, o.y + o.h], [o.x, o.y + o.h]];
-    const p = c.map(([x, y]) => {
-      const dx = x - sourceX, dy = y - sourceY, l = Math.hypot(dx, dy) || 1;
-      return [x + dx / l * FAR, y + dy / l * FAR];
+    const corners = [
+      [o.x, o.y],
+      [o.x + o.w, o.y],
+      [o.x + o.w, o.y + o.h],
+      [o.x, o.y + o.h]
+    ];
+    const projected = corners.map(([x, y]) => {
+      const dx = x - sourceX;
+      const dy = y - sourceY;
+      const length = Math.hypot(dx, dy) || 1;
+      return [x + dx / length * FAR, y + dy / length * FAR];
     });
     for (let i = 0; i < 4; i++) {
       const j = (i + 1) % 4;
-      const q = [c[i], c[j], p[j], p[i]];
+      const polygon = [corners[i], corners[j], projected[j], projected[i]];
       let area = 0;
       for (let k = 0; k < 4; k++) {
-        const a = q[k], b = q[(k + 1) % 4];
+        const a = polygon[k];
+        const b = polygon[(k + 1) % 4];
         area += a[0] * b[1] - b[0] * a[1];
       }
-      if (area < 0) q.reverse(); // consistent winding so nonzero fill never cancels out
-      ctx.moveTo(q[0][0] - cameraX, q[0][1] - cameraY);
-      for (let k = 1; k < 4; k++) ctx.lineTo(q[k][0] - cameraX, q[k][1] - cameraY);
+      if (area < 0) polygon.reverse();
+      ctx.moveTo(polygon[0][0], polygon[0][1]);
+      for (let k = 1; k < 4; k++) ctx.lineTo(polygon[k][0], polygon[k][1]);
       ctx.closePath();
     }
   };
+
+  const padX = 1 / scaleX;
+  const padY = 1 / scaleY;
+  const snapX = (x) => Math.floor(x * scaleX) / scaleX;
+  const snapY = (y) => Math.floor(y * scaleY) / scaleY;
+  const ceilX = (x) => Math.ceil(x * scaleX) / scaleX;
+  const ceilY = (y) => Math.ceil(y * scaleY) / scaleY;
+
   for (const wall of opaque) {
-    const rx = wall.x - cameraX;
-    const ry = wall.y - cameraY;
-    if (rx > width || ry > height || rx + wall.w < 0 || ry + wall.h < 0) continue;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(rx, ry, wall.w, wall.h);
-    ctx.clip();
+    const rx = snapX(wall.x) - padX;
+    const ry = snapY(wall.y) - padY;
+    const rr = ceilX(wall.x + wall.w) + padX;
+    const rb = ceilY(wall.y + wall.h) + padY;
+    const rw = rr - rx;
+    const rh = rb - ry;
+
     ctx.globalCompositeOperation = "destination-out";
     ctx.fillStyle = "#000";
-    ctx.fillRect(rx, ry, wall.w, wall.h);
+    ctx.fillRect(rx, ry, rw, rh);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.shadowColor = "rgba(0,0,0,0.38)";
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 9;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+    ctx.restore();
+
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillRect(rx, ry, rw, rh);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(rx, ry, rw, rh);
+    ctx.clip();
     ctx.globalCompositeOperation = "source-over";
     ctx.beginPath();
-    for (const other of opaque) if (other !== wall) addShadow(other);
+    for (const other of opaque) {
+      if (other !== wall) addShadow(other);
+    }
     ctx.fill();
     ctx.restore();
   }
 
-  // The player sprite is UI-visible regardless of wall-edge rasterization.
-  ctx.clearRect(
-    screenX - PLAYER.width / 2 - 2,
-    state.y - cameraY - 2,
-    PLAYER.width + 4,
-    PLAYER.height + 4
-  );
+  // The player is a sibling of #world and remains above this world-space overlay.
   ctx.globalCompositeOperation = "source-over";
 }
 function updateScene() {
-  const viewW = viewport.clientWidth;
-  const viewH = viewport.clientHeight;
+  // Keep the horizontal world-space view fixed while adapting the vertical
+  // view to the viewport's actual height. This preserves object proportions
+  // and avoids revealing more world just because the display is wider.
+  const zoom = viewport.clientWidth / 1200;
+  const viewW = 1200;
+  const viewH = Math.min(WORLD.height, viewport.clientHeight / zoom);
   const maxX = Math.max(0, WORLD.width - viewW);
   const maxY = Math.max(0, WORLD.height - viewH);
+  const px = state.x;
+  const py = state.y;
+  const cameraX = Math.max(0, Math.min(maxX, px - viewW / 2));
+  const cameraY = Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2));
 
-  // Player and camera share the same device-pixel grid so the sprite's
-  // on-screen offset stays constant while the camera follows (no sub-pixel jitter).
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
-  const snap = (v) => Math.round(v * dpr) / dpr;
-  const px = snap(state.x);
-  const py = snap(state.y);
-  const cameraX = snap(Math.max(0, Math.min(maxX, px - viewW / 2)));
-  const cameraY = snap(Math.max(0, Math.min(maxY, py + PLAYER.height / 2 - viewH / 2)));
-
-  world.style.transform = `translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
-  playerEl.style.left = `${px - cameraX - PLAYER.width / 2}px`;
-  playerEl.style.top = `${py - cameraY}px`;
-  drawVision(cameraX, cameraY);
-  coordinates.textContent = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
+  world.style.transform = `scale(${zoom}) translate3d(${-cameraX}px, ${-cameraY}px, 0)`;
+  playerEl.style.left = `${(px - cameraX - PLAYER.width / 2) * zoom}px`;
+  playerEl.style.top = `${(py - cameraY) * zoom}px`;
+  playerEl.style.transform = `scale(${zoom})`;
+  playerEl.style.transformOrigin = "top left";
+  const playerCenter = { x: px, y: py + PLAYER.height / 2 };
+  const isInWater = waterAreas.some((area) => playerCenter.x >= area.x && playerCenter.x <= area.x + area.w && playerCenter.y >= area.y && playerCenter.y <= area.y + area.h);
+  if (isInWater !== state.diving) {
+    setDivingState(isInWater);
+    setStatus(isInWater ? "已進入測試水域，角色現在處於潛水狀態。" : "已離開測試水域，角色結束潛水。");
+  }
+  if (oxygenIndicator) {
+    oxygenIndicator.style.left = `${(px - cameraX + PLAYER.width / 2 + 10) * zoom}px`;
+    oxygenIndicator.style.top = `${(py - cameraY + 4) * zoom}px`;
+    oxygenIndicator.style.transform = `translateY(-100%) scale(${zoom})`;
+    oxygenIndicator.style.transformOrigin = "top left";
+    updateOxygenIndicator();
+  }
+  drawVision();
+  const coordText = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
+  if (coordText !== updateScene.lastCoord) {
+    updateScene.lastCoord = coordText;
+    coordinates.textContent = coordText;
+  }
   if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
     state.gateCrossed = true;
   }
-  updateQuestUI();
+  const questKey = `${state.markerInspected}|${state.gateOpen}|${state.gateCrossed}|${state.secretFound}`;
+  if (questKey !== updateScene.lastQuest) {
+    updateScene.lastQuest = questKey;
+    updateQuestUI();
+  }
   const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
     .sort((a, b) => a.distance - b.distance)[0] || null;
@@ -436,14 +609,38 @@ function updateScene() {
   interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
+function handlePlayerDeath() {
+  if (state.dead) return;
+  state.dead = true;
+  state.diving = false;
+  stopInput();
+  playerStats.health = 0;
+  renderPlayerStats();
+  saveProgress();
+  // TODO: Add the death screen, death consequences, and restart flow here.
+}
+
 function tick(timestamp) {
-  if (!state.started) return;
-  const dt = state.lastTime ? Math.min((timestamp - state.lastTime) / 1000, 0.05) : 0;
+  if (!state.started || state.dead) return;
+  // Allow a slightly larger frame delta; movePlayer subdivides it before
+  // collision checks, reducing apparent slowdown after brief frame stalls.
+  const elapsedSeconds = state.lastTime ? Math.max(0, (timestamp - state.lastTime) / 1000) : 0;
+  const dt = Math.min(elapsedSeconds, 0.1);
   state.lastTime = timestamp;
-  if (!state.dialogueOpen) {
+  if (!state.dialogueOpen && !state.inventoryOpen) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
     updateScene();
+  }
+  if (state.diving) {
+    const previousOxygen = playerStats.oxygen;
+    playerStats.oxygen = Math.max(0, playerStats.oxygen - (100 / 60) * elapsedSeconds);
+    updateOxygenIndicator();
+    if (playerStats.oxygen === 0 && previousOxygen > 0) handlePlayerDeath();
+  } else if (playerStats.oxygen < 100) {
+    // Recover continuously on land; an empty oxygen tank takes 30 seconds to refill.
+    playerStats.oxygen = Math.min(100, playerStats.oxygen + (100 / 30) * elapsedSeconds);
+    updateOxygenIndicator();
   }
   state.frame = requestAnimationFrame(tick);
 }
@@ -454,11 +651,13 @@ function interact() {
   const target = state.target;
   if (target.id === "test_interactable_tide_marker") {
     state.markerInspected = true;
+    addInventoryItem("tide_imprint");
     openDialogue("潮痕標記", "石面上留著一道不自然的刻痕。這是技術測試用互動物件；不新增正式劇情或世界觀設定。");
     setStatus("已調查潮痕標記。");
   } else if (target.id === "test_secret_tide_echo") {
     if (!state.secretFound) {
       state.secretFound = true;
+      addInventoryItem("echo_fragment");
       target.el.classList.add("is-found");
       openDialogue("發現一次性秘密", "你捕捉到藏在遺跡角落的微弱回聲。秘密 ID：test_secret_tide_echo。本局只會記錄這一次發現。");
       setStatus("已發現一次性秘密：微弱回聲。");
@@ -466,16 +665,18 @@ function interact() {
   } else if (target.id === "test_puzzle_measurement_device") {
     if (!state.gateOpen) {
       state.gateOpen = true;
+      addInventoryItem("device_record");
       gate.classList.add("is-open");
       $("#switch").classList.add("is-active");
       statusChip.lastChild.textContent = " 機關已啟動 · 通路開啟";
-      openDialogue("機關已啟動", "測量裝置已改變測試區狀態。封閉通路已解除碰撞，可以實際走過去。");
+      openDialogue("機關已啟動", "測量裝置已啟動，封閉通路隨之開啟。");
       setStatus("通路已開啟；障礙外觀與碰撞狀態均已更新。");
     } else {
       openDialogue("測量機關", "機關已經啟動，通路保持開啟。");
     }
   }
   updateScene();
+  saveProgress();
 }
 document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -504,6 +705,7 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   const shouldOpen = !state[stateKey];
 
   if (shouldOpen) {
+    if (stateKey === "inventoryOpen") stopInput();
     overlayPanels.forEach((item) => {
       if (item.stateKey === stateKey) return;
       state[item.stateKey] = false;
@@ -529,6 +731,17 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
+document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    inventoryFilter = button.dataset.inventoryFilter;
+    document.querySelectorAll("[data-inventory-filter]").forEach((filter) => {
+      const active = filter === button;
+      filter.classList.toggle("is-selected", active);
+      filter.setAttribute("aria-pressed", String(active));
+    });
+    renderInventory();
+  });
+});
 interactButton.addEventListener("click", interact);
 objects.forEach((object) => object.el.addEventListener("click", () => {
   if (state.started && state.target && state.target.id === object.id) interact();
@@ -540,6 +753,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
   if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
+  if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
 });
@@ -569,8 +783,15 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) stopI
 window.addEventListener("resize", () => { if (state.started) updateScene(); });
 
 function saveProgress() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen })); } catch (error) {}
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen, inventoryCapacity, inventory: state.inventory, stats: playerStats })); } catch (error) { console.warn("Unable to save exploration progress:", error); }
 }
 function loadProgress() {
-  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); return data; } catch (error) { return null; }
+  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20));
+    if (data.stats && typeof data.stats === "object") {
+      for (const key of Object.keys(playerStats)) {
+        const value = Number(data.stats[key]);
+        if (Number.isFinite(value)) playerStats[key] = Math.max(0, Math.min(100, Math.round(value)));
+      }
+    }
+    return data; } catch (error) { return null; }
 }
