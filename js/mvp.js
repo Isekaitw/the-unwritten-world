@@ -138,7 +138,7 @@ function updateOxygenIndicator() {
   if (oxygenBar) {
     oxygenBar.style.height = "100%";
     oxygenBar.style.transformOrigin = "bottom";
-    oxygenBar.style.transform = `scaleY(`${Math.max(0, Math.min(100, oxygen)) / 100}`)`;
+    oxygenBar.style.transform = "scaleY(" + (Math.max(0, Math.min(100, oxygen)) / 100) + ")";
   }
 }
 
