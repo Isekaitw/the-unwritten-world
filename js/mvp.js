@@ -51,6 +51,8 @@ const visionContext = visionCanvas.getContext("2d");
 const statusMessage = $("#status-message");
 const statusChip = $("#status-chip");
 const interactButton = $("#interact-button");
+const mobileJoystick = $("#mobile-joystick");
+const mobileJoystickKnob = $("#mobile-joystick-knob");
 const checkpointEl = $("#checkpoint");
 const deathPanel = $("#death-panel");
 const respawnButton = $("#respawn-button");
@@ -80,6 +82,7 @@ const state = {
   x: 180, y: 180,
   keys: new Set(),
   pointers: new Map(),
+  joystick: { x: 0, y: 0, pointerId: null },
   gateOpen: false,
   secretFound: false,
   markerInspected: false,
@@ -400,16 +403,27 @@ function startExploration() {
   inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
   walletToggle.setAttribute("aria-expanded", String(state.walletOpen));
   updateWalletUI();
-  setStatus(saved ? "已載入本機進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
+  const touchMode = window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(max-width: 700px)").matches;
+  setStatus(touchMode
+    ? "使用左下角搖桿移動；靠近互動物件後直接點擊。"
+    : (saved ? "已載入本機進度。使用 WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。"));
   updateScene();
   deathPanel.hidden = !state.dead;
   if (state.dead) { setStatus("角色已死亡，請從最近啟動的存檔點復活。"); }
   else state.frame = requestAnimationFrame(tick);
   startButton.textContent = saved ? "繼續探索 ↗" : "開始探索 ↗";
 }
+function resetJoystick() {
+  state.joystick.x = 0;
+  state.joystick.y = 0;
+  state.joystick.pointerId = null;
+  if (mobileJoystickKnob) mobileJoystickKnob.style.transform = "translate(-50%, -50%)";
+  mobileJoystick?.classList.remove("is-active");
+}
 function stopInput() {
   state.keys.clear();
   state.pointers.clear();
+  resetJoystick();
   document.querySelectorAll(".direction.is-pressed").forEach((button) => button.classList.remove("is-pressed"));
 }
 function getInput() {
@@ -419,8 +433,10 @@ function getInput() {
   if (active.has("right")) x += 1;
   if (active.has("up")) y -= 1;
   if (active.has("down")) y += 1;
+  x += state.joystick.x;
+  y += state.joystick.y;
   const length = Math.hypot(x, y);
-  if (length > 0) { x /= length; y /= length; }
+  if (length > 1) { x /= length; y /= length; }
   return { x, y };
 }
 function rectsOverlap(a, b) {
@@ -768,7 +784,7 @@ function tick(timestamp) {
   const elapsedSeconds = state.lastTime ? Math.max(0, (timestamp - state.lastTime) / 1000) : 0;
   const dt = Math.min(elapsedSeconds, 0.1);
   state.lastTime = timestamp;
-  if (!state.dialogueOpen && !state.inventoryOpen) {
+  if (!state.dialogueOpen && !state.inventoryOpen && !state.walletOpen && !state.marketOpen) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
     updateScene();
@@ -929,6 +945,39 @@ document.addEventListener("keyup", (event) => {
   const direction = keyMap[event.key];
   if (direction) state.keys.delete(direction);
 });
+function updateJoystickFromPointer(event) {
+  const rect = mobileJoystick.getBoundingClientRect();
+  const maxTravel = Math.max(1, (rect.width - mobileJoystickKnob.offsetWidth) / 2);
+  const rawX = event.clientX - (rect.left + rect.width / 2);
+  const rawY = event.clientY - (rect.top + rect.height / 2);
+  const distance = Math.hypot(rawX, rawY);
+  const scale = distance > maxTravel ? maxTravel / distance : 1;
+  const knobX = rawX * scale;
+  const knobY = rawY * scale;
+  state.joystick.x = knobX / maxTravel;
+  state.joystick.y = knobY / maxTravel;
+  mobileJoystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+}
+mobileJoystick.addEventListener("pointerdown", (event) => {
+  if (!state.started || state.dead || state.dialogueOpen || state.inventoryOpen || state.walletOpen || state.marketOpen) return;
+  event.preventDefault();
+  state.joystick.pointerId = event.pointerId;
+  mobileJoystick.setPointerCapture(event.pointerId);
+  mobileJoystick.classList.add("is-active");
+  updateJoystickFromPointer(event);
+});
+mobileJoystick.addEventListener("pointermove", (event) => {
+  if (event.pointerId !== state.joystick.pointerId) return;
+  event.preventDefault();
+  updateJoystickFromPointer(event);
+});
+const releaseJoystick = (event) => {
+  if (event.pointerId !== state.joystick.pointerId) return;
+  resetJoystick();
+};
+mobileJoystick.addEventListener("pointerup", releaseJoystick);
+mobileJoystick.addEventListener("pointercancel", releaseJoystick);
+mobileJoystick.addEventListener("lostpointercapture", releaseJoystick);
 document.querySelectorAll(".direction").forEach((button) => {
   const direction = button.dataset.direction;
   button.addEventListener("pointerdown", (event) => {
