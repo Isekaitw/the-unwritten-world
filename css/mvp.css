@@ -1009,7 +1009,7 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 }
 
 
-/* Touch-only close controls for the quest and inventory overlays. */
+/* Touch-only back-arrow controls for overlay panels. */
 .mobile-panel-close { display:none; }
 @media (pointer: coarse), (max-width: 700px) {
   #game-screen .mobile-panel-close {
@@ -1017,14 +1017,17 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
     align-items:center;
     justify-content:center;
     flex:0 0 auto;
-    min-height:40px;
-    padding:8px 13px;
+    width:42px;
+    min-width:42px;
+    min-height:42px;
+    padding:0;
     border:1px solid rgba(210,243,231,.34);
     border-radius:8px;
     color:#f0e5c9;
     background:rgba(7,17,22,.72);
     font:inherit;
-    font-size:.82rem;
+    font-size:1.35rem;
+    line-height:1;
     cursor:pointer;
     touch-action:manipulation;
   }
@@ -1033,4 +1036,5 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   #game-screen .inventory-heading > div,
   #game-screen .quest-heading > div { flex:1 1 auto; min-width:0; }
   #game-screen .quest-heading .quest-progress { flex:0 0 auto; }
+  #game-screen .mobile-panel-close { margin-left:auto; }
 }
