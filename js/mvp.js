@@ -121,6 +121,27 @@ const obstacles = [
   { x: 1180, y: 560, w: 90, h: 190 },
   { x: 760, y: 600, w: 180, h: 44, gate: true }
 ];
+
+// Obstacle geometry is static during exploration. Keep its corner data and
+// the currently opaque obstacle list instead of rebuilding them every frame.
+const obstacleVisionCorners = new Map(obstacles.map((obstacle) => [
+  obstacle,
+  [
+    { x: obstacle.x, y: obstacle.y },
+    { x: obstacle.x + obstacle.w, y: obstacle.y },
+    { x: obstacle.x + obstacle.w, y: obstacle.y + obstacle.h },
+    { x: obstacle.x, y: obstacle.y + obstacle.h }
+  ]
+]));
+let opaqueObstaclesGateState = null;
+let opaqueObstaclesCache = [];
+function getOpaqueObstacles() {
+  if (opaqueObstaclesGateState !== state.gateOpen) {
+    opaqueObstaclesGateState = state.gateOpen;
+    opaqueObstaclesCache = obstacles.filter((obstacle) => !(obstacle.gate && state.gateOpen));
+  }
+  return opaqueObstaclesCache;
+}
 const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 72, title: "潮痕標記" },
   { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 76, title: "微弱回聲" },
@@ -479,21 +500,29 @@ function movePlayer(dx, dy) {
 function rayRectDistance(originX, originY, dirX, dirY, rect) {
   let near = -Infinity;
   let far = Infinity;
-  for (const axis of [
-    { origin: originX, dir: dirX, min: rect.x, max: rect.x + rect.w },
-    { origin: originY, dir: dirY, min: rect.y, max: rect.y + rect.h }
-  ]) {
-    if (Math.abs(axis.dir) < 1e-8) {
-      if (axis.origin < axis.min || axis.origin > axis.max) return Infinity;
-      continue;
-    }
-    let t1 = (axis.min - axis.origin) / axis.dir;
-    let t2 = (axis.max - axis.origin) / axis.dir;
+
+  if (Math.abs(dirX) < 1e-8) {
+    if (originX < rect.x || originX > rect.x + rect.w) return Infinity;
+  } else {
+    let t1 = (rect.x - originX) / dirX;
+    let t2 = (rect.x + rect.w - originX) / dirX;
     if (t1 > t2) [t1, t2] = [t2, t1];
     near = Math.max(near, t1);
     far = Math.min(far, t2);
     if (near > far + 1e-8) return Infinity;
   }
+
+  if (Math.abs(dirY) < 1e-8) {
+    if (originY < rect.y || originY > rect.y + rect.h) return Infinity;
+  } else {
+    let t1 = (rect.y - originY) / dirY;
+    let t2 = (rect.y + rect.h - originY) / dirY;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    near = Math.max(near, t1);
+    far = Math.min(far, t2);
+    if (near > far + 1e-8) return Infinity;
+  }
+
   if (far <= 1e-6) return Infinity;
   return near > 1e-6 ? near : far;
 }
@@ -529,7 +558,7 @@ function drawVision() {
   const fog = Math.max(0, Math.min(1, VISION.fog));
   const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
-  const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
+  const opaque = getOpaqueObstacles();
   const view = { x: 0, y: 0, w: width, h: height };
 
   ctx.fillStyle = "#000";
@@ -545,11 +574,10 @@ function drawVision() {
   addCorner(view.x + view.w, view.y);
   addCorner(view.x + view.w, view.y + view.h);
   addCorner(view.x, view.y + view.h);
-  for (const o of opaque) {
-    addCorner(o.x, o.y);
-    addCorner(o.x + o.w, o.y);
-    addCorner(o.x + o.w, o.y + o.h);
-    addCorner(o.x, o.y + o.h);
+  for (const obstacle of opaque) {
+    for (const corner of obstacleVisionCorners.get(obstacle)) {
+      addCorner(corner.x, corner.y);
+    }
   }
   angles.sort((a, b) => a - b);
 
@@ -577,12 +605,7 @@ function drawVision() {
     let nearestCorner = null;
     let nearestCornerError = 0.75;
     for (const wall of opaque) {
-      for (const corner of [
-        { x: wall.x, y: wall.y },
-        { x: wall.x + wall.w, y: wall.y },
-        { x: wall.x + wall.w, y: wall.y + wall.h },
-        { x: wall.x, y: wall.y + wall.h }
-      ]) {
+      for (const corner of obstacleVisionCorners.get(wall)) {
         const error = Math.hypot(hitX - corner.x, hitY - corner.y);
         if (error < nearestCornerError) {
           nearestCorner = corner;
@@ -760,9 +783,17 @@ function updateScene() {
     updateScene.lastQuest = questKey;
     updateQuestUI();
   }
-  const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
-    .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
-    .sort((a, b) => a.distance - b.distance)[0] || null;
+  let nearest = null;
+  let nearestDistance = Infinity;
+  const playerCenterY = state.y + PLAYER.height / 2;
+  for (const object of objects) {
+    if (object.id === "test_secret_tide_echo" && state.secretFound) continue;
+    const distance = Math.hypot(object.x - state.x, object.y - playerCenterY);
+    if (distance <= object.radius && distance < nearestDistance) {
+      nearest = object;
+      nearestDistance = distance;
+    }
+  }
   state.target = nearest;
   interactButton.disabled = !nearest || state.dialogueOpen;
 interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
