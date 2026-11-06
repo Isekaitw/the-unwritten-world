@@ -806,17 +806,12 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 #game-screen .death-card h3 {
   margin: 0 0 14px;
   color: #f0e5c9;
-  font-size: clamp(2.8rem, 9vw, 5.5rem);
+  font-size: clamp(2rem, 8vw, 5rem);
   font-weight: 800;
   letter-spacing: .04em;
   line-height: 1.05;
+  white-space: nowrap;
   text-shadow: 0 5px 28px rgba(0,0,0,.72);
-}
-#game-screen .death-card p:not(.eyebrow) {
-  margin: 0 0 28px;
-  color: #e1e8e2;
-  line-height: 1.7;
-  text-shadow: 0 2px 12px rgba(0,0,0,.9);
 }
 #game-screen .death-actions {
   display: flex;
