@@ -92,9 +92,9 @@
   background:repeating-linear-gradient(90deg,#8c8165 0 10px,#c0b48b 11px 14px,#655f4e 15px 20px);
   /* Keep the gate glow inside the gate; the vision overlay masks outer CSS shadows. */
   box-shadow:inset 0 0 12px rgba(236,212,146,.22);
-  transition:opacity .25s,transform .25s;
+  transition:none;
 }
-.gate.is-open { opacity:.16; transform:translateY(-24px); pointer-events:none; }
+.gate.is-open { visibility:hidden; pointer-events:none; }
 .player {
   position:absolute;z-index:6;width:30px;height:42px;border-radius:45% 45% 35% 35%;
   background:linear-gradient(145deg,#e1f4dd,#8bbeb2 70%,#507b7c);
@@ -806,3 +806,66 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 #game-screen .death-card h3 { margin: 8px 0 12px; color: #f0e5c9; font-size: clamp(1.4rem, 4vw, 2rem); }
 #game-screen .death-card p:not(.eyebrow) { color: #bdc9c1; line-height: 1.7; }
 #game-screen .death-card .primary-button { margin-top: 12px; }
+
+
+/* Test-only hazard zone and compact health HUD. */
+#game-screen .damage-zone {
+  position: absolute;
+  z-index: 2;
+  left: 1040px;
+  top: 410px;
+  width: 150px;
+  height: 110px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 2px dashed rgba(255, 112, 102, .9);
+  border-radius: 10px;
+  background: repeating-linear-gradient(135deg, rgba(130, 30, 35, .68) 0 10px, rgba(70, 20, 27, .76) 10px 20px);
+  color: #fff0e8;
+  text-align: center;
+  text-shadow: 0 1px 4px #26090b;
+  pointer-events: none;
+}
+#game-screen .damage-zone span { font-weight: 800; letter-spacing: .12em; }
+#game-screen .damage-zone small { font-size: 11px; }
+#game-screen .health-hud {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 3px 9px;
+  min-width: 150px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 190, 177, .36);
+  border-radius: 8px;
+  background: rgba(5, 17, 24, .82);
+  color: #ffe8df;
+  font-size: 12px;
+}
+#game-screen .health-hud strong { justify-self: end; font-variant-numeric: tabular-nums; }
+#game-screen .health-hud-track {
+  grid-column: 1 / -1;
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, .6);
+}
+#game-screen .health-hud-track span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #c94f4f, #f08b72);
+}
+#game-screen .checkpoint-object.is-near {
+  border-color: #fff4bb;
+  box-shadow: 0 0 0 7px rgba(255, 239, 174, .18), 0 0 32px rgba(255, 239, 174, .82);
+  filter: brightness(1.35);
+}
+#game-screen .checkpoint-object.is-active.is-near {
+  box-shadow: 0 0 0 7px rgba(255, 239, 174, .24), 0 0 38px rgba(255, 216, 117, .9);
+}
