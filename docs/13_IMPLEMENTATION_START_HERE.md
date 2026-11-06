@@ -4,7 +4,7 @@
 
 ## 1. 每次程式修改前：必做比對
 1. 讀取 `AGENTS.md`、`docs/12_SPEC_AUTHORITY_AND_STATUS.md`、`docs/00_PROJECT_MASTER.md`、`docs/09_CONTENT_ROADMAP.md`、`docs/11_CURRENT_GAMEPLAY_DECISIONS.md`。
-2. 依改動範圍讀取對應規格：玩法讀 `03_GAMEPLAY_SPEC.md)；世界／劇情／角色讀專題聖經；場景讀 `05_SCENE_CATALOG.md`；資料讀 `06_JSON_SCHEMA.md`；美術讀 `07_ART_BIBLE.md`；技術讀 `08_TECH_SPEC.md`；測試讀 `tests/manual-test-checklist.md`。
+2. 依改動範圍讀取對應規格：玩法讀 `03_GAMEPLAY_SPEC.md`；世界／劇情／角色讀專題聖經；場景讀 `05_SCENE_CATALOG.md`；資料讀 `06_JSON_SCHEMA.md`；美術讀 `07_ART_BIBLE.md`；技術讀 `08_TECH_SPEC.md`；測試讀 `tests/manual-test-checklist.md`。
 3. 讀取目前 `main` 的實際 commit、相關程式、資料與測試；不得依賴過期路徑或舊分支快照。
 4. 變更前明確列出：需求目的、對應企劃章節、現有實作、預期差異、可能衝突、受影響文件與驗收方式。
 5. 若需求與已確認方向或正史衝突，先停止衝突部分並說明，不可自行改寫企劃或默默照做。可逆技術細節可採最小方案並保留既有行為。
