@@ -1,3 +1,24 @@
+<!-- IMPLEMENTATION ALIGNMENT ADDENDUM 2026-11-06 -->
+
+# 現行技術架構與程式路徑補遺（2026-11-06）
+
+## 實際入口與檔案
+- `index.html`
+- `css/main.css`
+- `css/mvp.css`
+- `js/mvp.js`
+
+舊段落中以 `js/main.js` 作為現行程式入口的指示已過期；不得假設該檔案是目前入口。
+
+## 目前可確認的架構
+- UI 與主要場景由 HTML/CSS 呈現，世界容器使用相機位移。
+- 視野遮罩使用 Canvas（`#vision-canvas`），並以世界座標與世界容器同步。
+- `js/mvp.js` 包含移動、碰撞、相機、互動、視野、背包、角色參數、任務 UI、氧氣及 localStorage 進度保存／讀取等原型邏輯。
+- 測試區世界尺寸為 1600×1000；水平視野 1200 世界單位，垂直視野依視窗高度調整。
+- GitHub Pages：https://isekaitw.github.io/the-unwritten-world/
+
+目前 DOM/CSS + Canvas 混合呈現是現況，不等於最終架構不可調整。正式場景載入器、正式 JSON 驗證、完整資料與存檔版本遷移仍須按原企劃建立。後續重構應小幅、可回退，先確認相容性與測試結果，不得只為抽象化而全面重寫。
+
 <!-- SPEC REVISION ADDENDUM 2026-10-22: Incremental 2.5D technical direction; no rewrite mandated. -->
 
 # 規格修訂補遺（2026-10-22）—角色、鏡頭與觸控技術方案
