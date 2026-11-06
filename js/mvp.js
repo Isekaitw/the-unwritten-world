@@ -18,7 +18,9 @@ const inventoryCatalog = [
 ];
 let inventoryFilter = "equipment";
 let selectedInventoryItem = null;
-const SAVE_KEY = "unwritten-world-exploration-save-v1";
+const SAVE_KEY = "unwritten-world-exploration-save-v2";
+const CHECKPOINT_KEY = "unwritten-world-exploration-checkpoint-v1";
+const SAVE_INTERVAL_MS = 1000;
 const viewport = $("#scene");
 const world = $("#world");
 const playerEl = $("#player");
@@ -27,6 +29,9 @@ const visionContext = visionCanvas.getContext("2d");
 const statusMessage = $("#status-message");
 const statusChip = $("#status-chip");
 const interactButton = $("#interact-button");
+const checkpointEl = $("#checkpoint");
+const deathPanel = $("#death-panel");
+const respawnButton = $("#respawn-button");
 const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
@@ -57,6 +62,8 @@ const state = {
   dialogueOpen: false,
   target: null,
   lastTime: 0,
+  lastSaveTime: 0,
+  checkpointActive: false,
   frame: 0,
   questOpen: true,
   inventoryOpen: false,
@@ -79,7 +86,8 @@ const obstacles = [
 const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 72, title: "潮痕標記" },
   { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 76, title: "微弱回聲" },
-  { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 82, title: "測量機關" }
+  { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 82, title: "測量機關" },
+  { id: "test_checkpoint", el: checkpointEl, x: 180, y: 300, radius: 82, title: "存檔點" }
 ];
 const keyMap = {
   ArrowUp: "up", w: "up", W: "up",
@@ -247,6 +255,7 @@ function showTitle() {
   gameScreen.classList.remove("immersive-fallback");
   if (document.fullscreenElement === gameScreen && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   dialoguePanel.hidden = true;
+  deathPanel.hidden = true;
   state.dialogueOpen = false;
   startButton.focus();
 }
@@ -255,7 +264,8 @@ function startExploration() {
   const saved = loadProgress();
   state.x = saved ? saved.x : 180; state.y = saved ? saved.y : 180;
   state.diving = false;
-  state.dead = false;
+  state.dead = Boolean(saved?.dead);
+  state.checkpointActive = Boolean(saved?.checkpointActive);
   state.gateOpen = saved ? Boolean(saved.gateOpen) : false;
   state.secretFound = saved ? Boolean(saved.secretFound) : false;
   state.markerInspected = saved ? Boolean(saved.markerInspected) : false;
@@ -272,6 +282,7 @@ function startExploration() {
   $("#secret").classList.toggle("is-found", state.secretFound);
   $("#switch").classList.toggle("is-active", state.gateOpen);
   statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關未啟動";
+  checkpointEl.classList.toggle("is-active", state.checkpointActive);
   titleScreen.hidden = true;
   gameScreen.hidden = false;
   dialoguePanel.hidden = true;
@@ -280,9 +291,12 @@ function startExploration() {
   inventoryPanel.hidden = !state.inventoryOpen;
   questToggle.setAttribute("aria-expanded", String(state.questOpen));
   inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
-  setStatus(saved ? "已載入本機儲存的進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
+  setStatus(saved ? "已載入本機進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
   updateScene();
-  state.frame = requestAnimationFrame(tick);
+  deathPanel.hidden = !state.dead;
+  if (state.dead) { setStatus("角色已死亡，請從最近啟動的存檔點復活。"); }
+  else state.frame = requestAnimationFrame(tick);
+  startButton.textContent = saved ? "繼續探索 ↗" : "開始探索 ↗";
 }
 function stopInput() {
   state.keys.clear();
@@ -602,6 +616,7 @@ function updateScene() {
   }
   if (state.gateOpen && !state.gateCrossed && state.x > 775 && state.x < 925 && state.y + PLAYER.height < 600) {
     state.gateCrossed = true;
+    saveProgress();
   }
   const questKey = `${state.markerInspected}|${state.gateOpen}|${state.gateCrossed}|${state.secretFound}`;
   if (questKey !== updateScene.lastQuest) {
@@ -613,7 +628,7 @@ function updateScene() {
     .sort((a, b) => a.distance - b.distance)[0] || null;
   state.target = nearest;
   interactButton.disabled = !nearest || state.dialogueOpen;
-  interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
+interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
 function handlePlayerDeath() {
@@ -624,7 +639,9 @@ function handlePlayerDeath() {
   playerStats.health = 0;
   renderPlayerStats();
   saveProgress();
-  // TODO: Add the death screen, death consequences, and restart flow here.
+  deathPanel.hidden = false;
+  setStatus("角色已死亡。請從最近啟動的存檔點復活。");
+  saveProgress();
 }
 
 function tick(timestamp) {
@@ -649,10 +666,15 @@ function tick(timestamp) {
     playerStats.oxygen = Math.min(100, playerStats.oxygen + (100 / 30) * elapsedSeconds);
     updateOxygenIndicator();
   }
+  if (timestamp - state.lastSaveTime >= SAVE_INTERVAL_MS) {
+    saveProgress();
+    state.lastSaveTime = timestamp;
+  }
   state.frame = requestAnimationFrame(tick);
 }
 function interact() {
   if (!state.started) return;
+  if (state.dead) return;
   if (state.dialogueOpen) { closeDialogue(); saveProgress(); return; }
   if (!state.target) return;
   const target = state.target;
@@ -670,17 +692,24 @@ function interact() {
       setStatus("已發現一次性秘密：微弱回聲。");
     }
   } else if (target.id === "test_puzzle_measurement_device") {
-    if (!state.gateOpen) {
-      state.gateOpen = true;
+    state.gateOpen = !state.gateOpen;
+    gate.classList.toggle("is-open", state.gateOpen);
+    $("#switch").classList.toggle("is-active", state.gateOpen);
+    statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關已關閉 · 通路封閉";
+    if (state.gateOpen) {
       addInventoryItem("device_record");
-      gate.classList.add("is-open");
-      $("#switch").classList.add("is-active");
-      statusChip.lastChild.textContent = " 機關已啟動 · 通路開啟";
-      openDialogue("機關已啟動", "測量裝置已啟動，封閉通路隨之開啟。");
-      setStatus("通路已開啟；障礙外觀與碰撞狀態均已更新。");
+      openDialogue("通路已開啟", "測量裝置已啟動，封閉通路解除。再次操作即可關閉通路。");
+      setStatus("通路已開啟。再次操作測量機關即可關閉。");
     } else {
-      openDialogue("測量機關", "機關已經啟動，通路保持開啟。");
+      openDialogue("通路已關閉", "測量裝置已關閉，通路恢復封閉。");
+      setStatus("通路已關閉；障礙碰撞已恢復。");
     }
+  } else if (target.id === "test_checkpoint") {
+    state.checkpointActive = true;
+    saveCheckpoint();
+    checkpointEl.classList.add("is-active");
+    openDialogue("存檔點已啟動", "此處已設為最新復活位置。死亡後會從這個存檔點恢復。");
+    setStatus("存檔點已啟動；死亡後將從此處復活。");
   }
   updateScene();
   saveProgress();
@@ -700,6 +729,7 @@ document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
   });
 });
 startButton.addEventListener("click", startExploration);
+respawnButton.addEventListener("click", respawnAtCheckpoint);
 backButton.addEventListener("click", showTitle);
 let panelStack = 100;
 // Register every full-screen page here so opening one automatically closes
@@ -761,6 +791,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
   if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
   if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
+  if (event.key === "Escape" && state.questOpen) { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   const direction = keyMap[event.key];
   if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
 });
@@ -786,19 +817,119 @@ document.querySelectorAll(".direction").forEach((button) => {
   button.addEventListener("lostpointercapture", release);
 });
 window.addEventListener("blur", () => { stopInput(); saveProgress(); });
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopInput(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { stopInput(); saveProgress(); } });
+window.addEventListener("pagehide", () => { stopInput(); saveProgress(); });
+respawnButton.addEventListener("click", respawnAtCheckpoint);
 window.addEventListener("resize", () => { if (state.started) updateScene(); });
 
+function createSaveSnapshot() {
+  return {
+    version: 2, x: state.x, y: state.y,
+    gateOpen: state.gateOpen, secretFound: state.secretFound,
+    markerInspected: state.markerInspected, gateCrossed: state.gateCrossed,
+    checkpointActive: state.checkpointActive,
+    questOpen: state.questOpen, inventoryOpen: state.inventoryOpen,
+    inventoryCapacity, inventory: [...state.inventory],
+    stats: { ...playerStats }, dead: state.dead
+  };
+}
 function saveProgress() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ x: state.x, y: state.y, gateOpen: state.gateOpen, secretFound: state.secretFound, markerInspected: state.markerInspected, gateCrossed: state.gateCrossed, questOpen: state.questOpen, inventoryOpen: state.inventoryOpen, inventoryCapacity, inventory: state.inventory, stats: playerStats })); } catch (error) { console.warn("Unable to save exploration progress:", error); }
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(createSaveSnapshot()));
+    return true;
+  } catch (error) {
+    console.warn("Unable to save exploration progress:", error);
+    if (statusMessage) statusMessage.textContent = "本機儲存失敗，請確認瀏覽器未限制網站儲存空間。";
+    return false;
+  }
+}
+function applySnapshot(data) {
+  if (!data || !Number.isFinite(data.x) || !Number.isFinite(data.y)) return false;
+  state.x = Math.max(PLAYER.width / 2, Math.min(WORLD.width - PLAYER.width / 2, data.x));
+  state.y = Math.max(0, Math.min(WORLD.height - PLAYER.height, data.y));
+  state.gateOpen = Boolean(data.gateOpen);
+  state.secretFound = Boolean(data.secretFound);
+  state.markerInspected = Boolean(data.markerInspected);
+  state.gateCrossed = Boolean(data.gateCrossed);
+  state.inventory = Array.isArray(data.inventory)
+    ? data.inventory.filter((id, index, list) => inventoryCatalog.some((item) => item.id === id) && list.indexOf(id) === index)
+    : [];
+  inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20,
+    Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20,
+    state.inventory.length));
+  if (data.stats && typeof data.stats === "object") {
+    for (const key of Object.keys(playerStats)) {
+      const value = Number(data.stats[key]);
+      if (Number.isFinite(value)) playerStats[key] = Math.max(0, Math.min(100, value));
+    }
+  }
+  return true;
+}
+function saveCheckpoint() {
+  try {
+    const snapshot = createSaveSnapshot();
+    snapshot.dead = false;
+    snapshot.checkpointActive = true;
+    localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(snapshot));
+    return true;
+  } catch (error) {
+    console.warn("Unable to save checkpoint:", error);
+    setStatus("存檔點寫入失敗，請確認瀏覽器允許本機儲存。");
+    return false;
+  }
+}
+function loadCheckpoint() {
+  try {
+    const raw = localStorage.getItem(CHECKPOINT_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (applySnapshot(data)) return data;
+    }
+  } catch (error) {
+    console.warn("Unable to load checkpoint:", error);
+  }
+  // A new game always has a safe fallback checkpoint at the starting area.
+  return { x: 180, y: 180, gateOpen: false, secretFound: false, markerInspected: false,
+    gateCrossed: false, inventory: [], inventoryCapacity: 20, stats: { ...playerStats } };
+}
+function respawnAtCheckpoint() {
+  const checkpoint = loadCheckpoint();
+  applySnapshot(checkpoint);
+  playerStats.health = 100;
+  playerStats.oxygen = 100;
+  state.dead = false;
+  state.diving = false;
+  state.dialogueOpen = false;
+  state.keys.clear();
+  state.pointers.clear();
+  state.lastTime = 0;
+  deathPanel.hidden = true;
+  dialoguePanel.hidden = true;
+  gate.classList.toggle("is-open", state.gateOpen);
+  $("#secret").classList.toggle("is-found", state.secretFound);
+  $("#switch").classList.toggle("is-active", state.gateOpen);
+  checkpointEl.classList.toggle("is-active", Boolean(checkpoint.checkpointActive));
+  statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關未啟動";
+  renderInventory();
+  renderPlayerStats();
+  updateQuestUI();
+  updateScene();
+  setStatus("已從最近的存檔點復活。生命與氧氣已恢復。");
+  saveProgress();
+  state.frame = requestAnimationFrame(tick);
 }
 function loadProgress() {
-  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return null; const data = JSON.parse(raw); if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return null; state.questOpen = data.questOpen !== false; state.inventoryOpen = Boolean(data.inventoryOpen); inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20, Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20));
-    if (data.stats && typeof data.stats === "object") {
-      for (const key of Object.keys(playerStats)) {
-        const value = Number(data.stats[key]);
-        if (Number.isFinite(value)) playerStats[key] = Math.max(0, Math.min(100, Math.round(value)));
-      }
-    }
-    return data; } catch (error) { return null; }
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!applySnapshot(data)) return null;
+    state.questOpen = data.questOpen !== false;
+    state.inventoryOpen = Boolean(data.inventoryOpen);
+    state.checkpointActive = Boolean(data.checkpointActive);
+    return data;
+  } catch (error) {
+    console.warn("Unable to load exploration progress:", error);
+    return null;
+  }
 }
