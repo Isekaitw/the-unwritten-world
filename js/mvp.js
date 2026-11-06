@@ -638,7 +638,6 @@ function handlePlayerDeath() {
   stopInput();
   playerStats.health = 0;
   renderPlayerStats();
-  saveProgress();
   deathPanel.hidden = false;
   setStatus("角色已死亡。請從最近啟動的存檔點復活。");
   saveProgress();
@@ -932,4 +931,10 @@ function loadProgress() {
     console.warn("Unable to load exploration progress:", error);
     return null;
   }
+}
+
+try {
+  if (localStorage.getItem(SAVE_KEY)) startButton.textContent = "繼續探索 ↗";
+} catch (error) {
+  console.warn("Unable to inspect local save:", error);
 }
