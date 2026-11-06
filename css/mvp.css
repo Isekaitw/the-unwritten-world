@@ -795,17 +795,43 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 #game-screen .death-panel[hidden] { display: none !important; }
 #game-screen .death-card {
   width: min(440px, 100%);
-  padding: clamp(24px, 5vw, 40px);
-  border: 1px solid rgba(210, 190, 135, .42);
-  border-radius: 16px;
-  background: linear-gradient(155deg, rgba(27, 42, 42, .98), rgba(7, 17, 22, .99));
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #e8eee9;
   text-align: center;
-  box-shadow: 0 24px 70px rgba(0,0,0,.5);
+  box-shadow: none;
 }
-#game-screen .death-card h3 { margin: 8px 0 12px; color: #f0e5c9; font-size: clamp(1.4rem, 4vw, 2rem); }
-#game-screen .death-card p:not(.eyebrow) { color: #bdc9c1; line-height: 1.7; }
-#game-screen .death-card .primary-button { margin-top: 12px; }
+#game-screen .death-card h3 {
+  margin: 0 0 14px;
+  color: #f0e5c9;
+  font-size: clamp(2.8rem, 9vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 1.05;
+  text-shadow: 0 5px 28px rgba(0,0,0,.72);
+}
+#game-screen .death-card p:not(.eyebrow) {
+  margin: 0 0 28px;
+  color: #e1e8e2;
+  line-height: 1.7;
+  text-shadow: 0 2px 12px rgba(0,0,0,.9);
+}
+#game-screen .death-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+#game-screen .death-actions .primary-button,
+#game-screen .death-actions .quiet-button { min-width: 132px; margin: 0; }
+#game-screen .death-actions .quiet-button {
+  border: 1px solid rgba(232,238,233,.52);
+  background: rgba(7,17,22,.36);
+  color: #f0e5c9;
+}
 
 
 /* Test-only hazard zone and compact health HUD. */
