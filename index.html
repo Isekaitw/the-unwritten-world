@@ -86,6 +86,7 @@
       <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title">
         <header class="inventory-heading">
           <div><h3 id="inventory-title">背包</h3></div>
+          <button id="inventory-close" class="mobile-panel-close" type="button" aria-label="關閉背包">關閉 ×</button>
         </header>
         <nav class="inventory-filters" aria-label="物品分類">
           <button class="inventory-filter is-selected" type="button" data-inventory-filter="equipment" aria-pressed="true">裝備</button>
@@ -115,6 +116,7 @@
             <h3 id="quest-title">任務</h3>
           </div>
           <span id="quest-progress" class="quest-progress" aria-live="polite">0 / 3 完成</span>
+          <button id="quest-close" class="mobile-panel-close" type="button" aria-label="關閉任務">關閉 ×</button>
         </div>
         <div class="quest-tabs" role="tablist" aria-label="任務類型">
           <button class="quest-tab is-selected" type="button" role="tab" aria-selected="true" data-quest-tab="main">主線任務</button>
