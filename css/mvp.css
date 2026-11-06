@@ -913,3 +913,33 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   border: 0;
   border-radius: inherit;
 }
+
+
+/* Test-scene merchant, wallet and market prototype. */
+#game-screen .merchant-object { color:#f7e4b4; border-color:rgba(230,198,125,.78); background:linear-gradient(145deg,rgba(112,83,42,.94),rgba(37,45,39,.96)); box-shadow:0 0 22px rgba(230,190,105,.28),inset 0 1px 0 rgba(255,255,255,.16); font-weight:800; }
+#game-screen .merchant-object.is-near { border-color:#fff0bd; box-shadow:0 0 0 7px rgba(255,230,169,.2),0 0 34px rgba(255,213,126,.78); filter:brightness(1.22); }
+#game-screen .wallet-panel { position:fixed; z-index:2147483002; top:max(84px,calc(env(safe-area-inset-top) + 72px)); right:max(12px,env(safe-area-inset-right)); left:auto; bottom:auto; width:min(360px,calc(100vw - 24px)); max-height:min(62vh,520px); overflow:auto; }
+#game-screen .wallet-note { margin:0 0 18px; color:#aabbb2; font-size:.82rem; }
+#game-screen .wallet-history-title { margin:0 0 10px; color:#eadbb4; }
+#game-screen .wallet-history { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+#game-screen .wallet-history li { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid rgba(201,184,137,.16); border-radius:8px; background:rgba(3,12,16,.28); font-size:.82rem; }
+#game-screen .wallet-history strong { flex:0 0 auto; color:#e8d39d; font-variant-numeric:tabular-nums; }
+#game-screen .inventory-slot-quantity { color:#e5d19a; font-size:.72rem; font-variant-numeric:tabular-nums; }
+#game-screen:not([hidden]) .market-panel { z-index:2147483004 !important; max-width:900px; max-height:min(76vh,680px); padding:clamp(16px,3vw,28px); overflow-y:auto; }
+#game-screen:not([hidden]) .market-heading { display:flex; align-items:center; gap:12px; }
+#game-screen:not([hidden]) .market-heading h3 { flex:1; }
+#game-screen:not([hidden]) .market-heading .quiet-button { flex:0 0 auto; min-height:40px; }
+#game-screen .market-wallet-row { display:flex; justify-content:space-between; gap:12px; margin:0 0 18px; padding:11px 14px; border:1px solid rgba(201,184,137,.24); border-radius:9px; color:#c8d5ce; background:rgba(3,12,16,.36); }
+#game-screen .market-wallet-row strong { color:#f0d99f; font-variant-numeric:tabular-nums; }
+#game-screen .market-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+#game-screen .market-item-card { display:flex; flex-direction:column; align-items:flex-start; gap:9px; min-width:0; padding:16px; border:1px solid rgba(201,184,137,.25); border-radius:11px; background:linear-gradient(155deg,rgba(107,137,126,.12),rgba(4,14,18,.56)); }
+#game-screen .market-item-icon { display:grid; place-items:center; width:48px; height:48px; border:1px solid rgba(205,192,146,.32); border-radius:10px; color:#e4d2a2; background:rgba(172,185,151,.1); font-size:1.5rem; }
+#game-screen .market-item-card h4 { margin:0; color:#f0e5c9; font-size:1rem; }
+#game-screen .market-item-card p { flex:1; margin:0; color:#aebeb6; font-size:.78rem; line-height:1.55; }
+#game-screen .market-item-price { color:#e8d39d; font-variant-numeric:tabular-nums; }
+#game-screen .market-item-card small { color:#94a69d; }
+#game-screen .market-buy-button { width:100%; min-height:42px; margin-top:4px; }
+#game-screen .market-buy-button:disabled { opacity:.45; cursor:not-allowed; }
+#game-screen .dialogue-action { display:block; min-width:140px; margin:12px 0 0 auto; }
+#game-screen .dialogue-action[hidden] { display:none !important; }
+@media(max-width:680px) { #game-screen .market-grid { grid-template-columns:1fr; } #game-screen:not([hidden]) .market-panel { max-height:min(78vh,720px); } #game-screen .market-item-card { display:grid; grid-template-columns:48px 1fr; align-items:center; } #game-screen .market-item-icon { grid-row:span 3; } #game-screen .market-item-card p,#game-screen .market-item-price,#game-screen .market-item-card small,#game-screen .market-buy-button { grid-column:2; } }
