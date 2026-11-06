@@ -8,13 +8,35 @@ const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryGrid = $("#inventory-grid");
+const walletToggle = $("#wallet-toggle");
+const walletPanel = $("#wallet-panel");
+const walletBalanceValue = $("#wallet-balance");
+const walletHistory = $("#wallet-history");
+const marketPanel = $("#market-panel");
+const marketGrid = $("#market-grid");
+const marketBalanceValue = $("#market-balance");
+const marketCloseButton = $("#market-close");
+const dialogueActionButton = $("#dialogue-action");
 const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, fatigue: 100, oxygen: 100 };
 let inventoryCapacity = 20;
+let inventoryQuantities = {};
+let walletBalance = 100;
+let walletTransactions = [];
+let dialogueAction = null;
+const CURRENCY_LABEL = "錢幣";
 const MAX_INVENTORY_CAPACITY = 40;
 const inventoryCatalog = [
   { id: "tide_imprint", category: "important", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
   { id: "echo_fragment", category: "important", icon: "✧", name: "微弱回聲", subtitle: "隱藏發現", description: "從遺跡角落捕捉到的一段微弱回響。內容尚不完整，暫時無法判讀。", source: "發現隱藏回聲" },
-  { id: "device_record", category: "important", icon: "◎", name: "機關記錄", subtitle: "裝置資料", description: "測量裝置啟動時留下的狀態記錄。通路已解除封鎖，這份記錄可供之後查閱。", source: "啟動測量機關" }
+  { id: "device_record", category: "important", icon: "◎", name: "機關記錄", subtitle: "裝置資料", description: "測量裝置啟動時留下的狀態記錄。通路已解除封鎖，這份記錄可供之後查閱。", source: "啟動測量機關" },
+  { id: "market_ration", category: "food", icon: "▣", name: "旅行乾糧", subtitle: "市集商品", description: "方便攜帶的乾糧。此商品目前用於測試購買、貨幣扣款與背包堆疊。", source: "向測試商人購買" },
+  { id: "market_water", category: "food", icon: "◉", name: "清水", subtitle: "市集商品", description: "裝在小水瓶中的清水。此商品目前用於測試市集交易流程。", source: "向測試商人購買" },
+  { id: "market_relic", category: "material", icon: "◆", name: "遺跡礦石", subtitle: "市集商品", description: "帶有微弱光澤的礦石。此商品目前用於測試材料類商品的購買與堆疊。", source: "向測試商人購買" }
+];
+const marketCatalog = [
+  { itemId: "market_ration", price: 15 },
+  { itemId: "market_water", price: 10 },
+  { itemId: "market_relic", price: 25 }
 ];
 let inventoryFilter = "equipment";
 let selectedInventoryItem = null;
@@ -70,6 +92,8 @@ const state = {
   frame: 0,
   questOpen: true,
   inventoryOpen: false,
+  walletOpen: false,
+  marketOpen: false,
   diving: false,
   dead: false,
   damageZoneContact: false,
@@ -95,7 +119,8 @@ const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 72, title: "潮痕標記" },
   { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 76, title: "微弱回聲" },
   { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 82, title: "測量機關" },
-  { id: "test_checkpoint", el: checkpointEl, x: 180, y: 300, radius: 82, title: "存檔點" }
+  { id: "test_checkpoint", el: checkpointEl, x: 180, y: 300, radius: 82, title: "存檔點" },
+  { id: "test_merchant_market", el: $("#merchant"), x: 480, y: 720, radius: 92, title: "商人" }
 ];
 const keyMap = {
   ArrowUp: "up", w: "up", W: "up",
@@ -108,16 +133,21 @@ function setStatus(message) {
   statusMessage.textContent = message;
 }
 
-function addInventoryItem(id) {
-  if (state.inventory.includes(id)) return;
-  if (state.inventory.length >= inventoryCapacity) {
+function addInventoryItem(id, quantity = 1) {
+  const item = inventoryCatalog.find((entry) => entry.id === id);
+  if (!item) return false;
+  const amount = Math.max(1, Math.floor(Number(quantity) || 1));
+  const alreadyOwned = state.inventory.includes(id);
+  if (!alreadyOwned && state.inventory.length >= inventoryCapacity) {
     setStatus("背包已滿。需要先擴充背包空間，才能收納更多物品。");
-    return;
+    return false;
   }
-  state.inventory.push(id);
+  if (!alreadyOwned) state.inventory.push(id);
+  inventoryQuantities[id] = (inventoryQuantities[id] || 0) + amount;
   renderInventory();
   saveProgress();
-  setStatus(`已放入背包：${inventoryCatalog.find((item) => item.id === id)?.name || "新物件"}。`);
+  setStatus(`已放入背包：${item.name} ×${inventoryQuantities[id]}。`);
+  return true;
 }
 
 // Story events can call this when a capacity upgrade is earned.
@@ -201,7 +231,10 @@ function renderInventory() {
       const name = document.createElement("span");
       name.className = "inventory-slot-name";
       name.textContent = item.name;
-      slot.append(icon, name);
+      const quantity = document.createElement("span");
+      quantity.className = "inventory-slot-quantity";
+      quantity.textContent = `×${inventoryQuantities[item.id] || 1}`;
+      slot.append(icon, name, quantity);
     } else {
       slot.className = "inventory-slot is-empty";
       slot.setAttribute("aria-hidden", "true");
@@ -242,15 +275,70 @@ function updateQuestUI() {
   $("#quest-secret").classList.toggle("is-complete", state.secretFound);
   $("#quest-secret-status").textContent = state.secretFound ? "已發現" : "未發現";
 }
+function updateWalletUI() {
+  const balanceText = walletBalance + ' ' + CURRENCY_LABEL;
+  if (walletBalanceValue) walletBalanceValue.textContent = balanceText;
+  if (marketBalanceValue) marketBalanceValue.textContent = balanceText;
+  if (walletToggle) walletToggle.textContent = '錢包（' + walletBalance + '）';
+  if (!walletHistory) return;
+  walletHistory.replaceChildren();
+  const entries = walletTransactions.slice(-8).reverse();
+  if (!entries.length) { const empty = document.createElement('li'); empty.textContent = '尚無交易紀錄。'; walletHistory.append(empty); return; }
+  entries.forEach((entry) => {
+    const row = document.createElement('li'); const label = document.createElement('span'); label.textContent = entry.label;
+    const amount = document.createElement('strong'); amount.textContent = (entry.amount < 0 ? '−' : '+') + Math.abs(entry.amount) + ' ' + CURRENCY_LABEL;
+    row.append(label, amount); walletHistory.append(row);
+  });
+}
+function renderMarket() {
+  if (!marketGrid) return; updateWalletUI(); marketGrid.replaceChildren();
+  marketCatalog.forEach((product) => {
+    const item = inventoryCatalog.find((entry) => entry.id === product.itemId); if (!item) return;
+    const card = document.createElement('article'); card.className = 'market-item-card';
+    const icon = document.createElement('span'); icon.className = 'market-item-icon'; icon.textContent = item.icon;
+    const name = document.createElement('h4'); name.textContent = item.name;
+    const description = document.createElement('p'); description.textContent = item.description;
+    const price = document.createElement('strong'); price.className = 'market-item-price'; price.textContent = product.price + ' ' + CURRENCY_LABEL;
+    const owned = document.createElement('small'); owned.textContent = '持有：' + (inventoryQuantities[item.id] || 0);
+    const buy = document.createElement('button'); buy.type = 'button'; buy.className = 'primary-button market-buy-button'; buy.textContent = '購買';
+    buy.disabled = walletBalance < product.price || (!state.inventory.includes(item.id) && state.inventory.length >= inventoryCapacity);
+    buy.addEventListener('click', () => purchaseMarketItem(item.id));
+    card.append(icon, name, description, price, owned, buy); marketGrid.append(card);
+  });
+}
+function openMarketPanel() {
+  if (!state.started || state.dead) return; stopInput();
+  overlayPanels.forEach((entry) => { state[entry.stateKey] = false; entry.panel.hidden = true; entry.panel.removeAttribute('aria-modal'); entry.panel.removeAttribute('role'); entry.toggle.setAttribute('aria-expanded', 'false'); });
+  state.marketOpen = true; state.walletOpen = false; marketPanel.hidden = false;
+  marketPanel.setAttribute('role', 'dialog'); marketPanel.setAttribute('aria-modal', 'true');
+  renderMarket(); saveProgress(); marketCloseButton.focus();
+}
+function closeMarketPanel() {
+  if (!state.marketOpen) return; state.marketOpen = false; marketPanel.hidden = true;
+  marketPanel.removeAttribute('role'); marketPanel.removeAttribute('aria-modal');
+  if (state.started) setStatus('已離開市集。'); saveProgress();
+}
+function purchaseMarketItem(itemId) {
+  const product = marketCatalog.find((entry) => entry.itemId === itemId); const item = inventoryCatalog.find((entry) => entry.id === itemId);
+  if (!product || !item || !state.marketOpen) return;
+  if (walletBalance < product.price) { setStatus('錢幣不足，無法購買這項商品。'); return; }
+  if (!addInventoryItem(itemId, 1)) { renderMarket(); return; }
+  walletBalance -= product.price;
+  walletTransactions.push({ label: '購買 ' + item.name, amount: -product.price, balance: walletBalance, timestamp: Date.now() });
+  walletTransactions = walletTransactions.slice(-20); updateWalletUI(); renderMarket(); saveProgress();
+  setStatus('已購買' + item.name + '，支付 ' + product.price + ' ' + CURRENCY_LABEL + '。');
+}
 function openDialogue(title, message) {
-  state.dialogueOpen = true;
-  dialogueTitle.textContent = title;
-  dialogueText.textContent = message;
-  dialoguePanel.hidden = false;
-  dialoguePanel.focus();
+  state.dialogueOpen = true; dialogueAction = null; dialogueActionButton.hidden = true;
+  dialogueTitle.textContent = title; dialogueText.textContent = message;
+  dialoguePanel.hidden = false; dialoguePanel.focus();
+}
+function openMerchantDialogue() {
+  openDialogue("商人", "你好，請問今天要買什麼呢？");
+  dialogueAction = () => openMarketPanel(); dialogueActionButton.textContent = "前往市集"; dialogueActionButton.hidden = false;
 }
 function closeDialogue() {
-  state.dialogueOpen = false;
+  state.dialogueOpen = false; dialogueAction = null; dialogueActionButton.hidden = true;
   dialoguePanel.hidden = true;
   if (state.started) setStatus(state.target ? `靠近「${state.target.title}」了，按 F 互動。` : "使用方向控制探索；靠近標記、回聲或機關即可互動。");
 }
@@ -266,8 +354,13 @@ function showTitle() {
   gameScreen.classList.remove("immersive-fallback");
   if (document.fullscreenElement === gameScreen && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   dialoguePanel.hidden = true;
+  dialogueActionButton.hidden = true;
+  marketPanel.hidden = true;
+  walletPanel.hidden = true;
   deathPanel.hidden = true;
   state.dialogueOpen = false;
+  state.marketOpen = false;
+  state.walletOpen = false;
   startButton.focus();
 }
 function startExploration() {
@@ -300,8 +393,13 @@ function startExploration() {
   state.dialogueOpen = false;
   questPanel.hidden = !state.questOpen;
   inventoryPanel.hidden = !state.inventoryOpen;
+  walletPanel.hidden = !state.walletOpen;
+  marketPanel.hidden = true;
+  state.marketOpen = false;
   questToggle.setAttribute("aria-expanded", String(state.questOpen));
   inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
+  walletToggle.setAttribute("aria-expanded", String(state.walletOpen));
+  updateWalletUI();
   setStatus(saved ? "已載入本機進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
   updateScene();
   deathPanel.hidden = !state.dead;
@@ -723,6 +821,9 @@ function interact() {
       openDialogue("通路已關閉", "測量裝置已關閉，通路恢復封閉。");
       setStatus("通路已關閉；障礙碰撞已恢復。");
     }
+  } else if (target.id === "test_merchant_market") {
+    openMerchantDialogue();
+    setStatus("商人正在等候你的選擇。");
   } else if (target.id === "test_checkpoint") {
     state.checkpointActive = true;
     saveCheckpoint();
@@ -756,13 +857,15 @@ let panelStack = 100;
 // every other page. Add future pages to this list and the same rule applies.
 const overlayPanels = [
   { panel: questPanel, toggle: questToggle, stateKey: "questOpen" },
-  { panel: inventoryPanel, toggle: inventoryToggle, stateKey: "inventoryOpen" }
+  { panel: inventoryPanel, toggle: inventoryToggle, stateKey: "inventoryOpen" },
+  { panel: walletPanel, toggle: walletToggle, stateKey: "walletOpen" }
 ];
 function toggleOverlayPanel(panel, toggle, stateKey) {
   const shouldOpen = !state[stateKey];
 
   if (shouldOpen) {
-    if (stateKey === "inventoryOpen") stopInput();
+    if (stateKey === "inventoryOpen" || stateKey === "walletOpen") stopInput();
+    if (state.marketOpen) closeMarketPanel();
     overlayPanels.forEach((item) => {
       if (item.stateKey === stateKey) return;
       state[item.stateKey] = false;
@@ -784,10 +887,14 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
     panel.removeAttribute("role");
   }
   toggle.setAttribute("aria-expanded", String(shouldOpen));
+  if (stateKey === "walletOpen" && shouldOpen) updateWalletUI();
   saveProgress();
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
+walletToggle.addEventListener("click", () => toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"));
+marketCloseButton.addEventListener("click", closeMarketPanel);
+dialogueActionButton.addEventListener("click", () => { const action = dialogueAction; closeDialogue(); if (typeof action === "function") action(); });
 document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     inventoryFilter = button.dataset.inventoryFilter;
@@ -809,11 +916,13 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "t" || event.key === "T") { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
+  if (event.key === "Escape" && state.marketOpen) { event.preventDefault(); closeMarketPanel(); return; }
   if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
+  if (event.key === "Escape" && state.walletOpen) { event.preventDefault(); toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"); return; }
   if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "Escape" && state.questOpen) { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   const direction = keyMap[event.key];
-  if (direction && state.started && !state.dialogueOpen) { event.preventDefault(); state.keys.add(direction); }
+  if (direction && state.started && !state.dialogueOpen && !state.marketOpen && !state.walletOpen) { event.preventDefault(); state.keys.add(direction); }
 });
 document.addEventListener("keyup", (event) => {
   const direction = keyMap[event.key];
@@ -849,7 +958,8 @@ function createSaveSnapshot() {
     markerInspected: state.markerInspected, gateCrossed: state.gateCrossed,
     checkpointActive: state.checkpointActive,
     questOpen: state.questOpen, inventoryOpen: state.inventoryOpen,
-    inventoryCapacity, inventory: [...state.inventory],
+    inventoryCapacity, inventory: [...state.inventory], inventoryQuantities: { ...inventoryQuantities },
+    walletBalance, walletTransactions: walletTransactions.slice(-20), walletOpen: state.walletOpen,
     stats: { ...playerStats }, dead: state.dead
   };
 }
@@ -874,9 +984,18 @@ function applySnapshot(data) {
   state.inventory = Array.isArray(data.inventory)
     ? data.inventory.filter((id, index, list) => inventoryCatalog.some((item) => item.id === id) && list.indexOf(id) === index)
     : [];
+  inventoryQuantities = {};
+  for (const id of state.inventory) {
+    const savedQuantity = Number(data.inventoryQuantities?.[id]);
+    inventoryQuantities[id] = Number.isSafeInteger(savedQuantity) && savedQuantity > 0 ? savedQuantity : 1;
+  }
   inventoryCapacity = Math.min(MAX_INVENTORY_CAPACITY, Math.max(20,
     Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20,
     state.inventory.length));
+  walletBalance = Number.isSafeInteger(data.walletBalance) && data.walletBalance >= 0 ? data.walletBalance : 100;
+  walletTransactions = Array.isArray(data.walletTransactions)
+    ? data.walletTransactions.slice(-20).filter((entry) => entry && typeof entry.label === "string" && Number.isFinite(entry.amount) && Number.isFinite(entry.balance))
+    : [];
   if (data.stats && typeof data.stats === "object") {
     for (const key of Object.keys(playerStats)) {
       const value = Number(data.stats[key]);
@@ -920,6 +1039,8 @@ function respawnAtCheckpoint() {
   state.dead = false;
   state.diving = false;
   state.dialogueOpen = false;
+  state.marketOpen = false;
+  marketPanel.hidden = true;
   state.keys.clear();
   state.pointers.clear();
   state.lastTime = 0;
@@ -932,6 +1053,8 @@ function respawnAtCheckpoint() {
   statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關未啟動";
   renderInventory();
   renderPlayerStats();
+  updateWalletUI();
+  walletPanel.hidden = !state.walletOpen;
   updateQuestUI();
   updateScene();
   setStatus("已從最近的存檔點復活。生命與氧氣已恢復。");
@@ -946,6 +1069,7 @@ function loadProgress() {
     if (!applySnapshot(data)) return null;
     state.questOpen = data.questOpen !== false;
     state.inventoryOpen = Boolean(data.inventoryOpen);
+    state.walletOpen = Boolean(data.walletOpen);
     state.checkpointActive = Boolean(data.checkpointActive);
     return data;
   } catch (error) {
