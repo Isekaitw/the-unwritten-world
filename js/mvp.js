@@ -7,9 +7,6 @@ const questToggle = $("#quest-toggle");
 const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
-const inventoryCloseButton = $("#inventory-close");
-const questCloseButton = $("#quest-close");
-const walletCloseButton = $("#wallet-close");
 const inventoryGrid = $("#inventory-grid");
 const walletToggle = $("#wallet-toggle");
 const walletPanel = $("#wallet-panel");
@@ -54,8 +51,6 @@ const visionContext = visionCanvas.getContext("2d");
 const statusMessage = $("#status-message");
 const statusChip = $("#status-chip");
 const interactButton = $("#interact-button");
-const mobileJoystick = $("#mobile-joystick");
-const mobileJoystickKnob = $("#mobile-joystick-knob");
 const checkpointEl = $("#checkpoint");
 const deathPanel = $("#death-panel");
 const respawnButton = $("#respawn-button");
@@ -64,7 +59,6 @@ const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
 const coordinates = $("#coordinates");
-const fpsCounter = $("#fps-counter");
 const oxygenIndicator = $("#oxygen-indicator");
 const oxygenBar = $("#oxygen-bar");
 const healthHudValue = $("#health-hud-value");
@@ -86,7 +80,6 @@ const state = {
   x: 180, y: 180,
   keys: new Set(),
   pointers: new Map(),
-  joystick: { x: 0, y: 0, pointerId: null },
   gateOpen: false,
   secretFound: false,
   markerInspected: false,
@@ -94,12 +87,10 @@ const state = {
   dialogueOpen: false,
   target: null,
   lastTime: 0,
-  fpsLastUpdate: 0,
-  fpsFrameCount: 0,
   lastSaveTime: 0,
   checkpointActive: false,
   frame: 0,
-  questOpen: false,
+  questOpen: true,
   inventoryOpen: false,
   walletOpen: false,
   marketOpen: false,
@@ -124,27 +115,6 @@ const obstacles = [
   { x: 1180, y: 560, w: 90, h: 190 },
   { x: 760, y: 600, w: 180, h: 44, gate: true }
 ];
-
-// Obstacle geometry is static during exploration. Keep its corner data and
-// the currently opaque obstacle list instead of rebuilding them every frame.
-const obstacleVisionCorners = new Map(obstacles.map((obstacle) => [
-  obstacle,
-  [
-    { x: obstacle.x, y: obstacle.y },
-    { x: obstacle.x + obstacle.w, y: obstacle.y },
-    { x: obstacle.x + obstacle.w, y: obstacle.y + obstacle.h },
-    { x: obstacle.x, y: obstacle.y + obstacle.h }
-  ]
-]));
-let opaqueObstaclesGateState = null;
-let opaqueObstaclesCache = [];
-function getOpaqueObstacles() {
-  if (opaqueObstaclesGateState !== state.gateOpen) {
-    opaqueObstaclesGateState = state.gateOpen;
-    opaqueObstaclesCache = obstacles.filter((obstacle) => !(obstacle.gate && state.gateOpen));
-  }
-  return opaqueObstaclesCache;
-}
 const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 72, title: "潮痕標記" },
   { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 76, title: "微弱回聲" },
@@ -412,9 +382,6 @@ function startExploration() {
   state.target = null;
   state.started = true;
   state.lastTime = 0;
-  state.fpsLastUpdate = 0;
-  state.fpsFrameCount = 0;
-  fpsCounter.textContent = "FPS --";
   gate.classList.toggle("is-open", state.gateOpen);
   $("#secret").classList.toggle("is-found", state.secretFound);
   $("#switch").classList.toggle("is-active", state.gateOpen);
@@ -433,27 +400,16 @@ function startExploration() {
   inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
   walletToggle.setAttribute("aria-expanded", String(state.walletOpen));
   updateWalletUI();
-  const touchMode = window.matchMedia("(pointer: coarse)").matches || window.matchMedia("(max-width: 700px)").matches;
-  setStatus(touchMode
-    ? "使用左下角搖桿移動；靠近互動物件後直接點擊。"
-    : (saved ? "已載入本機進度。使用 WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。"));
+  setStatus(saved ? "已載入本機進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
   updateScene();
   deathPanel.hidden = !state.dead;
   if (state.dead) { setStatus("角色已死亡，請從最近啟動的存檔點復活。"); }
   else state.frame = requestAnimationFrame(tick);
   startButton.textContent = saved ? "繼續探索 ↗" : "開始探索 ↗";
 }
-function resetJoystick() {
-  state.joystick.x = 0;
-  state.joystick.y = 0;
-  state.joystick.pointerId = null;
-  if (mobileJoystickKnob) mobileJoystickKnob.style.transform = "translate(-50%, -50%)";
-  mobileJoystick?.classList.remove("is-active");
-}
 function stopInput() {
   state.keys.clear();
   state.pointers.clear();
-  resetJoystick();
   document.querySelectorAll(".direction.is-pressed").forEach((button) => button.classList.remove("is-pressed"));
 }
 function getInput() {
@@ -463,10 +419,8 @@ function getInput() {
   if (active.has("right")) x += 1;
   if (active.has("up")) y -= 1;
   if (active.has("down")) y += 1;
-  x += state.joystick.x;
-  y += state.joystick.y;
   const length = Math.hypot(x, y);
-  if (length > 1) { x /= length; y /= length; }
+  if (length > 0) { x /= length; y /= length; }
   return { x, y };
 }
 function rectsOverlap(a, b) {
@@ -506,29 +460,21 @@ function movePlayer(dx, dy) {
 function rayRectDistance(originX, originY, dirX, dirY, rect) {
   let near = -Infinity;
   let far = Infinity;
-
-  if (Math.abs(dirX) < 1e-8) {
-    if (originX < rect.x || originX > rect.x + rect.w) return Infinity;
-  } else {
-    let t1 = (rect.x - originX) / dirX;
-    let t2 = (rect.x + rect.w - originX) / dirX;
+  for (const axis of [
+    { origin: originX, dir: dirX, min: rect.x, max: rect.x + rect.w },
+    { origin: originY, dir: dirY, min: rect.y, max: rect.y + rect.h }
+  ]) {
+    if (Math.abs(axis.dir) < 1e-8) {
+      if (axis.origin < axis.min || axis.origin > axis.max) return Infinity;
+      continue;
+    }
+    let t1 = (axis.min - axis.origin) / axis.dir;
+    let t2 = (axis.max - axis.origin) / axis.dir;
     if (t1 > t2) [t1, t2] = [t2, t1];
     near = Math.max(near, t1);
     far = Math.min(far, t2);
     if (near > far + 1e-8) return Infinity;
   }
-
-  if (Math.abs(dirY) < 1e-8) {
-    if (originY < rect.y || originY > rect.y + rect.h) return Infinity;
-  } else {
-    let t1 = (rect.y - originY) / dirY;
-    let t2 = (rect.y + rect.h - originY) / dirY;
-    if (t1 > t2) [t1, t2] = [t2, t1];
-    near = Math.max(near, t1);
-    far = Math.min(far, t2);
-    if (near > far + 1e-8) return Infinity;
-  }
-
   if (far <= 1e-6) return Infinity;
   return near > 1e-6 ? near : far;
 }
@@ -564,7 +510,7 @@ function drawVision() {
   const fog = Math.max(0, Math.min(1, VISION.fog));
   const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
-  const opaque = getOpaqueObstacles();
+  const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
   const view = { x: 0, y: 0, w: width, h: height };
 
   ctx.fillStyle = "#000";
@@ -580,10 +526,11 @@ function drawVision() {
   addCorner(view.x + view.w, view.y);
   addCorner(view.x + view.w, view.y + view.h);
   addCorner(view.x, view.y + view.h);
-  for (const obstacle of opaque) {
-    for (const corner of obstacleVisionCorners.get(obstacle)) {
-      addCorner(corner.x, corner.y);
-    }
+  for (const o of opaque) {
+    addCorner(o.x, o.y);
+    addCorner(o.x + o.w, o.y);
+    addCorner(o.x + o.w, o.y + o.h);
+    addCorner(o.x, o.y + o.h);
   }
   angles.sort((a, b) => a - b);
 
@@ -611,7 +558,12 @@ function drawVision() {
     let nearestCorner = null;
     let nearestCornerError = 0.75;
     for (const wall of opaque) {
-      for (const corner of obstacleVisionCorners.get(wall)) {
+      for (const corner of [
+        { x: wall.x, y: wall.y },
+        { x: wall.x + wall.w, y: wall.y },
+        { x: wall.x + wall.w, y: wall.y + wall.h },
+        { x: wall.x, y: wall.y + wall.h }
+      ]) {
         const error = Math.hypot(hitX - corner.x, hitY - corner.y);
         if (error < nearestCornerError) {
           nearestCorner = corner;
@@ -789,17 +741,9 @@ function updateScene() {
     updateScene.lastQuest = questKey;
     updateQuestUI();
   }
-  let nearest = null;
-  let nearestDistance = Infinity;
-  const playerCenterY = state.y + PLAYER.height / 2;
-  for (const object of objects) {
-    if (object.id === "test_secret_tide_echo" && state.secretFound) continue;
-    const distance = Math.hypot(object.x - state.x, object.y - playerCenterY);
-    if (distance <= object.radius && distance < nearestDistance) {
-      nearest = object;
-      nearestDistance = distance;
-    }
-  }
+  const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
+    .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
+    .sort((a, b) => a.distance - b.distance)[0] || null;
   state.target = nearest;
   interactButton.disabled = !nearest || state.dialogueOpen;
 interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
@@ -824,18 +768,7 @@ function tick(timestamp) {
   const elapsedSeconds = state.lastTime ? Math.max(0, (timestamp - state.lastTime) / 1000) : 0;
   const dt = Math.min(elapsedSeconds, 0.1);
   state.lastTime = timestamp;
-
-  // Update the diagnostic readout twice per second to keep its own overhead low.
-  state.fpsFrameCount += 1;
-  if (!state.fpsLastUpdate) state.fpsLastUpdate = timestamp;
-  const fpsElapsed = timestamp - state.fpsLastUpdate;
-  if (fpsElapsed >= 500) {
-    const fps = Math.round((state.fpsFrameCount * 1000) / fpsElapsed);
-    fpsCounter.textContent = `FPS ${fps}`;
-    state.fpsFrameCount = 0;
-    state.fpsLastUpdate = timestamp;
-  }
-  if (!state.dialogueOpen && !state.inventoryOpen && !state.walletOpen && !state.marketOpen) {
+  if (!state.dialogueOpen && !state.inventoryOpen) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
     updateScene();
@@ -958,9 +891,6 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   saveProgress();
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
-questCloseButton.addEventListener("click", () => { if (state.questOpen) toggleOverlayPanel(questPanel, questToggle, "questOpen"); });
-inventoryCloseButton.addEventListener("click", () => { if (state.inventoryOpen) toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); });
-walletCloseButton.addEventListener("click", () => { if (state.walletOpen) toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"); });
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
 walletToggle.addEventListener("click", () => toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"));
 marketCloseButton.addEventListener("click", closeMarketPanel);
@@ -999,39 +929,6 @@ document.addEventListener("keyup", (event) => {
   const direction = keyMap[event.key];
   if (direction) state.keys.delete(direction);
 });
-function updateJoystickFromPointer(event) {
-  const rect = mobileJoystick.getBoundingClientRect();
-  const maxTravel = Math.max(1, (rect.width - mobileJoystickKnob.offsetWidth) / 2);
-  const rawX = event.clientX - (rect.left + rect.width / 2);
-  const rawY = event.clientY - (rect.top + rect.height / 2);
-  const distance = Math.hypot(rawX, rawY);
-  const scale = distance > maxTravel ? maxTravel / distance : 1;
-  const knobX = rawX * scale;
-  const knobY = rawY * scale;
-  state.joystick.x = knobX / maxTravel;
-  state.joystick.y = knobY / maxTravel;
-  mobileJoystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
-}
-mobileJoystick.addEventListener("pointerdown", (event) => {
-  if (!state.started || state.dead || state.dialogueOpen || state.inventoryOpen || state.walletOpen || state.marketOpen) return;
-  event.preventDefault();
-  state.joystick.pointerId = event.pointerId;
-  mobileJoystick.setPointerCapture(event.pointerId);
-  mobileJoystick.classList.add("is-active");
-  updateJoystickFromPointer(event);
-});
-mobileJoystick.addEventListener("pointermove", (event) => {
-  if (event.pointerId !== state.joystick.pointerId) return;
-  event.preventDefault();
-  updateJoystickFromPointer(event);
-});
-const releaseJoystick = (event) => {
-  if (event.pointerId !== state.joystick.pointerId) return;
-  resetJoystick();
-};
-mobileJoystick.addEventListener("pointerup", releaseJoystick);
-mobileJoystick.addEventListener("pointercancel", releaseJoystick);
-mobileJoystick.addEventListener("lostpointercapture", releaseJoystick);
 document.querySelectorAll(".direction").forEach((button) => {
   const direction = button.dataset.direction;
   button.addEventListener("pointerdown", (event) => {
@@ -1171,11 +1068,9 @@ function loadProgress() {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!applySnapshot(data)) return null;
-    // Overlay panels always start closed when entering or resuming exploration.
-    // Their open/closed UI state is transient and is not restored from saves.
-    state.questOpen = false;
-    state.inventoryOpen = false;
-    state.walletOpen = false;
+    state.questOpen = data.questOpen !== false;
+    state.inventoryOpen = Boolean(data.inventoryOpen);
+    state.walletOpen = Boolean(data.walletOpen);
     state.checkpointActive = Boolean(data.checkpointActive);
     return data;
   } catch (error) {

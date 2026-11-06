@@ -59,12 +59,6 @@
         <div id="player" class="player" role="img" aria-label="玩家角色"><span></span></div>
         <div id="oxygen-indicator" class="oxygen-indicator" hidden aria-label="剩餘氧氣"><span class="oxygen-track"><span id="oxygen-bar" class="oxygen-fill"></span></span></div>
         <div class="scene-overlay"><div id="health-hud" class="health-hud" role="status" aria-label="目前生命值"><span>生命</span><strong id="health-hud-value">100 / 100</strong><span class="health-hud-track"><span id="health-hud-bar"></span></span></div><span aria-hidden="true">潮痕灘</span><span id="coordinates" aria-hidden="true">X 180 · Y 180</span></div>
-        <output id="fps-counter" class="fps-counter" aria-label="目前每秒幀數" aria-live="off">FPS --</output>
-        <div id="mobile-joystick" class="mobile-joystick" role="group" aria-label="角色移動搖桿">
-          <span class="joystick-ring" aria-hidden="true"></span>
-          <span id="mobile-joystick-knob" class="joystick-knob" aria-hidden="true"></span>
-          <span class="joystick-hint" aria-hidden="true">移動</span>
-        </div>
       </div>
 
       <div class="status-row mvp-status">
@@ -74,7 +68,7 @@
 
       <div class="mvp-controls"><button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（F）</button></div>
       <section id="wallet-panel" class="inventory-panel wallet-panel" hidden aria-labelledby="wallet-title">
-        <header class="inventory-heading"><div><h3 id="wallet-title">錢包</h3></div><strong id="wallet-balance">100 錢幣</strong><button id="wallet-close" class="mobile-panel-close" type="button" aria-label="返回遊戲畫面">←</button></header>
+        <header class="inventory-heading"><div><h3 id="wallet-title">錢包</h3></div><strong id="wallet-balance">100 錢幣</strong></header>
         <p class="wallet-note">目前為測試場景使用的貨幣紀錄。</p>
         <h4 class="wallet-history-title">交易紀錄</h4>
         <ol id="wallet-history" class="wallet-history"><li>尚無交易紀錄。</li></ol>
@@ -87,7 +81,6 @@
       <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title">
         <header class="inventory-heading">
           <div><h3 id="inventory-title">背包</h3></div>
-          <button id="inventory-close" class="mobile-panel-close" type="button" aria-label="返回遊戲畫面">←</button>
         </header>
         <nav class="inventory-filters" aria-label="物品分類">
           <button class="inventory-filter is-selected" type="button" data-inventory-filter="equipment" aria-pressed="true">裝備</button>
@@ -117,7 +110,6 @@
             <h3 id="quest-title">任務</h3>
           </div>
           <span id="quest-progress" class="quest-progress" aria-live="polite">0 / 3 完成</span>
-          <button id="quest-close" class="mobile-panel-close" type="button" aria-label="返回遊戲畫面">←</button>
         </div>
         <div class="quest-tabs" role="tablist" aria-label="任務類型">
           <button class="quest-tab is-selected" type="button" role="tab" aria-selected="true" data-quest-tab="main">主線任務</button>
@@ -139,7 +131,7 @@
         <div class="quest-category" data-quest-category="challenge" role="tabpanel" hidden>
         </div>
       </section>
-      <p class="mvp-help">操作：電腦使用 WASD／方向鍵移動，靠近物件後按 F；手機使用左下角搖桿移動，靠近互動物件後直接點擊。E 開啟背包、T 開啟任務；Esc 關閉面板或對話。進度會自動儲存在本機；啟動存檔點可設定死亡後的復活位置。</p>
+      <p class="mvp-help">操作：WASD／方向鍵移動；靠近物件後按 F 或「互動」；E 開啟背包、T 開啟任務、Esc 關閉面板或對話。進度會自動儲存在本機；啟動存檔點可設定死亡後的復活位置。</p>
 
       <section id="death-panel" class="death-panel" hidden aria-labelledby="death-title">
         <div class="death-card">
