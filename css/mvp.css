@@ -1038,3 +1038,22 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   #game-screen .quest-heading .quest-progress { flex:0 0 auto; }
   #game-screen .mobile-panel-close { margin-left:auto; }
 }
+
+/* Lightweight frame-rate readout, anchored to the viewport's lower-right. */
+#game-screen .fps-counter {
+  position: absolute;
+  z-index: 30;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 6px 9px;
+  border: 1px solid rgba(190, 224, 214, .28);
+  border-radius: 7px;
+  background: rgba(5, 17, 24, .78);
+  color: #e7f3ef;
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+  pointer-events: none;
+  user-select: none;
+}
+
