@@ -122,7 +122,14 @@
       <p class="mvp-help">操作：WASD／方向鍵移動；靠近物件後按 F 或「互動」；E 開啟背包、T 開啟任務、Esc 關閉面板或對話。進度會自動儲存在本機；啟動存檔點可設定死亡後的復活位置。</p>
 
       <section id="death-panel" class="death-panel" hidden aria-labelledby="death-title">
-        <div class="death-card"><p class="eyebrow">探索中斷</p><h3 id="death-title">角色已死亡</h3><p id="death-message">將從最近啟動的存檔點恢復。</p><button id="respawn-button" class="primary-button" type="button">從存檔點復活</button></div>
+        <div class="death-card">
+          <h3 id="death-title">Game over</h3>
+          <p id="death-message">選擇重新開始，或返回標題畫面。</p>
+          <div class="death-actions">
+            <button id="respawn-button" class="primary-button" type="button">重生</button>
+            <button id="death-title-button" class="quiet-button" type="button">返回標題</button>
+          </div>
+        </div>
       </section>
       <section id="dialogue-panel" class="dialogue-panel" hidden aria-labelledby="dialogue-title" tabindex="-1">
         <div class="dialogue-heading"><span class="dialogue-symbol" aria-hidden="true">◇</span><h3 id="dialogue-title">調查結果</h3></div>
