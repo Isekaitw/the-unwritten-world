@@ -166,7 +166,8 @@ function setPlayerStat(stat, value) {
   if (!Number.isFinite(numericValue)) return false;
   playerStats[stat] = Math.max(0, Math.min(100, Math.round(numericValue)));
   renderPlayerStats();
-  saveProgress();
+  if (stat === "health" && playerStats.health === 0 && state.started) handlePlayerDeath();
+  else saveProgress();
   return true;
 }
 
