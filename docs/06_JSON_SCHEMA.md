@@ -1,3 +1,18 @@
+<!-- IMPLEMENTATION ALIGNMENT ADDENDUM 2026-11-06 -->
+
+# JSON 契約與目前程式狀態補遺（2026-11-06）
+
+本文件中的 JSON 欄位與正式內容資料規劃仍有效；但**文件定義 schema 不代表遊戲已具備正式 JSON 載入器**。
+
+- 目前測試區主要由 `index.html` 與 `js/mvp.js` 中的測試資料／程式邏輯驅動。
+- 截至基準 commit，尚未確認正式 JSON-driven scene loader、完整 schema runtime validation、跨場景引用驗證已完成。
+- 測試區 ID（例如 `test-water-area`、`test_secret_tide_echo`）是技術測試識別，不得當成第一章正式劇情 ID。
+- 現有 localStorage 存檔屬提前實作；不可直接把目前儲存物件視為本文件定義的正式存檔 schema。
+- 未來建立 loader 時，先盤點既有 schema，保留正式場景／角色／事件 ID，採最小相容擴充；不得為配合測試區而改寫世界觀或故事資料。
+- 範例仍是資料契約／設計參考；除非有實際 JSON 檔、載入程式及驗證測試，否則不標示為已實作。
+
+---
+
 <!-- SPEC REVISION ADDENDUM 2026-10-22: Proposed minimal schema for 2.5D scene gameplay. -->
 
 # 規格修訂補遺（2026-10-22）—2.5D 場景與事件資料
