@@ -1007,3 +1007,30 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   .joystick-knob { width: 50px; height: 50px; }
   .joystick-ring { inset: 17px; }
 }
+
+
+/* Touch-only close controls for the quest and inventory overlays. */
+.mobile-panel-close { display:none; }
+@media (pointer: coarse), (max-width: 700px) {
+  #game-screen .mobile-panel-close {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 auto;
+    min-height:40px;
+    padding:8px 13px;
+    border:1px solid rgba(210,243,231,.34);
+    border-radius:8px;
+    color:#f0e5c9;
+    background:rgba(7,17,22,.72);
+    font:inherit;
+    font-size:.82rem;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  #game-screen .inventory-heading,
+  #game-screen .quest-heading { display:flex; align-items:center; gap:10px; }
+  #game-screen .inventory-heading > div,
+  #game-screen .quest-heading > div { flex:1 1 auto; min-width:0; }
+  #game-screen .quest-heading .quest-progress { flex:0 0 auto; }
+}
