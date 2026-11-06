@@ -38,6 +38,8 @@ const dialogueText = $("#dialogue-text");
 const coordinates = $("#coordinates");
 const oxygenIndicator = $("#oxygen-indicator");
 const oxygenBar = $("#oxygen-bar");
+const healthHudValue = $("#health-hud-value");
+const healthHudBar = $("#health-hud-bar");
 const gate = $("#gate");
 
 // 離屏 canvas 只建立一次，每幀重複使用（避免每幀配置兩張全解析度 canvas）
@@ -69,9 +71,14 @@ const state = {
   inventoryOpen: false,
   diving: false,
   dead: false,
+  damageZoneContact: false,
   inventory: []
 };
 
+const damageZones = [
+  // Deliberate test-only hazard: each fresh contact removes 25 health.
+  { id: "test-damage-zone", x: 1040, y: 410, w: 150, h: 110, damage: 25 }
+];
 const waterAreas = [
   // A shallow, walkable test pool near the lower-right side of the map.
   { id: "test-water-area", x: 1040, y: 790, w: 430, h: 150 }
@@ -130,6 +137,8 @@ function renderPlayerStats() {
     if (label) label.textContent = `${value} / 100`;
     if (bar) bar.style.width = `${value}%`;
   }
+  if (healthHudValue) healthHudValue.textContent = `${Math.round(playerStats.health)} / 100`;
+  if (healthHudBar) healthHudBar.style.width = `${playerStats.health}%`;
   updateOxygenIndicator();
 }
 
@@ -610,6 +619,15 @@ function updateScene() {
     updateOxygenIndicator();
   }
   drawVision();
+  const playerHitbox = { x: px - PLAYER.hitWidth / 2, y: py + PLAYER.height - PLAYER.hitHeight, w: PLAYER.hitWidth, h: PLAYER.hitHeight };
+  const touchingDamageZone = damageZones.some((zone) => rectsOverlap(playerHitbox, zone));
+  if (touchingDamageZone && !state.damageZoneContact) {
+    state.damageZoneContact = true;
+    setPlayerStat("health", Math.max(0, playerStats.health - (damageZones.find((zone) => rectsOverlap(playerHitbox, zone))?.damage || 25)));
+    if (!state.dead) setStatus("進入危險區，生命值減少 25。離開後再次進入可重複測試。");
+  } else if (!touchingDamageZone) {
+    state.damageZoneContact = false;
+  }
   const coordText = `X ${Math.round(state.x)} · Y ${Math.round(state.y)}`;
   if (coordText !== updateScene.lastCoord) {
     updateScene.lastCoord = coordText;
