@@ -32,6 +32,7 @@ const interactButton = $("#interact-button");
 const checkpointEl = $("#checkpoint");
 const deathPanel = $("#death-panel");
 const respawnButton = $("#respawn-button");
+const deathTitleButton = $("#death-title-button");
 const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
@@ -748,6 +749,7 @@ document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
 });
 startButton.addEventListener("click", startExploration);
 respawnButton.addEventListener("click", respawnAtCheckpoint);
+deathTitleButton.addEventListener("click", showTitle);
 backButton.addEventListener("click", showTitle);
 let panelStack = 100;
 // Register every full-screen page here so opening one automatically closes
