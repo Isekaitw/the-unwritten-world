@@ -7,6 +7,8 @@ const questToggle = $("#quest-toggle");
 const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
+const inventoryCloseButton = $("#inventory-close");
+const questCloseButton = $("#quest-close");
 const inventoryGrid = $("#inventory-grid");
 const walletToggle = $("#wallet-toggle");
 const walletPanel = $("#wallet-panel");
@@ -93,7 +95,7 @@ const state = {
   lastSaveTime: 0,
   checkpointActive: false,
   frame: 0,
-  questOpen: true,
+  questOpen: false,
   inventoryOpen: false,
   walletOpen: false,
   marketOpen: false,
@@ -907,6 +909,8 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   saveProgress();
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
+questCloseButton.addEventListener("click", () => { if (state.questOpen) toggleOverlayPanel(questPanel, questToggle, "questOpen"); });
+inventoryCloseButton.addEventListener("click", () => { if (state.inventoryOpen) toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); });
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
 walletToggle.addEventListener("click", () => toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"));
 marketCloseButton.addEventListener("click", closeMarketPanel);
