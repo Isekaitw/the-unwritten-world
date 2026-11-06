@@ -31,7 +31,7 @@
           <p class="eyebrow">潮聲與遺跡</p>
           <h2 id="scene-title">潮痕灘</h2>
         </div>
-        <div class="scene-toolbar-actions"><button id="quest-toggle" class="quiet-button" type="button" aria-expanded="true">任務（T）</button><button id="inventory-toggle" class="quiet-button" type="button" aria-expanded="false">背包（E）</button><button id="back-to-title" class="quiet-button" type="button">儲存並回到標題</button></div>
+        <div class="scene-toolbar-actions"><button id="quest-toggle" class="quiet-button" type="button" aria-expanded="true">任務（T）</button><button id="inventory-toggle" class="quiet-button" type="button" aria-expanded="false">背包（E）</button><button id="wallet-toggle" class="quiet-button" type="button" aria-expanded="false">錢包（100）</button><button id="back-to-title" class="quiet-button" type="button">儲存並回到標題</button></div>
       </div>
 
       <div id="scene" class="scene game-viewport" aria-label="潮痕灘">
@@ -51,6 +51,7 @@
           <button id="marker" class="world-object marker-object" style="left:250px;top:460px" type="button" aria-label="調查潮痕標記">◇<span>潮痕標記</span></button>
           <button id="secret" class="world-object secret-object" style="left:1320px;top:300px" type="button" aria-label="調查隱藏回聲">✧<span>微弱回聲</span></button>
           <button id="switch" class="world-object switch-object" style="left:830px;top:760px" type="button" aria-label="啟動古代機關">◎<span>測量機關</span></button>
+          <button id="merchant" class="world-object merchant-object" style="left:480px;top:720px" type="button" aria-label="與商人交談">商<span>商人</span></button>
           <div class="world-label label-start">起始區域</div>
           <div class="world-label label-gate">封閉通路</div>
           <canvas id="vision-canvas" class="vision-canvas" aria-hidden="true"></canvas>
@@ -66,6 +67,17 @@
       </div>
 
       <div class="mvp-controls"><button id="interact-button" class="primary-button interact-button" type="button" disabled>互動（F）</button></div>
+      <section id="wallet-panel" class="inventory-panel wallet-panel" hidden aria-labelledby="wallet-title">
+        <header class="inventory-heading"><div><h3 id="wallet-title">錢包</h3></div><strong id="wallet-balance">100 錢幣</strong></header>
+        <p class="wallet-note">目前為測試場景使用的貨幣紀錄。</p>
+        <h4 class="wallet-history-title">交易紀錄</h4>
+        <ol id="wallet-history" class="wallet-history"><li>尚無交易紀錄。</li></ol>
+      </section>
+      <section id="market-panel" class="dialogue-panel market-panel" hidden aria-labelledby="market-title">
+        <div class="dialogue-heading market-heading"><span class="dialogue-symbol" aria-hidden="true">◇</span><h3 id="market-title">市集</h3><button id="market-close" class="quiet-button" type="button">離開市集</button></div>
+        <div class="market-wallet-row"><span>目前持有</span><strong id="market-balance">100 錢幣</strong></div>
+        <div id="market-grid" class="market-grid" aria-label="市集商品"></div>
+      </section>
       <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title">
         <header class="inventory-heading">
           <div><h3 id="inventory-title">背包</h3></div>
@@ -133,6 +145,7 @@
       <section id="dialogue-panel" class="dialogue-panel" hidden aria-labelledby="dialogue-title" tabindex="-1">
         <div class="dialogue-heading"><span class="dialogue-symbol" aria-hidden="true">◇</span><h3 id="dialogue-title">調查結果</h3></div>
         <p id="dialogue-text"></p>
+        <button id="dialogue-action" class="primary-button dialogue-action" type="button" hidden>前往市集</button>
       </section>
     </section>
 
