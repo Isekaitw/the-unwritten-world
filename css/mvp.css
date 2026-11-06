@@ -767,3 +767,42 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   max-height: none;
   aspect-ratio: auto;
 }
+
+
+/* Test-scene checkpoint and completed respawn flow. */
+#game-screen .checkpoint-object {
+  color: #c8f0d7;
+  border-color: rgba(155, 226, 184, .72);
+  background: rgba(18, 66, 54, .72);
+  box-shadow: 0 0 18px rgba(120, 220, 166, .22);
+}
+#game-screen .checkpoint-object.is-active {
+  color: #fff2b7;
+  background: rgba(112, 91, 39, .88);
+  border-color: rgba(255, 226, 143, .95);
+  box-shadow: 0 0 28px rgba(255, 216, 117, .5);
+}
+#game-screen .death-panel {
+  position: absolute;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 10, 14, .78);
+  backdrop-filter: blur(8px);
+}
+#game-screen .death-panel[hidden] { display: none !important; }
+#game-screen .death-card {
+  width: min(440px, 100%);
+  padding: clamp(24px, 5vw, 40px);
+  border: 1px solid rgba(210, 190, 135, .42);
+  border-radius: 16px;
+  background: linear-gradient(155deg, rgba(27, 42, 42, .98), rgba(7, 17, 22, .99));
+  color: #e8eee9;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(0,0,0,.5);
+}
+#game-screen .death-card h3 { margin: 8px 0 12px; color: #f0e5c9; font-size: clamp(1.4rem, 4vw, 2rem); }
+#game-screen .death-card p:not(.eyebrow) { color: #bdc9c1; line-height: 1.7; }
+#game-screen .death-card .primary-button { margin-top: 12px; }
