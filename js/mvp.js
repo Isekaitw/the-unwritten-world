@@ -913,6 +913,7 @@ objects.forEach((object) => object.el.addEventListener("click", () => {
 }));
 document.addEventListener("keydown", (event) => {
   if (!state.started) return;
+  if ((state.marketOpen || state.walletOpen) && event.key !== "Escape") return;
   if (event.key === "t" || event.key === "T") { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
