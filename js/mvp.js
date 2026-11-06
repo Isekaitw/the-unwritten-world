@@ -9,6 +9,7 @@ const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryCloseButton = $("#inventory-close");
 const questCloseButton = $("#quest-close");
+const walletCloseButton = $("#wallet-close");
 const inventoryGrid = $("#inventory-grid");
 const walletToggle = $("#wallet-toggle");
 const walletPanel = $("#wallet-panel");
@@ -911,6 +912,7 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
 questCloseButton.addEventListener("click", () => { if (state.questOpen) toggleOverlayPanel(questPanel, questToggle, "questOpen"); });
 inventoryCloseButton.addEventListener("click", () => { if (state.inventoryOpen) toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); });
+walletCloseButton.addEventListener("click", () => { if (state.walletOpen) toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"); });
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
 walletToggle.addEventListener("click", () => toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"));
 marketCloseButton.addEventListener("click", closeMarketPanel);
@@ -1121,9 +1123,11 @@ function loadProgress() {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!applySnapshot(data)) return null;
-    state.questOpen = data.questOpen !== false;
-    state.inventoryOpen = Boolean(data.inventoryOpen);
-    state.walletOpen = Boolean(data.walletOpen);
+    // Overlay panels always start closed when entering or resuming exploration.
+    // Their open/closed UI state is transient and is not restored from saves.
+    state.questOpen = false;
+    state.inventoryOpen = false;
+    state.walletOpen = false;
     state.checkpointActive = Boolean(data.checkpointActive);
     return data;
   } catch (error) {
