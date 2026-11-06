@@ -46,6 +46,7 @@
           <div class="obstacle" style="left:930px;top:170px;width:240px;height:75px" aria-label="石牆障礙"></div>
           <div class="obstacle" style="left:1180px;top:560px;width:90px;height:190px" aria-label="石柱障礙"></div>
           <div id="gate" class="gate" style="left:760px;top:600px;width:180px;height:44px" aria-label="封閉通路"></div>
+          <button id="checkpoint" class="world-object checkpoint-object" style="left:180px;top:300px" type="button" aria-label="啟動存檔點">⌖<span>存檔點</span></button>
           <button id="marker" class="world-object marker-object" style="left:250px;top:460px" type="button" aria-label="調查潮痕標記">◇<span>潮痕標記</span></button>
           <button id="secret" class="world-object secret-object" style="left:1320px;top:300px" type="button" aria-label="調查隱藏回聲">✧<span>微弱回聲</span></button>
           <button id="switch" class="world-object switch-object" style="left:830px;top:760px" type="button" aria-label="啟動古代機關">◎<span>測量機關</span></button>
@@ -59,7 +60,7 @@
       </div>
 
       <div class="status-row mvp-status">
-        <p id="status-message" role="status" aria-live="polite">使用 WASD／方向鍵或螢幕方向控制移動。靠近物件後按 E／Enter 或「互動」。</p>
+        <p id="status-message" role="status" aria-live="polite">使用 WASD／方向鍵移動。靠近物件後按 F 或「互動」。</p>
         <span id="status-chip" class="status-chip"><span class="status-dot" aria-hidden="true"></span> 機關未啟動</span>
       </div>
 
@@ -117,8 +118,11 @@
         <div class="quest-category" data-quest-category="challenge" role="tabpanel" hidden>
         </div>
       </section>
-      <p class="mvp-help">操作：WASD／方向鍵移動，靠近物件後按 E／Enter 互動；按 F 或 Esc 關閉對話。進度會儲存在本機，下次可以接續遊玩。</p>
+      <p class="mvp-help">操作：WASD／方向鍵移動；靠近物件後按 F 或「互動」；E 開啟背包、T 開啟任務、Esc 關閉面板或對話。進度會自動儲存在本機；啟動存檔點可設定死亡後的復活位置。</p>
 
+      <section id="death-panel" class="death-panel" hidden aria-labelledby="death-title">
+        <div class="death-card"><p class="eyebrow">探索中斷</p><h3 id="death-title">角色已死亡</h3><p id="death-message">將從最近啟動的存檔點恢復。</p><button id="respawn-button" class="primary-button" type="button">從存檔點復活</button></div>
+      </section>
       <section id="dialogue-panel" class="dialogue-panel" hidden aria-labelledby="dialogue-title" tabindex="-1">
         <div class="dialogue-heading"><span class="dialogue-symbol" aria-hidden="true">◇</span><h3 id="dialogue-title">調查結果</h3></div>
         <p id="dialogue-text"></p>
