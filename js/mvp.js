@@ -64,6 +64,7 @@ const dialoguePanel = $("#dialogue-panel");
 const dialogueTitle = $("#dialogue-title");
 const dialogueText = $("#dialogue-text");
 const coordinates = $("#coordinates");
+const fpsCounter = $("#fps-counter");
 const oxygenIndicator = $("#oxygen-indicator");
 const oxygenBar = $("#oxygen-bar");
 const healthHudValue = $("#health-hud-value");
@@ -93,6 +94,8 @@ const state = {
   dialogueOpen: false,
   target: null,
   lastTime: 0,
+  fpsLastUpdate: 0,
+  fpsFrameCount: 0,
   lastSaveTime: 0,
   checkpointActive: false,
   frame: 0,
@@ -409,6 +412,9 @@ function startExploration() {
   state.target = null;
   state.started = true;
   state.lastTime = 0;
+  state.fpsLastUpdate = 0;
+  state.fpsFrameCount = 0;
+  fpsCounter.textContent = "FPS --";
   gate.classList.toggle("is-open", state.gateOpen);
   $("#secret").classList.toggle("is-found", state.secretFound);
   $("#switch").classList.toggle("is-active", state.gateOpen);
@@ -818,6 +824,17 @@ function tick(timestamp) {
   const elapsedSeconds = state.lastTime ? Math.max(0, (timestamp - state.lastTime) / 1000) : 0;
   const dt = Math.min(elapsedSeconds, 0.1);
   state.lastTime = timestamp;
+
+  // Update the diagnostic readout twice per second to keep its own overhead low.
+  state.fpsFrameCount += 1;
+  if (!state.fpsLastUpdate) state.fpsLastUpdate = timestamp;
+  const fpsElapsed = timestamp - state.fpsLastUpdate;
+  if (fpsElapsed >= 500) {
+    const fps = Math.round((state.fpsFrameCount * 1000) / fpsElapsed);
+    fpsCounter.textContent = `FPS ${fps}`;
+    state.fpsFrameCount = 0;
+    state.fpsLastUpdate = timestamp;
+  }
   if (!state.dialogueOpen && !state.inventoryOpen && !state.walletOpen && !state.marketOpen) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
