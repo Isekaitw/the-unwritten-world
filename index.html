@@ -74,14 +74,10 @@
       <section id="inventory-panel" class="inventory-panel" hidden aria-labelledby="inventory-title">
         <header class="inventory-heading">
           <div><h3 id="inventory-title">背包</h3></div>
-          <button id="wallet-toggle" class="wallet-toggle" type="button" aria-expanded="false" aria-controls="wallet-panel">錢包</button>
+          <div class="inventory-wallet-balance" aria-label="目前持有錢幣">
+            <span>持有</span><strong id="inventory-wallet-balance">100 錢幣</strong>
+          </div>
         </header>
-        <section id="wallet-panel" class="wallet-panel" hidden aria-labelledby="wallet-title">
-          <header class="wallet-heading"><h4 id="wallet-title">錢包</h4><strong id="wallet-balance">100 錢幣</strong></header>
-          <p class="wallet-note">目前為測試場景使用的貨幣紀錄。</p>
-          <h4 class="wallet-history-title">交易紀錄</h4>
-          <ol id="wallet-history" class="wallet-history"><li>尚無交易紀錄。</li></ol>
-        </section>
         <nav class="inventory-filters" aria-label="物品分類">
           <button class="inventory-filter is-selected" type="button" data-inventory-filter="equipment" aria-pressed="true">裝備</button>
           <button class="inventory-filter" type="button" data-inventory-filter="weapon" aria-pressed="false">武器</button>
