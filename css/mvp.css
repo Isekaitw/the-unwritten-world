@@ -882,14 +882,6 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
   border-radius: inherit;
   background: linear-gradient(90deg, #c94f4f, #f08b72);
 }
-#game-screen .checkpoint-object.is-near {
-  border-color: #fff4bb;
-  box-shadow: 0 0 0 7px rgba(255, 239, 174, .18), 0 0 32px rgba(255, 239, 174, .82);
-  filter: brightness(1.35);
-}
-#game-screen .checkpoint-object.is-active.is-near {
-  box-shadow: 0 0 0 7px rgba(255, 239, 174, .24), 0 0 38px rgba(255, 216, 117, .9);
-}
 
 /* Keep the compact HUD's internal spans independent from generic overlay chips. */
 #game-screen .scene-overlay .health-hud > span {
@@ -917,7 +909,6 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 
 /* Test-scene merchant, wallet and market prototype. */
 #game-screen .merchant-object { color:#f7e4b4; border-color:rgba(230,198,125,.78); background:linear-gradient(145deg,rgba(112,83,42,.94),rgba(37,45,39,.96)); box-shadow:0 0 22px rgba(230,190,105,.28),inset 0 1px 0 rgba(255,255,255,.16); font-weight:800; }
-#game-screen .merchant-object.is-near { border-color:#fff0bd; box-shadow:0 0 0 7px rgba(255,230,169,.2),0 0 34px rgba(255,213,126,.78); filter:brightness(1.22); }
 #game-screen .inventory-slot-quantity { color:#e5d19a; font-size:.72rem; font-variant-numeric:tabular-nums; }
 #game-screen:not([hidden]) .market-panel { z-index:2147483004 !important; max-width:900px; max-height:min(76vh,680px); padding:clamp(16px,3vw,28px); overflow-y:auto; }
 #game-screen:not([hidden]) .market-heading { display:flex; align-items:center; gap:12px; }
