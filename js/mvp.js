@@ -742,7 +742,7 @@ function tick(timestamp) {
   const elapsedSeconds = state.lastTime ? Math.max(0, (timestamp - state.lastTime) / 1000) : 0;
   const dt = Math.min(elapsedSeconds, 0.1);
   state.lastTime = timestamp;
-  if (!state.dialogueOpen && !state.inventoryOpen) {
+  if (!state.dialogueOpen && !state.inventoryOpen && !state.questOpen && !state.marketOpen) {
     const input = getInput();
     if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
     updateScene();
@@ -766,6 +766,7 @@ function tick(timestamp) {
 function interact() {
   if (!state.started) return;
   if (state.dead) return;
+  if (state.questOpen || state.inventoryOpen) return;
   if (state.marketOpen) { closeMarketPanel(); return; }
   if (state.dialogueOpen) {
     const action = dialogueAction;
@@ -844,7 +845,7 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   const shouldOpen = !state[stateKey];
 
   if (shouldOpen) {
-    if (stateKey === "inventoryOpen") stopInput();
+    stopInput();
     if (state.marketOpen) closeMarketPanel();
     overlayPanels.forEach((item) => {
       if (item.stateKey === stateKey) return;
@@ -885,7 +886,7 @@ document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
   });
 });
 document.addEventListener("keydown", (event) => {
-  if (!state.started) return;
+  if (!state.started || event.repeat) return;
   if (state.marketOpen) {
     if (event.key === "f" || event.key === "F" || event.key === "Escape") {
       event.preventDefault();
@@ -900,7 +901,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "Escape" && state.questOpen) { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   const direction = keyMap[event.key];
-  if (direction && state.started && !state.dialogueOpen && !state.marketOpen) { event.preventDefault(); state.keys.add(direction); }
+  if (direction && state.started && !state.dialogueOpen && !state.marketOpen && !state.questOpen && !state.inventoryOpen) { event.preventDefault(); state.keys.add(direction); }
 });
 document.addEventListener("keyup", (event) => {
   const direction = keyMap[event.key];
