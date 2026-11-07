@@ -995,3 +995,96 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
   #game-screen .inventory-slot,
   #game-screen .inventory-slot.is-empty { height:82px; min-height:82px; max-height:82px; }
 }
+
+
+/* Desktop inventory: use the full viewport for the actual content, not only
+   the fixed overlay surface. Keep the inventory grid and status panel in one
+   height-constrained layout so the document and panel never need to scroll. */
+@media (min-width: 761px) {
+  #game-screen .inventory-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: clamp(10px, 1.5vh, 18px);
+    padding: clamp(20px, 3.2vh, 36px) clamp(24px, 3.2vw, 56px);
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #game-screen .inventory-panel > * {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  #game-screen .inventory-heading {
+    margin-bottom: 0;
+    padding-bottom: clamp(10px, 1.5vh, 18px);
+  }
+  #game-screen .inventory-summary,
+  #game-screen .inventory-filters {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  #game-screen .inventory-filters { gap: 8px; }
+  #game-screen .inventory-filter { flex: 1 1 0; }
+  #game-screen .inventory-layout {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin-top: 0;
+    margin-bottom: 0;
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, .9fr);
+    gap: clamp(14px, 2vw, 28px);
+  }
+  #game-screen .inventory-grid {
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    box-sizing: border-box;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+    align-content: stretch;
+    gap: clamp(7px, .9vw, 12px);
+    padding: clamp(9px, 1vw, 15px);
+  }
+  #game-screen .inventory-slot,
+  #game-screen .inventory-slot.is-empty {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 7px 5px;
+    gap: 5px;
+  }
+  #game-screen .inventory-slot-icon {
+    flex: 0 1 46px;
+    width: 46px;
+    height: 46px;
+    min-height: 0;
+    font-size: 1.55rem;
+  }
+  #game-screen .inventory-slot-name {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    line-height: 1.25;
+    text-align: center;
+  }
+  #game-screen .inventory-detail {
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: auto;
+  }
+  #game-screen .inventory-hint { margin-top: 0; }
+}
