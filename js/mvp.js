@@ -110,11 +110,11 @@ const obstacles = [
   { x: 760, y: 600, w: 180, h: 44, gate: true }
 ];
 const objects = [
-  { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 72, title: "潮痕標記" },
-  { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 76, title: "微弱回聲" },
+  { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 82, title: "潮痕標記" },
+  { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 82, title: "微弱回聲" },
   { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 82, title: "測量機關" },
   { id: "test_checkpoint", el: checkpointEl, x: 180, y: 300, radius: 82, title: "存檔點" },
-  { id: "test_merchant_market", el: $("#merchant"), x: 480, y: 720, radius: 92, title: "商人" }
+  { id: "test_merchant_market", el: $("#merchant"), x: 480, y: 720, radius: 82, title: "商人" }
 ];
 const keyMap = {
   ArrowUp: "up", w: "up", W: "up",
