@@ -8,10 +8,7 @@ const inventoryToggle = $("#inventory-toggle");
 const questPanel = $("#quest-panel");
 const inventoryPanel = $("#inventory-panel");
 const inventoryGrid = $("#inventory-grid");
-const walletToggle = $("#wallet-toggle");
-const walletPanel = $("#wallet-panel");
-const walletBalanceValue = $("#wallet-balance");
-const walletHistory = $("#wallet-history");
+const inventoryWalletBalance = $("#inventory-wallet-balance");
 const marketPanel = $("#market-panel");
 const marketGrid = $("#market-grid");
 const marketBalanceValue = $("#market-balance");
@@ -21,7 +18,6 @@ const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, fatigue
 let inventoryCapacity = 20;
 let inventoryQuantities = {};
 let walletBalance = 100;
-let walletTransactions = [];
 let dialogueAction = null;
 const CURRENCY_LABEL = "錢幣";
 const MAX_INVENTORY_CAPACITY = 40;
@@ -91,7 +87,6 @@ const state = {
   frame: 0,
   questOpen: true,
   inventoryOpen: false,
-  walletOpen: false,
   marketOpen: false,
   diving: false,
   dead: false,
@@ -276,17 +271,8 @@ function updateQuestUI() {
 }
 function updateWalletUI() {
   const balanceText = walletBalance + ' ' + CURRENCY_LABEL;
-  if (walletBalanceValue) walletBalanceValue.textContent = balanceText;
+  if (inventoryWalletBalance) inventoryWalletBalance.textContent = balanceText;
   if (marketBalanceValue) marketBalanceValue.textContent = balanceText;
-  if (!walletHistory) return;
-  walletHistory.replaceChildren();
-  const entries = walletTransactions.slice(-8).reverse();
-  if (!entries.length) { const empty = document.createElement('li'); empty.textContent = '尚無交易紀錄。'; walletHistory.append(empty); return; }
-  entries.forEach((entry) => {
-    const row = document.createElement('li'); const label = document.createElement('span'); label.textContent = entry.label;
-    const amount = document.createElement('strong'); amount.textContent = (entry.amount < 0 ? '−' : '+') + Math.abs(entry.amount) + ' ' + CURRENCY_LABEL;
-    row.append(label, amount); walletHistory.append(row);
-  });
 }
 function renderMarket() {
   if (!marketGrid) return; updateWalletUI(); marketGrid.replaceChildren();
@@ -307,7 +293,7 @@ function renderMarket() {
 function openMarketPanel() {
   if (!state.started || state.dead) return; stopInput();
   overlayPanels.forEach((entry) => { state[entry.stateKey] = false; entry.panel.hidden = true; entry.panel.removeAttribute('aria-modal'); entry.panel.removeAttribute('role'); entry.toggle.setAttribute('aria-expanded', 'false'); });
-  state.marketOpen = true; state.walletOpen = false; walletPanel.hidden = true; walletToggle.setAttribute("aria-expanded", "false"); marketPanel.hidden = false;
+  state.marketOpen = true; marketPanel.hidden = false;
   marketPanel.setAttribute('role', 'dialog'); marketPanel.setAttribute('aria-modal', 'true');
   renderMarket(); saveProgress(); marketCloseButton.focus();
 }
@@ -322,8 +308,7 @@ function purchaseMarketItem(itemId) {
   if (walletBalance < product.price) { setStatus('錢幣不足，無法購買這項商品。'); return; }
   if (!addInventoryItem(itemId, 1)) { renderMarket(); return; }
   walletBalance -= product.price;
-  walletTransactions.push({ label: '購買 ' + item.name, amount: -product.price, balance: walletBalance, timestamp: Date.now() });
-  walletTransactions = walletTransactions.slice(-20); updateWalletUI(); renderMarket(); saveProgress();
+updateWalletUI(); renderMarket(); saveProgress();
   setStatus('已購買' + item.name + '，支付 ' + product.price + ' ' + CURRENCY_LABEL + '。');
 }
 function openDialogue(title, message) {
@@ -354,11 +339,9 @@ function showTitle() {
   dialoguePanel.hidden = true;
   dialogueActionButton.hidden = true;
   marketPanel.hidden = true;
-  walletPanel.hidden = true;
   deathPanel.hidden = true;
   state.dialogueOpen = false;
   state.marketOpen = false;
-  state.walletOpen = false;
   startButton.focus();
 }
 function startExploration() {
@@ -391,14 +374,10 @@ function startExploration() {
   state.dialogueOpen = false;
   questPanel.hidden = !state.questOpen;
   inventoryPanel.hidden = !state.inventoryOpen;
-  state.walletOpen = false;
-  walletPanel.hidden = true;
-  walletToggle.setAttribute("aria-expanded", "false");
   marketPanel.hidden = true;
   state.marketOpen = false;
   questToggle.setAttribute("aria-expanded", String(state.questOpen));
   inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
-  walletToggle.setAttribute("aria-expanded", String(state.walletOpen));
   updateWalletUI();
   setStatus(saved ? "已載入本機進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
   updateScene();
@@ -862,9 +841,6 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
 
   if (shouldOpen) {
     if (stateKey === "inventoryOpen") stopInput();
-    state.walletOpen = false;
-    walletPanel.hidden = true;
-    walletToggle.setAttribute("aria-expanded", "false");
     if (state.marketOpen) closeMarketPanel();
     overlayPanels.forEach((item) => {
       if (item.stateKey === stateKey) return;
@@ -878,9 +854,6 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
 
   state[stateKey] = shouldOpen;
   if (stateKey === "inventoryOpen" && !shouldOpen) {
-    state.walletOpen = false;
-    walletPanel.hidden = true;
-    walletToggle.setAttribute("aria-expanded", "false");
   }
   panel.hidden = !shouldOpen;
   if (shouldOpen) {
@@ -892,19 +865,10 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
     panel.removeAttribute("role");
   }
   toggle.setAttribute("aria-expanded", String(shouldOpen));
-  if (stateKey === "walletOpen" && shouldOpen) updateWalletUI();
   saveProgress();
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
-walletToggle.addEventListener("click", () => {
-  if (!state.inventoryOpen) return;
-  state.walletOpen = !state.walletOpen;
-  walletPanel.hidden = !state.walletOpen;
-  walletToggle.setAttribute("aria-expanded", String(state.walletOpen));
-  if (state.walletOpen) updateWalletUI();
-  saveProgress();
-});
 marketCloseButton.addEventListener("click", closeMarketPanel);
 dialogueActionButton.addEventListener("click", () => { const action = dialogueAction; closeDialogue(); if (typeof action === "function") action(); });
 document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
@@ -920,17 +884,16 @@ document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
 });
 document.addEventListener("keydown", (event) => {
   if (!state.started) return;
-  if ((state.marketOpen || state.walletOpen) && event.key !== "Escape") return;
+  if (state.marketOpen && event.key !== "Escape") return;
   if (event.key === "t" || event.key === "T") { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
   if (event.key === "Escape" && state.marketOpen) { event.preventDefault(); closeMarketPanel(); return; }
   if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
-  if (event.key === "Escape" && state.walletOpen) { event.preventDefault(); state.walletOpen = false; walletPanel.hidden = true; walletToggle.setAttribute("aria-expanded", "false"); saveProgress(); return; }
   if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "Escape" && state.questOpen) { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   const direction = keyMap[event.key];
-  if (direction && state.started && !state.dialogueOpen && !state.marketOpen && !state.walletOpen) { event.preventDefault(); state.keys.add(direction); }
+  if (direction && state.started && !state.dialogueOpen && !state.marketOpen) { event.preventDefault(); state.keys.add(direction); }
 });
 document.addEventListener("keyup", (event) => {
   const direction = keyMap[event.key];
@@ -967,7 +930,7 @@ function createSaveSnapshot() {
     checkpointActive: state.checkpointActive,
     questOpen: state.questOpen, inventoryOpen: state.inventoryOpen,
     inventoryCapacity, inventory: [...state.inventory], inventoryQuantities: { ...inventoryQuantities },
-    walletBalance, walletTransactions: walletTransactions.slice(-20), walletOpen: state.walletOpen,
+    walletBalance,
     stats: { ...playerStats }, dead: state.dead
   };
 }
@@ -1001,9 +964,6 @@ function applySnapshot(data) {
     Number.isInteger(data.inventoryCapacity) ? data.inventoryCapacity : 20,
     state.inventory.length));
   walletBalance = Number.isSafeInteger(data.walletBalance) && data.walletBalance >= 0 ? data.walletBalance : 100;
-  walletTransactions = Array.isArray(data.walletTransactions)
-    ? data.walletTransactions.slice(-20).filter((entry) => entry && typeof entry.label === "string" && Number.isFinite(entry.amount) && Number.isFinite(entry.balance))
-    : [];
   if (data.stats && typeof data.stats === "object") {
     for (const key of Object.keys(playerStats)) {
       const value = Number(data.stats[key]);
@@ -1062,7 +1022,6 @@ function respawnAtCheckpoint() {
   renderInventory();
   renderPlayerStats();
   updateWalletUI();
-  walletPanel.hidden = true;
   updateQuestUI();
   updateScene();
   setStatus("已從最近的存檔點復活。生命與氧氣已恢復。");
@@ -1077,7 +1036,6 @@ function loadProgress() {
     if (!applySnapshot(data)) return null;
     state.questOpen = data.questOpen !== false;
     state.inventoryOpen = Boolean(data.inventoryOpen);
-    state.walletOpen = Boolean(data.walletOpen);
     state.checkpointActive = Boolean(data.checkpointActive);
     return data;
   } catch (error) {
