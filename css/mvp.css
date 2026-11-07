@@ -918,11 +918,6 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 /* Test-scene merchant, wallet and market prototype. */
 #game-screen .merchant-object { color:#f7e4b4; border-color:rgba(230,198,125,.78); background:linear-gradient(145deg,rgba(112,83,42,.94),rgba(37,45,39,.96)); box-shadow:0 0 22px rgba(230,190,105,.28),inset 0 1px 0 rgba(255,255,255,.16); font-weight:800; }
 #game-screen .merchant-object.is-near { border-color:#fff0bd; box-shadow:0 0 0 7px rgba(255,230,169,.2),0 0 34px rgba(255,213,126,.78); filter:brightness(1.22); }
-#game-screen .wallet-note { margin:0 0 18px; color:#aabbb2; font-size:.82rem; }
-#game-screen .wallet-history-title { margin:0 0 10px; color:#eadbb4; }
-#game-screen .wallet-history { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
-#game-screen .wallet-history li { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid rgba(201,184,137,.16); border-radius:8px; background:rgba(3,12,16,.28); font-size:.82rem; }
-#game-screen .wallet-history strong { flex:0 0 auto; color:#e8d39d; font-variant-numeric:tabular-nums; }
 #game-screen .inventory-slot-quantity { color:#e5d19a; font-size:.72rem; font-variant-numeric:tabular-nums; }
 #game-screen:not([hidden]) .market-panel { z-index:2147483004 !important; max-width:900px; max-height:min(76vh,680px); padding:clamp(16px,3vw,28px); overflow-y:auto; }
 #game-screen:not([hidden]) .market-heading { display:flex; align-items:center; gap:12px; }
@@ -959,29 +954,6 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
   flex:0 0 auto; width:min(1100px,100%); margin-left:auto; margin-right:auto;
 }
 #game-screen .inventory-heading { justify-content:space-between; }
-#game-screen .wallet-toggle {
-  flex:0 0 auto; min-width:112px; min-height:42px; padding:8px 16px;
-  border:1px solid rgba(201,177,117,.48); border-radius:8px;
-  color:#f0e5c4; background:linear-gradient(145deg,rgba(166,143,91,.2),rgba(166,143,91,.08));
-  cursor:pointer;
-}
-#game-screen .wallet-toggle:hover,
-#game-screen .wallet-toggle[aria-expanded="true"] {
-  border-color:rgba(230,207,148,.82); background:rgba(166,143,91,.22);
-}
-#game-screen .wallet-panel {
-  position:relative; inset:auto; z-index:auto; width:min(460px,100%);
-  max-width:100%; max-height:none; margin:0 0 20px auto; padding:18px 20px;
-  border:1px solid rgba(201,184,137,.28); border-radius:12px;
-  color:#e8eee9; background:linear-gradient(145deg,rgba(21,35,38,.98),rgba(8,18,23,.99));
-  box-sizing:border-box;
-}
-#game-screen .wallet-panel[hidden] { display:none !important; }
-#game-screen .wallet-heading {
-  display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0 0 12px;
-}
-#game-screen .wallet-heading h4 { margin:0; color:#eadbb4; font-size:1rem; }
-#game-screen .wallet-heading strong { color:#f0d99f; font-variant-numeric:tabular-nums; }
 #game-screen .inventory-grid { grid-auto-rows:104px; align-content:start; }
 #game-screen .inventory-slot {
   height:104px; min-height:104px; max-height:104px;
@@ -1088,3 +1060,8 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
   }
   #game-screen .inventory-hint { margin-top: 0; }
 }
+
+
+/* Compact, read-only wallet balance in the inventory heading. */
+#game-screen .inventory-wallet-balance { display:flex; align-items:center; justify-content:center; gap:10px; flex:0 0 auto; min-height:42px; padding:7px 16px; border:1px solid rgba(201,177,117,.38); border-radius:8px; color:#c8d5ce; background:linear-gradient(145deg,rgba(166,143,91,.14),rgba(166,143,91,.05)); }
+#game-screen .inventory-wallet-balance strong { color:#f0d99f; font-variant-numeric:tabular-nums; }
