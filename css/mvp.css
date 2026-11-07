@@ -918,7 +918,6 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 /* Test-scene merchant, wallet and market prototype. */
 #game-screen .merchant-object { color:#f7e4b4; border-color:rgba(230,198,125,.78); background:linear-gradient(145deg,rgba(112,83,42,.94),rgba(37,45,39,.96)); box-shadow:0 0 22px rgba(230,190,105,.28),inset 0 1px 0 rgba(255,255,255,.16); font-weight:800; }
 #game-screen .merchant-object.is-near { border-color:#fff0bd; box-shadow:0 0 0 7px rgba(255,230,169,.2),0 0 34px rgba(255,213,126,.78); filter:brightness(1.22); }
-#game-screen .wallet-panel { position:fixed; z-index:2147483002; top:max(84px,calc(env(safe-area-inset-top) + 72px)); right:max(12px,env(safe-area-inset-right)); left:auto; bottom:auto; width:min(360px,calc(100vw - 24px)); max-height:min(62vh,520px); overflow:auto; }
 #game-screen .wallet-note { margin:0 0 18px; color:#aabbb2; font-size:.82rem; }
 #game-screen .wallet-history-title { margin:0 0 10px; color:#eadbb4; }
 #game-screen .wallet-history { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
@@ -943,3 +942,56 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 #game-screen .dialogue-action { display:block; min-width:140px; margin:12px 0 0 auto; }
 #game-screen .dialogue-action[hidden] { display:none !important; }
 @media(max-width:680px) { #game-screen .market-grid { grid-template-columns:1fr; } #game-screen:not([hidden]) .market-panel { max-height:min(78vh,720px); } #game-screen .market-item-card { display:grid; grid-template-columns:48px 1fr; align-items:center; } #game-screen .market-item-icon { grid-row:span 3; } #game-screen .market-item-card p,#game-screen .market-item-price,#game-screen .market-item-card small,#game-screen .market-buy-button { grid-column:2; } }
+
+
+/* 2026-11-07 desktop interaction and backpack layout corrections. */
+html:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
+body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
+#game-screen .inventory-panel {
+  position:fixed !important; inset:0 !important; z-index:2147483002 !important;
+  display:flex; flex-direction:column; align-items:stretch;
+  width:100vw !important; height:100vh !important; height:100dvh !important;
+  max-width:none !important; max-height:none !important; margin:0 !important;
+  padding:clamp(22px,4vw,52px); overflow-x:hidden; overflow-y:auto;
+  overscroll-behavior:contain; touch-action:pan-y; box-sizing:border-box;
+}
+#game-screen .inventory-panel > * {
+  flex:0 0 auto; width:min(1100px,100%); margin-left:auto; margin-right:auto;
+}
+#game-screen .inventory-heading { justify-content:space-between; }
+#game-screen .wallet-toggle {
+  flex:0 0 auto; min-width:112px; min-height:42px; padding:8px 16px;
+  border:1px solid rgba(201,177,117,.48); border-radius:8px;
+  color:#f0e5c4; background:linear-gradient(145deg,rgba(166,143,91,.2),rgba(166,143,91,.08));
+  cursor:pointer;
+}
+#game-screen .wallet-toggle:hover,
+#game-screen .wallet-toggle[aria-expanded="true"] {
+  border-color:rgba(230,207,148,.82); background:rgba(166,143,91,.22);
+}
+#game-screen .wallet-panel {
+  position:relative; inset:auto; z-index:auto; width:min(460px,100%);
+  max-width:100%; max-height:none; margin:0 0 20px auto; padding:18px 20px;
+  border:1px solid rgba(201,184,137,.28); border-radius:12px;
+  color:#e8eee9; background:linear-gradient(145deg,rgba(21,35,38,.98),rgba(8,18,23,.99));
+  box-sizing:border-box;
+}
+#game-screen .wallet-panel[hidden] { display:none !important; }
+#game-screen .wallet-heading {
+  display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0 0 12px;
+}
+#game-screen .wallet-heading h4 { margin:0; color:#eadbb4; font-size:1rem; }
+#game-screen .wallet-heading strong { color:#f0d99f; font-variant-numeric:tabular-nums; }
+#game-screen .inventory-grid { grid-auto-rows:104px; align-content:start; }
+#game-screen .inventory-slot {
+  height:104px; min-height:104px; max-height:104px;
+  box-sizing:border-box; font:inherit; appearance:none;
+}
+#game-screen .inventory-slot.is-empty { height:104px; min-height:104px; max-height:104px; }
+#game-screen .world-object { cursor:default; }
+@media (max-width:760px) {
+  #game-screen .inventory-panel { padding:max(18px,env(safe-area-inset-top)) 16px max(22px,env(safe-area-inset-bottom)); }
+  #game-screen .inventory-grid { grid-auto-rows:82px; }
+  #game-screen .inventory-slot,
+  #game-screen .inventory-slot.is-empty { height:82px; min-height:82px; max-height:82px; }
+}

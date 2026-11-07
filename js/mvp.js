@@ -50,7 +50,6 @@ const visionCanvas = $("#vision-canvas");
 const visionContext = visionCanvas.getContext("2d");
 const statusMessage = $("#status-message");
 const statusChip = $("#status-chip");
-const interactButton = $("#interact-button");
 const checkpointEl = $("#checkpoint");
 const deathPanel = $("#death-panel");
 const respawnButton = $("#respawn-button");
@@ -279,7 +278,6 @@ function updateWalletUI() {
   const balanceText = walletBalance + ' ' + CURRENCY_LABEL;
   if (walletBalanceValue) walletBalanceValue.textContent = balanceText;
   if (marketBalanceValue) marketBalanceValue.textContent = balanceText;
-  if (walletToggle) walletToggle.textContent = '錢包（' + walletBalance + '）';
   if (!walletHistory) return;
   walletHistory.replaceChildren();
   const entries = walletTransactions.slice(-8).reverse();
@@ -309,7 +307,7 @@ function renderMarket() {
 function openMarketPanel() {
   if (!state.started || state.dead) return; stopInput();
   overlayPanels.forEach((entry) => { state[entry.stateKey] = false; entry.panel.hidden = true; entry.panel.removeAttribute('aria-modal'); entry.panel.removeAttribute('role'); entry.toggle.setAttribute('aria-expanded', 'false'); });
-  state.marketOpen = true; state.walletOpen = false; marketPanel.hidden = false;
+  state.marketOpen = true; state.walletOpen = false; walletPanel.hidden = true; walletToggle.setAttribute("aria-expanded", "false"); marketPanel.hidden = false;
   marketPanel.setAttribute('role', 'dialog'); marketPanel.setAttribute('aria-modal', 'true');
   renderMarket(); saveProgress(); marketCloseButton.focus();
 }
@@ -393,7 +391,9 @@ function startExploration() {
   state.dialogueOpen = false;
   questPanel.hidden = !state.questOpen;
   inventoryPanel.hidden = !state.inventoryOpen;
-  walletPanel.hidden = !state.walletOpen;
+  state.walletOpen = false;
+  walletPanel.hidden = true;
+  walletToggle.setAttribute("aria-expanded", "false");
   marketPanel.hidden = true;
   state.marketOpen = false;
   questToggle.setAttribute("aria-expanded", String(state.questOpen));
@@ -745,8 +745,6 @@ function updateScene() {
     .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
     .sort((a, b) => a.distance - b.distance)[0] || null;
   state.target = nearest;
-  interactButton.disabled = !nearest || state.dialogueOpen;
-interactButton.textContent = nearest ? `互動：${nearest.title}（F）` : "互動（F）";
   objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
 }
 function handlePlayerDeath() {
@@ -858,13 +856,15 @@ let panelStack = 100;
 const overlayPanels = [
   { panel: questPanel, toggle: questToggle, stateKey: "questOpen" },
   { panel: inventoryPanel, toggle: inventoryToggle, stateKey: "inventoryOpen" },
-  { panel: walletPanel, toggle: walletToggle, stateKey: "walletOpen" }
 ];
 function toggleOverlayPanel(panel, toggle, stateKey) {
   const shouldOpen = !state[stateKey];
 
   if (shouldOpen) {
-    if (stateKey === "inventoryOpen" || stateKey === "walletOpen") stopInput();
+    if (stateKey === "inventoryOpen") stopInput();
+    state.walletOpen = false;
+    walletPanel.hidden = true;
+    walletToggle.setAttribute("aria-expanded", "false");
     if (state.marketOpen) closeMarketPanel();
     overlayPanels.forEach((item) => {
       if (item.stateKey === stateKey) return;
@@ -877,6 +877,11 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
   }
 
   state[stateKey] = shouldOpen;
+  if (stateKey === "inventoryOpen" && !shouldOpen) {
+    state.walletOpen = false;
+    walletPanel.hidden = true;
+    walletToggle.setAttribute("aria-expanded", "false");
+  }
   panel.hidden = !shouldOpen;
   if (shouldOpen) {
     panel.style.setProperty("--panel-z-index", String(++panelStack));
@@ -892,7 +897,14 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
-walletToggle.addEventListener("click", () => toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"));
+walletToggle.addEventListener("click", () => {
+  if (!state.inventoryOpen) return;
+  state.walletOpen = !state.walletOpen;
+  walletPanel.hidden = true;
+  walletToggle.setAttribute("aria-expanded", String(state.walletOpen));
+  if (state.walletOpen) updateWalletUI();
+  saveProgress();
+});
 marketCloseButton.addEventListener("click", closeMarketPanel);
 dialogueActionButton.addEventListener("click", () => { const action = dialogueAction; closeDialogue(); if (typeof action === "function") action(); });
 document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
@@ -906,11 +918,6 @@ document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
     renderInventory();
   });
 });
-interactButton.addEventListener("click", interact);
-objects.forEach((object) => object.el.addEventListener("click", () => {
-  if (state.started && state.target && state.target.id === object.id) interact();
-  else if (state.started) setStatus("請先移動角色靠近物件，再按互動。");
-}));
 document.addEventListener("keydown", (event) => {
   if (!state.started) return;
   if ((state.marketOpen || state.walletOpen) && event.key !== "Escape") return;
@@ -919,7 +926,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
   if (event.key === "Escape" && state.marketOpen) { event.preventDefault(); closeMarketPanel(); return; }
   if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
-  if (event.key === "Escape" && state.walletOpen) { event.preventDefault(); toggleOverlayPanel(walletPanel, walletToggle, "walletOpen"); return; }
+  if (event.key === "Escape" && state.walletOpen) { event.preventDefault(); state.walletOpen = false; walletPanel.hidden = true; walletToggle.setAttribute("aria-expanded", "false"); saveProgress(); return; }
   if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "Escape" && state.questOpen) { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   const direction = keyMap[event.key];
@@ -1055,7 +1062,7 @@ function respawnAtCheckpoint() {
   renderInventory();
   renderPlayerStats();
   updateWalletUI();
-  walletPanel.hidden = !state.walletOpen;
+  walletPanel.hidden = true;
   updateQuestUI();
   updateScene();
   setStatus("已從最近的存檔點復活。生命與氧氣已恢復。");
