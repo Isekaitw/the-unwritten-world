@@ -969,7 +969,7 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
     flex-direction: column;
     align-items: stretch;
     gap: clamp(10px, 1.5vh, 18px);
-    padding: clamp(20px, 3.2vh, 36px) clamp(24px, 3.2vw, 56px);
+    padding: clamp(32px, 4vh, 52px) clamp(36px, 5vw, 80px);
     overflow: hidden;
     overscroll-behavior: none;
   }
@@ -1056,3 +1056,27 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
 /* Compact, read-only wallet balance in the inventory heading. */
 #game-screen .inventory-wallet-balance { display:flex; align-items:center; justify-content:center; gap:10px; flex:0 0 auto; min-height:42px; padding:7px 16px; border:1px solid rgba(201,177,117,.38); border-radius:8px; color:#c8d5ce; background:linear-gradient(145deg,rgba(166,143,91,.14),rgba(166,143,91,.05)); }
 #game-screen .inventory-wallet-balance strong { color:#f0d99f; font-variant-numeric:tabular-nums; }
+
+
+/* 2026-11-07: full-screen task page with comfortable content margins. */
+#game-screen .quest-panel {
+  position: fixed !important; inset: 0 !important; z-index: 2147483001 !important;
+  width: 100vw !important; height: 100vh !important; height: 100dvh !important;
+  max-width: none !important; max-height: none !important; margin: 0 !important;
+  padding: clamp(28px, 4.5vw, 72px); overflow: auto; overscroll-behavior: contain;
+  box-sizing: border-box; border: 0; border-radius: 0; transform: none !important;
+  background: rgba(9, 22, 28, .98); backdrop-filter: blur(16px); box-shadow: none;
+}
+#game-screen .quest-panel > * { width: min(1100px, 100%); max-width: 1100px; margin-left: auto; margin-right: auto; }
+@media (min-width: 761px) {
+  #game-screen .inventory-panel { padding: clamp(32px, 4vh, 52px) clamp(36px, 5vw, 80px); }
+}
+@media (max-width: 760px) {
+  #game-screen .quest-panel { padding: max(24px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom)); }
+}
+
+/* Match specificity of merchant/checkpoint base styles so shared proximity glow remains visible. */
+#game-screen .world-object.is-near {
+  border-color: #fff4bb;
+  box-shadow: 0 0 0 6px rgba(255,239,174,.14), 0 0 25px rgba(255,239,174,.55);
+}
