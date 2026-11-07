@@ -63,6 +63,7 @@ const maskCanvas = document.createElement("canvas");
 const maskCtx = maskCanvas.getContext("2d");
 const featherCanvas = document.createElement("canvas");
 const featherCtx = featherCanvas.getContext("2d");
+let lastVisionCacheKey = "";
 
 const WORLD = { width: 1600, height: 1000 };
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
@@ -471,7 +472,12 @@ function drawVision() {
   if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
+    lastVisionCacheKey = "";
   }
+  // The vision mask is world-space. Reuse the exact previous frame when its
+  // origin, occluder state and backing resolution have not changed.
+  const cacheKey = [state.x, state.y, state.gateOpen, pixelWidth, pixelHeight].join("|");
+  if (cacheKey === lastVisionCacheKey) return;
 
   const ctx = visionContext;
   const scaleX = pixelWidth / width;
@@ -660,6 +666,7 @@ function drawVision() {
 
   // The player is a sibling of #world and remains above this world-space overlay.
   ctx.globalCompositeOperation = "source-over";
+  lastVisionCacheKey = cacheKey;
 }
 function updateScene() {
   // Keep the horizontal world-space view fixed while adapting the vertical
@@ -744,8 +751,13 @@ function tick(timestamp) {
   state.lastTime = timestamp;
   if (!state.dialogueOpen && !state.inventoryOpen && !state.questOpen && !state.marketOpen) {
     const input = getInput();
-    if (input.x || input.y) movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
-    updateScene();
+    if (input.x || input.y) {
+      const previousX = state.x;
+      const previousY = state.y;
+      movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
+      // Scene geometry and interaction state only need refreshing after an actual position change.
+      if (state.x !== previousX || state.y !== previousY) updateScene();
+    }
   }
   if (state.diving) {
     const previousOxygen = playerStats.oxygen;
