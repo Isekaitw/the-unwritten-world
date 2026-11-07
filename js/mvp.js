@@ -12,8 +12,6 @@ const inventoryWalletBalance = $("#inventory-wallet-balance");
 const marketPanel = $("#market-panel");
 const marketGrid = $("#market-grid");
 const marketBalanceValue = $("#market-balance");
-const marketCloseButton = $("#market-close");
-const dialogueActionButton = $("#dialogue-action");
 const playerStats = { health: 100, hunger: 100, water: 100, energy: 100, fatigue: 100, oxygen: 100 };
 let inventoryCapacity = 20;
 let inventoryQuantities = {};
@@ -110,11 +108,11 @@ const obstacles = [
   { x: 760, y: 600, w: 180, h: 44, gate: true }
 ];
 const objects = [
-  { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 82, title: "潮痕標記" },
-  { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 82, title: "微弱回聲" },
-  { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 82, title: "測量機關" },
-  { id: "test_checkpoint", el: checkpointEl, x: 180, y: 300, radius: 82, title: "存檔點" },
-  { id: "test_merchant_market", el: $("#merchant"), x: 480, y: 720, radius: 82, title: "商人" }
+  { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 80, title: "潮痕標記" },
+  { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 80, title: "微弱回聲" },
+  { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 80, title: "測量機關" },
+  { id: "test_checkpoint", el: checkpointEl, x: 180, y: 300, radius: 80, title: "存檔點" },
+  { id: "test_merchant_market", el: $("#merchant"), x: 480, y: 720, radius: 80, title: "商人" }
 ];
 const keyMap = {
   ArrowUp: "up", w: "up", W: "up",
@@ -295,7 +293,7 @@ function openMarketPanel() {
   overlayPanels.forEach((entry) => { state[entry.stateKey] = false; entry.panel.hidden = true; entry.panel.removeAttribute('aria-modal'); entry.panel.removeAttribute('role'); entry.toggle.setAttribute('aria-expanded', 'false'); });
   state.marketOpen = true; marketPanel.hidden = false;
   marketPanel.setAttribute('role', 'dialog'); marketPanel.setAttribute('aria-modal', 'true');
-  renderMarket(); saveProgress(); marketCloseButton.focus();
+  renderMarket(); saveProgress();
 }
 function closeMarketPanel() {
   if (!state.marketOpen) return; state.marketOpen = false; marketPanel.hidden = true;
@@ -312,16 +310,16 @@ updateWalletUI(); renderMarket(); saveProgress();
   setStatus('已購買' + item.name + '，支付 ' + product.price + ' ' + CURRENCY_LABEL + '。');
 }
 function openDialogue(title, message) {
-  state.dialogueOpen = true; dialogueAction = null; dialogueActionButton.hidden = true;
+  state.dialogueOpen = true; dialogueAction = null;
   dialogueTitle.textContent = title; dialogueText.textContent = message;
   dialoguePanel.hidden = false; dialoguePanel.focus();
 }
 function openMerchantDialogue() {
   openDialogue("商人", "你好，請問今天要買什麼呢？");
-  dialogueAction = () => openMarketPanel(); dialogueActionButton.textContent = "前往市集"; dialogueActionButton.hidden = false;
+  dialogueAction = () => openMarketPanel();
 }
 function closeDialogue() {
-  state.dialogueOpen = false; dialogueAction = null; dialogueActionButton.hidden = true;
+  state.dialogueOpen = false; dialogueAction = null;
   dialoguePanel.hidden = true;
   if (state.started) setStatus(state.target ? `靠近「${state.target.title}」了，按 F 互動。` : "使用方向控制探索；靠近標記、回聲或機關即可互動。");
 }
@@ -337,7 +335,6 @@ function showTitle() {
   gameScreen.classList.remove("immersive-fallback");
   if (document.fullscreenElement === gameScreen && document.exitFullscreen) document.exitFullscreen().catch(() => {});
   dialoguePanel.hidden = true;
-  dialogueActionButton.hidden = true;
   marketPanel.hidden = true;
   deathPanel.hidden = true;
   state.dialogueOpen = false;
@@ -769,7 +766,14 @@ function tick(timestamp) {
 function interact() {
   if (!state.started) return;
   if (state.dead) return;
-  if (state.dialogueOpen) { closeDialogue(); saveProgress(); return; }
+  if (state.marketOpen) { closeMarketPanel(); return; }
+  if (state.dialogueOpen) {
+    const action = dialogueAction;
+    closeDialogue();
+    if (typeof action === "function") action();
+    saveProgress();
+    return;
+  }
   if (!state.target) return;
   const target = state.target;
   if (target.id === "test_interactable_tide_marker") {
@@ -869,8 +873,6 @@ function toggleOverlayPanel(panel, toggle, stateKey) {
 }
 questToggle.addEventListener("click", () => toggleOverlayPanel(questPanel, questToggle, "questOpen"));
 inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"));
-marketCloseButton.addEventListener("click", closeMarketPanel);
-dialogueActionButton.addEventListener("click", () => { const action = dialogueAction; closeDialogue(); if (typeof action === "function") action(); });
 document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
   button.addEventListener("click", () => {
     inventoryFilter = button.dataset.inventoryFilter;
@@ -884,11 +886,16 @@ document.querySelectorAll("[data-inventory-filter]").forEach((button) => {
 });
 document.addEventListener("keydown", (event) => {
   if (!state.started) return;
-  if (state.marketOpen && event.key !== "Escape") return;
+  if (state.marketOpen) {
+    if (event.key === "f" || event.key === "F" || event.key === "Escape") {
+      event.preventDefault();
+      closeMarketPanel();
+    }
+    return;
+  }
   if (event.key === "t" || event.key === "T") { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
   if (event.key === "e" || event.key === "E") { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "f" || event.key === "F") { event.preventDefault(); interact(); return; }
-  if (event.key === "Escape" && state.marketOpen) { event.preventDefault(); closeMarketPanel(); return; }
   if (event.key === "Escape" && state.dialogueOpen) { event.preventDefault(); closeDialogue(); saveProgress(); return; }
   if (event.key === "Escape" && state.inventoryOpen) { event.preventDefault(); toggleOverlayPanel(inventoryPanel, inventoryToggle, "inventoryOpen"); return; }
   if (event.key === "Escape" && state.questOpen) { event.preventDefault(); toggleOverlayPanel(questPanel, questToggle, "questOpen"); return; }
