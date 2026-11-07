@@ -900,7 +900,7 @@ inventoryToggle.addEventListener("click", () => toggleOverlayPanel(inventoryPane
 walletToggle.addEventListener("click", () => {
   if (!state.inventoryOpen) return;
   state.walletOpen = !state.walletOpen;
-  walletPanel.hidden = true;
+  walletPanel.hidden = !state.walletOpen;
   walletToggle.setAttribute("aria-expanded", String(state.walletOpen));
   if (state.walletOpen) updateWalletUI();
   saveProgress();
