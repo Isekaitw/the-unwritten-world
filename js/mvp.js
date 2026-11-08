@@ -64,6 +64,8 @@ const maskCtx = maskCanvas.getContext("2d");
 const featherCanvas = document.createElement("canvas");
 const featherCtx = featherCanvas.getContext("2d");
 let lastVisionCacheKey = "";
+let sceneResizeObserver = null;
+const sceneEffects = new Set();
 
 const WORLD = { width: 1600, height: 1000 };
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
@@ -331,6 +333,7 @@ function showTitle() {
   state.lastTime = 0;
   if (state.frame) cancelAnimationFrame(state.frame);
   state.frame = 0;
+  disposeSceneEffects();
   titleScreen.hidden = false;
   gameScreen.hidden = true;
   gameScreen.classList.remove("immersive-fallback");
@@ -378,10 +381,17 @@ function startExploration() {
   inventoryToggle.setAttribute("aria-expanded", String(state.inventoryOpen));
   updateWalletUI();
   setStatus(saved ? "已載入本機進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
-  updateScene();
-  deathPanel.hidden = !state.dead;
-  if (state.dead) { setStatus("角色已死亡，請從最近啟動的存檔點復活。"); }
-  else state.frame = requestAnimationFrame(tick);
+  // Wait until the game viewport has participated in layout before the first
+  // camera/vision calculation. A second frame lets CSS geometry settle fully.
+  lastVisionCacheKey = "";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!state.started) return;
+    updateScene();
+    state.lastTime = 0;
+    deathPanel.hidden = !state.dead;
+    if (state.dead) setStatus("角色已死亡，請從最近啟動的存檔點復活。");
+    else state.frame = requestAnimationFrame(tick);
+  }));
   startButton.textContent = saved ? "繼續探索 ↗" : "開始探索 ↗";
 }
 function stopInput() {
@@ -476,7 +486,7 @@ function drawVision() {
   }
   // The vision mask is world-space. Reuse the exact previous frame when its
   // origin, occluder state and backing resolution have not changed.
-  const cacheKey = [state.x, state.y, state.gateOpen, pixelWidth, pixelHeight].join("|");
+  const cacheKey = [state.x, state.y, state.gateOpen, pixelWidth, pixelHeight, VISION.baseRadius, VISION.brightness, VISION.fog].join("|");
   if (cacheKey === lastVisionCacheKey) { if (PERF_ENABLED) perfCounters.visionCacheHits += 1; return; }
 
   const ctx = visionContext;
@@ -744,6 +754,35 @@ function handlePlayerDeath() {
   saveProgress();
 }
 
+// Dynamic scene effects have their own lifecycle and clock. They never depend
+// on player movement or the static scene/vision cache being invalidated.
+function registerSceneEffect(effect) {
+  if (!effect || typeof effect.update !== "function" || typeof effect.render !== "function") {
+    throw new TypeError("A scene effect must provide update(dt, context) and render(context).");
+  }
+  sceneEffects.add(effect);
+  if (typeof effect.start === "function") effect.start({ state, viewport, world });
+  return () => {
+    if (!sceneEffects.delete(effect)) return;
+    if (typeof effect.dispose === "function") effect.dispose();
+  };
+}
+function updateSceneEffects(dt, timestamp) {
+  if (!sceneEffects.size) return;
+  const context = { state, viewport, world, timestamp };
+  for (const effect of sceneEffects) effect.update(dt, context);
+}
+function renderSceneEffects(timestamp) {
+  if (!sceneEffects.size) return;
+  const context = { state, viewport, world, timestamp };
+  for (const effect of sceneEffects) effect.render(context);
+}
+function disposeSceneEffects() {
+  for (const effect of sceneEffects) {
+    if (typeof effect.dispose === "function") effect.dispose();
+  }
+  sceneEffects.clear();
+}
 function tick(timestamp) {
   if (!state.started || state.dead) return;
   // Allow a slightly larger frame delta; movePlayer subdivides it before
@@ -752,6 +791,7 @@ function tick(timestamp) {
   const dt = Math.min(elapsedSeconds, 0.1);
   if (PERF_ENABLED) perfRecordFrame(timestamp);
   state.lastTime = timestamp;
+  updateSceneEffects(dt, timestamp);
   if (!state.dialogueOpen && !state.inventoryOpen && !state.questOpen && !state.marketOpen) {
     const input = getInput();
     if (input.x || input.y) {
@@ -776,6 +816,7 @@ function tick(timestamp) {
     saveProgress();
     state.lastSaveTime = timestamp;
   }
+  renderSceneEffects(timestamp);
   state.frame = requestAnimationFrame(tick);
   if (PERF_ENABLED) perfRender(timestamp);
 }
@@ -1039,7 +1080,16 @@ window.addEventListener("blur", () => { stopInput(); saveProgress(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) { stopInput(); saveProgress(); } });
 window.addEventListener("pagehide", () => { stopInput(); saveProgress(); });
 respawnButton.addEventListener("click", respawnAtCheckpoint);
-window.addEventListener("resize", () => { if (state.started) updateScene(); });
+function refreshSceneViewport() {
+  if (!state.started || gameScreen.hidden) return;
+  lastVisionCacheKey = "";
+  updateScene();
+}
+window.addEventListener("resize", refreshSceneViewport);
+if ("ResizeObserver" in window) {
+  sceneResizeObserver = new ResizeObserver(refreshSceneViewport);
+  sceneResizeObserver.observe(viewport);
+}
 
 function createSaveSnapshot() {
   return {
