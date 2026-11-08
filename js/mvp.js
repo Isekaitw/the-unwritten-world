@@ -477,7 +477,7 @@ function drawVision() {
   // The vision mask is world-space. Reuse the exact previous frame when its
   // origin, occluder state and backing resolution have not changed.
   const cacheKey = [state.x, state.y, state.gateOpen, pixelWidth, pixelHeight].join("|");
-  if (cacheKey === lastVisionCacheKey) return;
+  if (cacheKey === lastVisionCacheKey) { if (PERF_ENABLED) perfCounters.visionCacheHits += 1; return; }
 
   const ctx = visionContext;
   const scaleX = pixelWidth / width;
@@ -522,6 +522,8 @@ function drawVision() {
       uniqueAngles.push(angle);
     }
   }
+
+  if (PERF_ENABLED) perfCounters.lastRayCount = uniqueAngles.length;
 
   const points = [];
   for (const angle of uniqueAngles) {
@@ -748,6 +750,7 @@ function tick(timestamp) {
   // collision checks, reducing apparent slowdown after brief frame stalls.
   const elapsedSeconds = state.lastTime ? Math.max(0, (timestamp - state.lastTime) / 1000) : 0;
   const dt = Math.min(elapsedSeconds, 0.1);
+  if (PERF_ENABLED) perfRecordFrame(timestamp);
   state.lastTime = timestamp;
   if (!state.dialogueOpen && !state.inventoryOpen && !state.questOpen && !state.marketOpen) {
     const input = getInput();
@@ -774,6 +777,7 @@ function tick(timestamp) {
     state.lastSaveTime = timestamp;
   }
   state.frame = requestAnimationFrame(tick);
+  if (PERF_ENABLED) perfRender(timestamp);
 }
 function interact() {
   if (!state.started) return;
@@ -828,6 +832,101 @@ function interact() {
   updateScene();
   saveProgress();
 }
+
+// Optional, local-only performance diagnostics. Enable with ?perf=1.
+// Disabled in normal play; no telemetry or network requests are made.
+const PERF_ENABLED = new URLSearchParams(window.location.search).get("perf") === "1";
+const perfDurations = Object.create(null);
+const perfFrameSamples = [];
+const perfCounters = { visionCacheHits: 0, lastRayCount: 0 };
+let perfPreviousFrame = 0;
+let perfLastPaint = 0;
+let perfPanel = null;
+
+function perfWrapFunction(name, original) {
+  return function (...args) {
+    const startedAt = performance.now();
+    try {
+      return original.apply(this, args);
+    } finally {
+      const elapsed = performance.now() - startedAt;
+      const metric = perfDurations[name] || (perfDurations[name] = { total: 0, max: 0, calls: 0 });
+      metric.total += elapsed;
+      metric.max = Math.max(metric.max, elapsed);
+      metric.calls += 1;
+    }
+  };
+}
+
+function perfRecordFrame(timestamp) {
+  if (perfPreviousFrame) {
+    perfFrameSamples.push(timestamp - perfPreviousFrame);
+    if (perfFrameSamples.length > 180) perfFrameSamples.shift();
+  }
+  perfPreviousFrame = timestamp;
+}
+
+function perfRender(timestamp) {
+  if (!perfPanel || timestamp - perfLastPaint < 500) return;
+  perfLastPaint = timestamp;
+  const sortedFrames = [...perfFrameSamples].sort((a, b) => a - b);
+  const averageFrame = perfFrameSamples.length
+    ? perfFrameSamples.reduce((sum, value) => sum + value, 0) / perfFrameSamples.length
+    : 0;
+  const p95Frame = sortedFrames.length
+    ? sortedFrames[Math.min(sortedFrames.length - 1, Math.floor(sortedFrames.length * 0.95))]
+    : 0;
+  const lines = [
+    "PERFORMANCE MONITOR",
+    "FPS(avg): " + (averageFrame ? (1000 / averageFrame).toFixed(1) : "--"),
+    "Frame avg / P95: " + averageFrame.toFixed(2) + " / " + p95Frame.toFixed(2) + " ms"
+  ];
+  for (const name of ["updateScene", "drawVision", "movePlayer", "collides", "saveProgress"]) {
+    const metric = perfDurations[name];
+    lines.push(metric
+      ? name + ": avg " + (metric.total / metric.calls).toFixed(3) + " / max " + metric.max.toFixed(3) + " ms (" + metric.calls + ")"
+      : name + ": --");
+    if (metric) {
+      metric.total = 0;
+      metric.max = 0;
+      metric.calls = 0;
+    }
+  }
+  const heap = performance.memory && performance.memory.usedJSHeapSize;
+  lines.push("Vision cache hits: " + perfCounters.visionCacheHits);
+  lines.push("Vision rays / DPR: " + perfCounters.lastRayCount + " / " + (window.devicePixelRatio || 1));
+  lines.push("JS heap: " + (heap ? (heap / 1048576).toFixed(1) + " MB" : "not exposed"));
+  perfCounters.visionCacheHits = 0;
+  perfPanel.textContent = lines.join("\n");
+}
+
+if (PERF_ENABLED) {
+  perfPanel = document.createElement("pre");
+  perfPanel.id = "game-performance-monitor";
+  Object.assign(perfPanel.style, {
+    position: "fixed", top: "10px", right: "10px", zIndex: "2147483647",
+    width: "min(360px, calc(100vw - 20px))", maxHeight: "45vh", overflow: "hidden",
+    margin: "0", padding: "10px 12px", border: "1px solid rgba(180,210,205,.45)",
+    borderRadius: "8px", background: "rgba(5,12,18,.88)", color: "#dcebe6",
+    font: "11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace",
+    whiteSpace: "pre-wrap", pointerEvents: "none", backdropFilter: "blur(8px)"
+  });
+  document.body.append(perfPanel);
+  updateScene = perfWrapFunction("updateScene", updateScene);
+  drawVision = perfWrapFunction("drawVision", drawVision);
+  movePlayer = perfWrapFunction("movePlayer", movePlayer);
+  collides = perfWrapFunction("collides", collides);
+  saveProgress = perfWrapFunction("saveProgress", saveProgress);
+  window.__gamePerf = {
+    enabled: true,
+    snapshot: () => ({
+      frameIntervalsMs: [...perfFrameSamples],
+      counters: { ...perfCounters },
+      timings: Object.fromEntries(Object.entries(perfDurations).map(([key, value]) => [key, { ...value }]))
+    })
+  };
+}
+
 document.querySelectorAll("[data-quest-tab]").forEach((tab) => {
   tab.addEventListener("click", () => {
     const selected = tab.dataset.questTab;
