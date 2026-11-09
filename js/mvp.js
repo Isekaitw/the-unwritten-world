@@ -63,7 +63,7 @@ const maskCanvas = document.createElement("canvas");
 const maskCtx = maskCanvas.getContext("2d");
 const featherCanvas = document.createElement("canvas");
 const featherCtx = featherCanvas.getContext("2d");
-let lastVisionCacheKey = "";
+
 let sceneResizeObserver = null;
 const sceneEffects = new Set();
 
@@ -383,7 +383,6 @@ function startExploration() {
   setStatus(saved ? "已載入本機進度。WASD／方向鍵移動，靠近物件後按 F 互動。" : "使用 WASD／方向鍵移動，靠近物件後按 F 互動。");
   // Wait until the game viewport has participated in layout before the first
   // camera/vision calculation. A second frame lets CSS geometry settle fully.
-  lastVisionCacheKey = "";
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (!state.started) return;
     updateScene();
@@ -482,12 +481,7 @@ function drawVision() {
   if (visionCanvas.width !== pixelWidth || visionCanvas.height !== pixelHeight) {
     visionCanvas.width = pixelWidth;
     visionCanvas.height = pixelHeight;
-    lastVisionCacheKey = "";
   }
-  // The vision mask is world-space. Reuse the exact previous frame when its
-  // origin, occluder state and backing resolution have not changed.
-  const cacheKey = [state.x, state.y, state.gateOpen, pixelWidth, pixelHeight, VISION.baseRadius, VISION.brightness, VISION.fog].join("|");
-  if (cacheKey === lastVisionCacheKey) { if (PERF_ENABLED) perfCounters.visionCacheHits += 1; return; }
 
   const ctx = visionContext;
   const scaleX = pixelWidth / width;
@@ -678,7 +672,6 @@ function drawVision() {
 
   // The player is a sibling of #world and remains above this world-space overlay.
   ctx.globalCompositeOperation = "source-over";
-  lastVisionCacheKey = cacheKey;
 }
 function updateScene() {
   // Keep the horizontal world-space view fixed while adapting the vertical
@@ -795,12 +788,9 @@ function tick(timestamp) {
   if (!state.dialogueOpen && !state.inventoryOpen && !state.questOpen && !state.marketOpen) {
     const input = getInput();
     if (input.x || input.y) {
-      const previousX = state.x;
-      const previousY = state.y;
       movePlayer(input.x * PLAYER.speed * dt, input.y * PLAYER.speed * dt);
-      // Scene geometry and interaction state only need refreshing after an actual position change.
-      if (state.x !== previousX || state.y !== previousY) updateScene();
     }
+    updateScene();
   }
   if (state.diving) {
     const previousOxygen = playerStats.oxygen;
@@ -879,7 +869,7 @@ function interact() {
 const PERF_ENABLED = new URLSearchParams(window.location.search).get("perf") === "1";
 const perfDurations = Object.create(null);
 const perfFrameSamples = [];
-const perfCounters = { visionCacheHits: 0, lastRayCount: 0 };
+const perfCounters = { lastRayCount: 0 };
 let perfPreviousFrame = 0;
 let perfLastPaint = 0;
 let perfPanel = null;
@@ -934,10 +924,8 @@ function perfRender(timestamp) {
     }
   }
   const heap = performance.memory && performance.memory.usedJSHeapSize;
-  lines.push("Vision cache hits: " + perfCounters.visionCacheHits);
   lines.push("Vision rays / DPR: " + perfCounters.lastRayCount + " / " + (window.devicePixelRatio || 1));
   lines.push("JS heap: " + (heap ? (heap / 1048576).toFixed(1) + " MB" : "not exposed"));
-  perfCounters.visionCacheHits = 0;
   perfPanel.textContent = lines.join("\n");
 }
 
@@ -1082,7 +1070,6 @@ window.addEventListener("pagehide", () => { stopInput(); saveProgress(); });
 respawnButton.addEventListener("click", respawnAtCheckpoint);
 function refreshSceneViewport() {
   if (!state.started || gameScreen.hidden) return;
-  lastVisionCacheKey = "";
   updateScene();
 }
 window.addEventListener("resize", refreshSceneViewport);
