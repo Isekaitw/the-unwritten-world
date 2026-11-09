@@ -158,3 +158,9 @@
 - 預覽版只改顯示標籤與 localStorage key namespace；遊戲邏輯對應 PR #12，不改正式版根目錄程式。
 - 預覽路徑為 `https://isekaitw.github.io/the-unwritten-world/preview/pr-12/`；PR #12 未合併。
 - 這是固定快照；PR 分支有新提交時需重新同步，否則不可稱為最新 PR 版本。
+
+
+## 17. 任務介面預設關閉（2026-11-09）
+- 開始新遊戲或繼續進度時，先顯示探索場景，不自動打開全螢幕任務介面。
+- 任務面板預設關閉；玩家可按 T 或點擊「任務（T）」按鈕自行開啟，再依既有方式關閉。
+- HTML hidden、按鈕 aria-expanded=false 與 JavaScript questOpen=false 必須保持一致。
