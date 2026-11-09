@@ -1251,3 +1251,7 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
 @media (max-width: 760px) {
   #game-screen:not([hidden]) #dialogue-panel { padding: 18px !important; }
 }
+
+
+/* Test-only L-shaped stone wall; clip path matches the polygon in mvp.js. */
+#game-screen .obstacle-l { clip-path:polygon(0 0,100% 0,100% 27.2727%,27.2727% 27.2727%,27.2727% 100%,0 100%); border-radius:5px; background:linear-gradient(145deg,#71877a 0%,#3d5a55 58%,#263f40 100%); }

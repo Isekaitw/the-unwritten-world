@@ -113,6 +113,8 @@ const obstacles = [
   { x: 610, y: 350, w: 80, h: 220 },
   { x: 930, y: 170, w: 240, h: 75 },
   { x: 1180, y: 560, w: 90, h: 190 },
+  // Test-only concave L-shaped wall. One polygon is shared by collision and vision.
+  { id: "test-l-wall", x: 820, y: 350, w: 220, h: 220, points: [[0,0],[220,0],[220,60],[60,60],[60,220],[0,220]] },
   { x: 760, y: 600, w: 180, h: 44, gate: true }
 ];
 const objects = [
@@ -421,13 +423,34 @@ function getInput() {
 function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
-function collides(x, y) {
-  const hit = { x: x - PLAYER.hitWidth / 2, y: y + PLAYER.height - PLAYER.hitHeight, w: PLAYER.hitWidth, h: PLAYER.hitHeight };
-  if (hit.x < 0 || hit.y < 0 || hit.x + hit.w > WORLD.width || hit.y + hit.h > WORLD.height) return true;
-  return obstacles.some((obstacle) => {
-    if (obstacle.gate && state.gateOpen) return false;
-    return rectsOverlap(hit, obstacle);
-  });
+function obstacleVertices(obstacle) {
+  if (Array.isArray(obstacle.points)) return obstacle.points.map(([x,y])=>({x:obstacle.x+x,y:obstacle.y+y}));
+  return [{x:obstacle.x,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y+obstacle.h},{x:obstacle.x,y:obstacle.y+obstacle.h}];
+}
+function pointInPolygon(p,poly) {
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}
+  return inside;
+}
+function segmentsIntersect(a,b,c,d) {
+  const orient=(p,q,r)=>(q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x);
+  const on=(p,q,r)=>q.x>=Math.min(p.x,r.x)-1e-8&&q.x<=Math.max(p.x,r.x)+1e-8&&q.y>=Math.min(p.y,r.y)-1e-8&&q.y<=Math.max(p.y,r.y)+1e-8;
+  const o1=orient(a,b,c),o2=orient(a,b,d),o3=orient(c,d,a),o4=orient(c,d,b);
+  if(((o1>0&&o2<0)||(o1<0&&o2>0))&&((o3>0&&o4<0)||(o3<0&&o4>0)))return true;
+  return (Math.abs(o1)<1e-8&&on(a,c,b))||(Math.abs(o2)<1e-8&&on(a,d,b))||(Math.abs(o3)<1e-8&&on(c,a,d))||(Math.abs(o4)<1e-8&&on(c,b,d));
+}
+function polygonIntersectsRect(poly,r) {
+  const corners=[{x:r.x,y:r.y},{x:r.x+r.w,y:r.y},{x:r.x+r.w,y:r.y+r.h},{x:r.x,y:r.y+r.h}];
+  if(poly.some(p=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h))return true;
+  if(corners.some(p=>pointInPolygon(p,poly)))return true;
+  for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];for(let j=0;j<4;j++)if(segmentsIntersect(a,b,corners[j],corners[(j+1)%4]))return true;}
+  return false;
+}
+function obstacleIntersectsRect(o,r) {if(!rectsOverlap(r,o))return false;return Array.isArray(o.points)?polygonIntersectsRect(obstacleVertices(o),r):true;}
+function collides(x,y) {
+  const hit={x:x-PLAYER.hitWidth/2,y:y+PLAYER.height-PLAYER.hitHeight,w:PLAYER.hitWidth,h:PLAYER.hitHeight};
+  if(hit.x<0||hit.y<0||hit.x+hit.w>WORLD.width||hit.y+hit.h>WORLD.height)return true;
+  return obstacles.some(o=>!(o.gate&&state.gateOpen)&&obstacleIntersectsRect(o,hit));
 }
 function movePlayer(dx, dy) {
   // Resolve axes independently so diagonal movement remains stable against
@@ -449,6 +472,16 @@ function movePlayer(dx, dy) {
   }
 }
 
+function rayPolygonDistance(ox,oy,dx,dy,poly){
+  let nearest=Infinity;
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i],b=poly[(i+1)%poly.length],ex=b.x-a.x,ey=b.y-a.y,ax=a.x-ox,ay=a.y-oy,den=dx*ey-dy*ex;
+    if(Math.abs(den)<1e-9)continue;
+    const t=(ax*ey-ay*ex)/den,u=(ax*dy-ay*dx)/den;
+    if(t>1e-6&&u>=-1e-8&&u<=1+1e-8&&t<nearest)nearest=t;
+  }
+  return nearest;
+}
 // Return the first positive intersection with an opaque rectangle. If the
 // origin is inside a rectangle, use its exit edge so the ray never produces
 // Infinity/NaN geometry or a discontinuous polygon.
@@ -526,12 +559,7 @@ function drawVision() {
   addCorner(view.x + view.w, view.y);
   addCorner(view.x + view.w, view.y + view.h);
   addCorner(view.x, view.y + view.h);
-  for (const o of opaque) {
-    addCorner(o.x, o.y);
-    addCorner(o.x + o.w, o.y);
-    addCorner(o.x + o.w, o.y + o.h);
-    addCorner(o.x, o.y + o.h);
-  }
+  for (const o of opaque) for (const p of obstacleVertices(o)) addCorner(p.x,p.y);
   angles.sort((a, b) => a - b);
 
   const uniqueAngles = [];
@@ -550,7 +578,7 @@ function drawVision() {
     let distance = rayViewportDistance(sourceX, sourceY, dirX, dirY, view);
     if (restricted) distance = Math.min(distance, radius);
     for (const obstacle of opaque) {
-      const hit = rayRectDistance(sourceX, sourceY, dirX, dirY, obstacle);
+      const hit = rayPolygonDistance(sourceX, sourceY, dirX, dirY, obstacleVertices(obstacle));
       if (hit < distance) distance = hit;
     }
     if (!Number.isFinite(distance) || distance < 0) continue;
@@ -560,12 +588,7 @@ function drawVision() {
     let nearestCorner = null;
     let nearestCornerError = 0.75;
     for (const wall of opaque) {
-      for (const corner of [
-        { x: wall.x, y: wall.y },
-        { x: wall.x + wall.w, y: wall.y },
-        { x: wall.x + wall.w, y: wall.y + wall.h },
-        { x: wall.x, y: wall.y + wall.h }
-      ]) {
+      for (const corner of obstacleVertices(wall)) {
         const error = Math.hypot(hitX - corner.x, hitY - corner.y);
         if (error < nearestCornerError) {
           nearestCorner = corner;
@@ -610,33 +633,10 @@ function drawVision() {
   }
 
   const FAR = 4000;
-  const addShadow = (o) => {
-    const corners = [
-      [o.x, o.y],
-      [o.x + o.w, o.y],
-      [o.x + o.w, o.y + o.h],
-      [o.x, o.y + o.h]
-    ];
-    const projected = corners.map(([x, y]) => {
-      const dx = x - sourceX;
-      const dy = y - sourceY;
-      const length = Math.hypot(dx, dy) || 1;
-      return [x + dx / length * FAR, y + dy / length * FAR];
-    });
-    for (let i = 0; i < 4; i++) {
-      const j = (i + 1) % 4;
-      const polygon = [corners[i], corners[j], projected[j], projected[i]];
-      let area = 0;
-      for (let k = 0; k < 4; k++) {
-        const a = polygon[k];
-        const b = polygon[(k + 1) % 4];
-        area += a[0] * b[1] - b[0] * a[1];
-      }
-      if (area < 0) polygon.reverse();
-      ctx.moveTo(polygon[0][0], polygon[0][1]);
-      for (let k = 1; k < 4; k++) ctx.lineTo(polygon[k][0], polygon[k][1]);
-      ctx.closePath();
-    }
+  const addShadow=(o)=>{
+    const corners=obstacleVertices(o).map(p=>[p.x,p.y]);
+    const projected=corners.map(([x,y])=>{const dx=x-sourceX,dy=y-sourceY,len=Math.hypot(dx,dy)||1;return [x+dx/len*FAR,y+dy/len*FAR];});
+    for(let i=0;i<corners.length;i++){const j=(i+1)%corners.length,poly=[corners[i],corners[j],projected[j],projected[i]];let area=0;for(let k=0;k<poly.length;k++){const p=poly[k],q=poly[(k+1)%poly.length];area+=p[0]*q[1]-q[0]*p[1];}if(area<0)poly.reverse();ctx.moveTo(poly[0][0],poly[0][1]);for(let k=1;k<poly.length;k++)ctx.lineTo(poly[k][0],poly[k][1]);ctx.closePath();}
   };
 
   const padX = 1 / scaleX;
@@ -646,42 +646,13 @@ function drawVision() {
   const ceilX = (x) => Math.ceil(x * scaleX) / scaleX;
   const ceilY = (y) => Math.ceil(y * scaleY) / scaleY;
 
-  for (const wall of opaque) {
-    const rx = snapX(wall.x) - padX;
-    const ry = snapY(wall.y) - padY;
-    const rr = ceilX(wall.x + wall.w) + padX;
-    const rb = ceilY(wall.y + wall.h) + padY;
-    const rw = rr - rx;
-    const rh = rb - ry;
-
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = "#000";
-    ctx.fillRect(rx, ry, rw, rh);
-
-    ctx.save();
-    ctx.globalCompositeOperation = "source-over";
-    ctx.shadowColor = "rgba(0,0,0,0.38)";
-    ctx.shadowBlur = 14;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 9;
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
-    ctx.restore();
-
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillRect(rx, ry, rw, rh);
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(rx, ry, rw, rh);
-    ctx.clip();
-    ctx.globalCompositeOperation = "source-over";
-    ctx.beginPath();
-    for (const other of opaque) {
-      if (other !== wall) addShadow(other);
-    }
-    ctx.fill();
-    ctx.restore();
+  for(const wall of opaque){
+    const vertices=obstacleVertices(wall);
+    const trace=()=>{ctx.beginPath();ctx.moveTo(vertices[0].x,vertices[0].y);for(let i=1;i<vertices.length;i++)ctx.lineTo(vertices[i].x,vertices[i].y);ctx.closePath();};
+    ctx.globalCompositeOperation="destination-out";ctx.fillStyle="#000";trace();ctx.fill();
+    ctx.save();ctx.globalCompositeOperation="source-over";ctx.shadowColor="rgba(0,0,0,0.38)";ctx.shadowBlur=14;ctx.shadowOffsetX=0;ctx.shadowOffsetY=9;ctx.fillStyle="rgba(0,0,0,0.22)";trace();ctx.fill();ctx.restore();
+    ctx.globalCompositeOperation="destination-out";trace();ctx.fill();
+    ctx.save();trace();ctx.clip();ctx.globalCompositeOperation="source-over";ctx.beginPath();for(const other of opaque)if(other!==wall)addShadow(other);ctx.fill();ctx.restore();
   }
 
   // The player is a sibling of #world and remains above this world-space overlay.
