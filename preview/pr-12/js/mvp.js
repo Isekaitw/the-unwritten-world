@@ -86,7 +86,7 @@ const state = {
   lastSaveTime: 0,
   checkpointActive: false,
   frame: 0,
-  questOpen: true,
+  questOpen: false,
   inventoryOpen: false,
   marketOpen: false,
   diving: false,
