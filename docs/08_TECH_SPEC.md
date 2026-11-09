@@ -931,3 +931,9 @@ Canvas、分層 DOM/CSS 或混合渲染尚未定案。先檢查現有程式與�
 - 搖桿是固定螢幕座標 UI，位於 `#world` 外，不套用相機位移或世界座標轉換。
 - 使用 Pointer Events 與 pointer capture；pointerup、pointercancel、lostpointercapture、失焦、頁面隱藏及遊戲面板開啟時清除輸入。
 - 搖桿只接入既有移動系統；速度、碰撞、相機、世界座標與規則共用，桌面鍵盤操作不變。手機直橫向及回歸仍須實機驗收。
+
+
+## 任務介面存檔還原修正（2026-11-09）
+- 任務面板開關屬於當次操作的 UI 狀態，不從本機存檔還原。
+- 載入新舊格式存檔（包含缺少 `questOpen` 欄位或曾保存為 true 的資料）時，統一將 `state.questOpen` 設為 false；開始場景時依此保持任務面板關閉。
+- Main 與 `preview/pr-12/` 同步此行為；玩家仍可按 T 或點擊任務按鈕自行開啟。

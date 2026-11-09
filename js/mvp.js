@@ -1233,7 +1233,8 @@ function loadProgress() {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!applySnapshot(data)) return null;
-    state.questOpen = data.questOpen !== false;
+    // Overlay visibility is session UI state, not saved progress. Always enter gameplay with quests closed.
+    state.questOpen = false;
     state.inventoryOpen = Boolean(data.inventoryOpen);
     state.checkpointActive = Boolean(data.checkpointActive);
     return data;
