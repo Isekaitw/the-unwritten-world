@@ -17,7 +17,7 @@ let inventoryCapacity = 20;
 let inventoryQuantities = {};
 let walletBalance = 100;
 let dialogueAction = null;
-const CURRENCY_LABEL = "錢幣";
+const formatCurrency = (amount) => `$ ${amount}`;
 const MAX_INVENTORY_CAPACITY = 40;
 const inventoryCatalog = [
   { id: "tide_imprint", category: "important", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
@@ -276,7 +276,7 @@ function updateQuestUI() {
   $("#quest-secret-status").textContent = state.secretFound ? "已發現" : "未發現";
 }
 function updateWalletUI() {
-  const balanceText = walletBalance + ' ' + CURRENCY_LABEL;
+  const balanceText = formatCurrency(walletBalance);
   if (inventoryWalletBalance) inventoryWalletBalance.textContent = balanceText;
   if (marketBalanceValue) marketBalanceValue.textContent = balanceText;
 }
@@ -288,7 +288,7 @@ function renderMarket() {
     const icon = document.createElement('span'); icon.className = 'market-item-icon'; icon.textContent = item.icon;
     const name = document.createElement('h4'); name.textContent = item.name;
     const description = document.createElement('p'); description.textContent = item.description;
-    const price = document.createElement('strong'); price.className = 'market-item-price'; price.textContent = product.price + ' ' + CURRENCY_LABEL;
+    const price = document.createElement('strong'); price.className = 'market-item-price'; price.textContent = formatCurrency(product.price);
     const owned = document.createElement('small'); owned.textContent = '持有：' + (inventoryQuantities[item.id] || 0);
     const buy = document.createElement('button'); buy.type = 'button'; buy.className = 'primary-button market-buy-button'; buy.textContent = '購買';
     buy.disabled = walletBalance < product.price || (!state.inventory.includes(item.id) && state.inventory.length >= inventoryCapacity);
@@ -315,7 +315,7 @@ function purchaseMarketItem(itemId) {
   if (!addInventoryItem(itemId, 1)) { renderMarket(); return; }
   walletBalance -= product.price;
 updateWalletUI(); renderMarket(); saveProgress();
-  setStatus('已購買' + item.name + '，支付 ' + product.price + ' ' + CURRENCY_LABEL + '。');
+  setStatus('已購買' + item.name + '，支付 ' + formatCurrency(product.price) + '。');
 }
 function openDialogue(title, message) {
   stopInput();
