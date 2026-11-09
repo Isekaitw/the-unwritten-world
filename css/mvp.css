@@ -1232,3 +1232,6 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
   #game-screen:not([hidden]) .market-grid { grid-template-columns: 1fr; }
   #game-screen:not([hidden]) .market-item-card { min-height: 0; }
 }
+
+/* With the visible backpack title removed, keep the balance anchored at the right. */
+#game-screen:not([hidden]) .inventory-heading { justify-content: flex-end; }
