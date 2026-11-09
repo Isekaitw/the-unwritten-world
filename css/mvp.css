@@ -1092,3 +1092,143 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
  .mobile-joystick.is-active .mobile-joystick-thumb { border-color:rgba(255,245,207,.96); box-shadow:0 4px 18px rgba(0,0,0,.42),0 0 16px rgba(213,231,193,.22),inset 0 1px 2px rgba(255,255,255,.7); }
  .mobile-joystick-hint { color:rgba(226,237,226,.76); font-size:11px; letter-spacing:.16em; text-shadow:0 2px 5px rgba(0,0,0,.8); }
 }
+
+
+/* 2026-11-09: unify backpack, quest, merchant and dialogue surfaces at full viewport scale. */
+#game-screen:not([hidden]) .inventory-panel,
+#game-screen:not([hidden]) .quest-panel,
+#game-screen:not([hidden]) .market-panel,
+#game-screen:not([hidden]) .dialogue-panel {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 2147483005 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(14px, 2vh, 24px);
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: clamp(28px, 4.5vh, 64px) clamp(28px, 5vw, 80px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0 !important;
+  transform: none !important;
+  color: #e8eee9;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(107,137,126,.16), transparent 52%),
+    linear-gradient(145deg, rgba(21,35,38,.985), rgba(8,18,23,.99));
+  backdrop-filter: blur(16px);
+  box-shadow: none !important;
+}
+#game-screen:not([hidden]) .inventory-panel[hidden],
+#game-screen:not([hidden]) .quest-panel[hidden],
+#game-screen:not([hidden]) .market-panel[hidden],
+#game-screen:not([hidden]) .dialogue-panel[hidden] {
+  display: none !important;
+}
+#game-screen:not([hidden]) .inventory-panel > *,
+#game-screen:not([hidden]) .quest-panel > *,
+#game-screen:not([hidden]) .market-panel > *,
+#game-screen:not([hidden]) .dialogue-panel > * {
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0;
+  margin-right: 0;
+}
+#game-screen:not([hidden]) .inventory-heading {
+  max-width: none;
+  margin: 0;
+}
+#game-screen:not([hidden]) .inventory-heading > div:first-child:empty {
+  display: none;
+}
+#game-screen:not([hidden]) .quest-heading {
+  margin: 0 0 clamp(10px, 2vh, 22px);
+}
+#game-screen:not([hidden]) .quest-heading h3,
+#game-screen:not([hidden]) .market-heading h3,
+#game-screen:not([hidden]) .dialogue-panel h3 {
+  font-size: clamp(1.7rem, 3vw, 2.7rem);
+  letter-spacing: .08em;
+}
+#game-screen:not([hidden]) .quest-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(8px, 1.2vw, 16px);
+  margin: 0 0 clamp(12px, 2vh, 22px);
+}
+#game-screen:not([hidden]) .quest-tab {
+  min-height: 58px;
+  font-size: clamp(.95rem, 1.2vw, 1.1rem);
+}
+#game-screen:not([hidden]) .quest-category {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+}
+#game-screen:not([hidden]) .quest-category .quest-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: clamp(12px, 1.5vw, 20px);
+}
+#game-screen:not([hidden]) .quest-category .quest-item {
+  min-height: 76px;
+  padding: clamp(14px, 1.5vw, 22px);
+  font-size: clamp(1rem, 1.25vw, 1.2rem);
+}
+#game-screen:not([hidden]) .quest-message,
+#game-screen:not([hidden]) .quest-secret {
+  font-size: clamp(.95rem, 1.15vw, 1.1rem);
+}
+#game-screen:not([hidden]) .market-heading {
+  flex: 0 0 auto;
+  margin: 0;
+}
+#game-screen:not([hidden]) .market-wallet-row {
+  flex: 0 0 auto;
+  font-size: clamp(1rem, 1.2vw, 1.15rem);
+  padding: clamp(14px, 1.5vw, 22px);
+}
+#game-screen:not([hidden]) .market-grid {
+  flex: 1 1 auto;
+  align-content: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: clamp(14px, 1.6vw, 22px);
+}
+#game-screen:not([hidden]) .market-item-card {
+  min-height: 250px;
+  padding: clamp(18px, 2vw, 28px);
+  gap: 12px;
+}
+#game-screen:not([hidden]) .market-item-card h4 { font-size: clamp(1.1rem, 1.5vw, 1.35rem); }
+#game-screen:not([hidden]) .market-item-card p { font-size: clamp(.92rem, 1.05vw, 1.05rem); }
+#game-screen:not([hidden]) .market-item-price { font-size: 1.1rem; }
+#game-screen:not([hidden]) .dialogue-panel:not(.market-panel) {
+  justify-content: center;
+  gap: 24px;
+}
+#game-screen:not([hidden]) .dialogue-panel:not(.market-panel) > * {
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 760px) {
+  #game-screen:not([hidden]) .inventory-panel,
+  #game-screen:not([hidden]) .quest-panel,
+  #game-screen:not([hidden]) .market-panel,
+  #game-screen:not([hidden]) .dialogue-panel {
+    padding: max(24px, env(safe-area-inset-top)) 18px max(26px, env(safe-area-inset-bottom)) !important;
+  }
+  #game-screen:not([hidden]) .quest-category .quest-list { grid-template-columns: 1fr; }
+  #game-screen:not([hidden]) .market-grid { grid-template-columns: 1fr; }
+  #game-screen:not([hidden]) .market-item-card { min-height: 0; }
+}
