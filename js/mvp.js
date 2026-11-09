@@ -17,7 +17,7 @@ let inventoryCapacity = 20;
 let inventoryQuantities = {};
 let walletBalance = 100;
 let dialogueAction = null;
-const formatCurrency = (amount) => '
+const formatCurrency = (amount) => String.fromCharCode(36) + amount;
 const MAX_INVENTORY_CAPACITY = 40;
 const inventoryCatalog = [
   { id: "tide_imprint", category: "important", icon: "◈", name: "潮痕拓印", subtitle: "測量痕跡", description: "石面上的刻痕拓印。排列並非自然侵蝕形成，像是某種測量裝置留下的記號。", source: "調查潮痕標記" },
