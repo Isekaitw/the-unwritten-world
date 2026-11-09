@@ -1097,8 +1097,7 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
 /* 2026-11-09: unify backpack, quest, merchant and dialogue surfaces at full viewport scale. */
 #game-screen:not([hidden]) .inventory-panel,
 #game-screen:not([hidden]) .quest-panel,
-#game-screen:not([hidden]) .market-panel,
-#game-screen:not([hidden]) .dialogue-panel {
+#game-screen:not([hidden]) .market-panel {
   position: fixed !important;
   inset: 0 !important;
   top: 0 !important;
@@ -1132,14 +1131,12 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
 }
 #game-screen:not([hidden]) .inventory-panel[hidden],
 #game-screen:not([hidden]) .quest-panel[hidden],
-#game-screen:not([hidden]) .market-panel[hidden],
-#game-screen:not([hidden]) .dialogue-panel[hidden] {
+#game-screen:not([hidden]) .market-panel[hidden] {
   display: none !important;
 }
 #game-screen:not([hidden]) .inventory-panel > *,
 #game-screen:not([hidden]) .quest-panel > *,
-#game-screen:not([hidden]) .market-panel > *,
-#game-screen:not([hidden]) .dialogue-panel > * {
+#game-screen:not([hidden]) .market-panel > * {
   width: 100%;
   max-width: none !important;
   margin-left: 0;
@@ -1156,8 +1153,7 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
   margin: 0 0 clamp(10px, 2vh, 22px);
 }
 #game-screen:not([hidden]) .quest-heading h3,
-#game-screen:not([hidden]) .market-heading h3,
-#game-screen:not([hidden]) .dialogue-panel h3 {
+#game-screen:not([hidden]) .market-heading h3 {
   font-size: clamp(1.7rem, 3vw, 2.7rem);
   letter-spacing: .08em;
 }
@@ -1212,22 +1208,10 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
 #game-screen:not([hidden]) .market-item-card h4 { font-size: clamp(1.1rem, 1.5vw, 1.35rem); }
 #game-screen:not([hidden]) .market-item-card p { font-size: clamp(.92rem, 1.05vw, 1.05rem); }
 #game-screen:not([hidden]) .market-item-price { font-size: 1.1rem; }
-#game-screen:not([hidden]) .dialogue-panel:not(.market-panel) {
-  justify-content: center;
-  gap: 24px;
-}
-#game-screen:not([hidden]) .dialogue-panel:not(.market-panel) > * {
-  max-width: 1000px;
-  margin-left: auto;
-  margin-right: auto;
-}
 @media (max-width: 760px) {
   #game-screen:not([hidden]) .inventory-panel,
   #game-screen:not([hidden]) .quest-panel,
   #game-screen:not([hidden]) .market-panel,
-  #game-screen:not([hidden]) .dialogue-panel {
-    padding: max(24px, env(safe-area-inset-top)) 18px max(26px, env(safe-area-inset-bottom)) !important;
-  }
   #game-screen:not([hidden]) .quest-category .quest-list { grid-template-columns: 1fr; }
   #game-screen:not([hidden]) .market-grid { grid-template-columns: 1fr; }
   #game-screen:not([hidden]) .market-item-card { min-height: 0; }
@@ -1235,3 +1219,35 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
 
 /* With the visible backpack title removed, keep the balance anchored at the right. */
 #game-screen:not([hidden]) .inventory-heading { justify-content: flex-end; }
+
+
+/* Merchant conversation remains compact; only the purchase market is full-screen. */
+#game-screen:not([hidden]) #dialogue-panel {
+  position: fixed !important;
+  z-index: 2147483004 !important;
+  top: auto !important;
+  left: 12px !important;
+  right: 12px !important;
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 14px)) !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: min(32vh, 280px) !important;
+  margin: 0 !important;
+  padding: 22px 26px !important;
+  overflow: auto !important;
+  border: 1px solid rgba(210, 243, 231, .3) !important;
+  border-radius: 14px !important;
+  transform: none !important;
+  background: rgba(13, 23, 31, .94) !important;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .6) !important;
+}
+#game-screen:not([hidden]) #dialogue-panel[hidden] { display: none !important; }
+#game-screen:not([hidden]) #dialogue-panel .dialogue-heading h3 {
+  font-size: 1.15rem;
+  letter-spacing: .04em;
+}
+@media (max-width: 760px) {
+  #game-screen:not([hidden]) #dialogue-panel { padding: 18px !important; }
+}
