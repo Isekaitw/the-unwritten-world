@@ -38,6 +38,10 @@ const SAVE_KEY = "unwritten-world-exploration-save-v2-pr12-preview";
 const CHECKPOINT_KEY = "unwritten-world-exploration-checkpoint-v1-pr12-preview";
 const SAVE_INTERVAL_MS = 1000;
 const viewport = $("#scene");
+const joystick = $("#mobile-joystick");
+const joystickBase = joystick.querySelector(".mobile-joystick-base");
+const joystickThumb = $("#mobile-joystick-thumb");
+let joystickPointerId = null;
 const world = $("#world");
 const playerEl = $("#player");
 const visionCanvas = $("#vision-canvas");
@@ -76,6 +80,7 @@ const state = {
   x: 180, y: 180,
   keys: new Set(),
   pointers: new Map(),
+  joystick: { x: 0, y: 0 },
   gateOpen: false,
   secretFound: false,
   markerInspected: false,
@@ -313,6 +318,7 @@ updateWalletUI(); renderMarket(); saveProgress();
   setStatus('已購買' + item.name + '，支付 ' + product.price + ' ' + CURRENCY_LABEL + '。');
 }
 function openDialogue(title, message) {
+  stopInput();
   state.dialogueOpen = true; dialogueAction = null;
   dialogueTitle.textContent = title; dialogueText.textContent = message;
   dialoguePanel.hidden = false; dialoguePanel.focus();
@@ -393,20 +399,22 @@ function startExploration() {
   }));
   startButton.textContent = saved ? "繼續探索 ↗" : "開始探索 ↗";
 }
+function resetJoystick() {
+  state.joystick.x = 0; state.joystick.y = 0; joystickPointerId = null;
+  joystickThumb.style.transform = "translate(-50%, -50%)"; joystick.classList.remove("is-active");
+}
 function stopInput() {
-  state.keys.clear();
-  state.pointers.clear();
+  state.keys.clear(); state.pointers.clear(); resetJoystick();
   document.querySelectorAll(".direction.is-pressed").forEach((button) => button.classList.remove("is-pressed"));
 }
 function getInput() {
   let x = 0, y = 0;
   const active = new Set([...state.keys, ...state.pointers.values()]);
-  if (active.has("left")) x -= 1;
-  if (active.has("right")) x += 1;
-  if (active.has("up")) y -= 1;
-  if (active.has("down")) y += 1;
+  if (active.has("left")) x -= 1; if (active.has("right")) x += 1;
+  if (active.has("up")) y -= 1; if (active.has("down")) y += 1;
+  x += state.joystick.x; y += state.joystick.y;
   const length = Math.hypot(x, y);
-  if (length > 0) { x /= length; y /= length; }
+  if (length > 1) { x /= length; y /= length; }
   return { x, y };
 }
 function rectsOverlap(a, b) {
@@ -1047,6 +1055,28 @@ document.addEventListener("keyup", (event) => {
   const direction = keyMap[event.key];
   if (direction) state.keys.delete(direction);
 });
+function updateJoystick(event) {
+  if (event.pointerId !== joystickPointerId) return;
+  const rect = joystickBase.getBoundingClientRect();
+  const radius = Math.max(1, rect.width / 2 - joystickThumb.offsetWidth / 2 - 8);
+  const dx = event.clientX - (rect.left + rect.width / 2), dy = event.clientY - (rect.top + rect.height / 2);
+  const distance = Math.hypot(dx, dy), scale = distance > radius ? radius / distance : 1;
+  const knobX = dx * scale, knobY = dy * scale;
+  let x = knobX / radius, y = knobY / radius;
+  if (Math.hypot(x, y) < 0.08) { x = 0; y = 0; }
+  state.joystick.x = x; state.joystick.y = y;
+  joystickThumb.style.transform = `translate(-50%, -50%) translate(${knobX}px, ${knobY}px)`;
+}
+joystickBase.addEventListener("pointerdown", (event) => {
+  if (!state.started || state.dead || state.dialogueOpen || state.marketOpen || state.questOpen || state.inventoryOpen || joystickPointerId !== null) return;
+  event.preventDefault(); joystickPointerId = event.pointerId; joystickBase.setPointerCapture(event.pointerId);
+  joystick.classList.add("is-active"); updateJoystick(event);
+});
+joystickBase.addEventListener("pointermove", updateJoystick);
+function releaseJoystick(event) { if (event.pointerId === joystickPointerId) resetJoystick(); }
+joystickBase.addEventListener("pointerup", releaseJoystick);
+joystickBase.addEventListener("pointercancel", releaseJoystick);
+joystickBase.addEventListener("lostpointercapture", releaseJoystick);
 document.querySelectorAll(".direction").forEach((button) => {
   const direction = button.dataset.direction;
   button.addEventListener("pointerdown", (event) => {
