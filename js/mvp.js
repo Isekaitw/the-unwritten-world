@@ -183,6 +183,39 @@ const obstacles = [
     points: [[820, 350], [1040, 350], [1040, 410], [880, 410], [880, 570], [820, 570]] }),
   buildWall({ id: "test-gate", gate: true, radius: 5, points: rectPoints(760, 600, 180, 44) })
 ];
+// Static broad-phase index for wall collision. Exact polygon tests remain the
+// final authority, and gate state is still checked on every query.
+const COLLISION_GRID_CELL_SIZE = 128;
+const collisionGrid = new Map();
+for (let obstacleIndex = 0; obstacleIndex < obstacles.length; obstacleIndex++) {
+  const obstacle = obstacles[obstacleIndex];
+  const minCellX = Math.floor(obstacle.x / COLLISION_GRID_CELL_SIZE);
+  const maxCellX = Math.floor((obstacle.x + obstacle.w) / COLLISION_GRID_CELL_SIZE);
+  const minCellY = Math.floor(obstacle.y / COLLISION_GRID_CELL_SIZE);
+  const maxCellY = Math.floor((obstacle.y + obstacle.h) / COLLISION_GRID_CELL_SIZE);
+  for (let cellY = minCellY; cellY <= maxCellY; cellY++) {
+    for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
+      const key = String(cellX) + "," + String(cellY);
+      const bucket = collisionGrid.get(key) || [];
+      bucket.push(obstacleIndex);
+      collisionGrid.set(key, bucket);
+    }
+  }
+}
+function collisionCandidates(rect) {
+  const indexes = new Set();
+  const minCellX = Math.floor(rect.x / COLLISION_GRID_CELL_SIZE);
+  const maxCellX = Math.floor((rect.x + rect.w) / COLLISION_GRID_CELL_SIZE);
+  const minCellY = Math.floor(rect.y / COLLISION_GRID_CELL_SIZE);
+  const maxCellY = Math.floor((rect.y + rect.h) / COLLISION_GRID_CELL_SIZE);
+  for (let cellY = minCellY; cellY <= maxCellY; cellY++) {
+    for (let cellX = minCellX; cellX <= maxCellX; cellX++) {
+      const bucket = collisionGrid.get(String(cellX) + "," + String(cellY));
+      if (bucket) for (const index of bucket) indexes.add(index);
+    }
+  }
+  return [...indexes].sort((a, b) => a - b).map((index) => obstacles[index]);
+}
 const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 80, title: "潮痕標記" },
   { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 460, radius: 80, title: "微弱回聲" },
@@ -489,14 +522,21 @@ function getInput() {
 function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
+const obstacleGeometryCache = new WeakMap();
 function obstacleCollisionPolygons(obstacle) {
-  if (Array.isArray(obstacle.collisionPolygons)) return obstacle.collisionPolygons;
-  if (obstacle.path) return pathGeometryToCollisionPolygons(obstacle.path);
-  return [{ points: obstacle.verts || (Array.isArray(obstacle.points)
-    ? obstacle.points.map(([x,y])=>({x:obstacle.x+x,y:obstacle.y+y}))
-    : [{x:obstacle.x,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y},
-       {x:obstacle.x+obstacle.w,y:obstacle.y+obstacle.h},{x:obstacle.x,y:obstacle.y+obstacle.h}]),
-    closed: true }];
+  const cached = obstacleGeometryCache.get(obstacle);
+  if (cached) return cached;
+  const polygons = Array.isArray(obstacle.collisionPolygons)
+    ? obstacle.collisionPolygons
+    : obstacle.path
+      ? pathGeometryToCollisionPolygons(obstacle.path)
+      : [{ points: obstacle.verts || (Array.isArray(obstacle.points)
+        ? obstacle.points.map(([x,y])=>({x:obstacle.x+x,y:obstacle.y+y}))
+        : [{x:obstacle.x,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y},
+           {x:obstacle.x+obstacle.w,y:obstacle.y+obstacle.h},{x:obstacle.x,y:obstacle.y+obstacle.h}]),
+        closed: true }];
+  obstacleGeometryCache.set(obstacle, polygons);
+  return polygons;
 }
 function obstacleVertices(obstacle) {
   return obstacleCollisionPolygons(obstacle)[0]?.points || [];
@@ -551,7 +591,7 @@ function obstacleIntersectsRect(o,r) {
 function collides(x,y) {
   const hit={x:x-PLAYER.hitWidth/2,y:y+PLAYER.height-PLAYER.hitHeight,w:PLAYER.hitWidth,h:PLAYER.hitHeight};
   if(hit.x<0||hit.y<0||hit.x+hit.w>WORLD.width||hit.y+hit.h>WORLD.height)return true;
-  return obstacles.some(o=>!(o.gate&&state.gateOpen)&&obstacleIntersectsRect(o,hit));
+  return collisionCandidates(hit).some(o=>!(o.gate&&state.gateOpen)&&obstacleIntersectsRect(o,hit));
 }
 function movePlayer(dx, dy) {
   // Resolve axes independently so diagonal movement remains stable against
@@ -645,6 +685,9 @@ function drawVision() {
   const restricted = brightness < 1 || fog > 0;
   const radius = VISION.baseRadius * (0.48 + brightness * 0.52) * (1 - fog * 0.68);
   const opaque = obstacles.filter((o) => !(o.gate && state.gateOpen));
+  const visionGeometry = opaque.map((obstacle) => ({
+    obstacle, vertices: obstacleVertices(obstacle), bounds: obstacle
+  }));
   const view = { x: 0, y: 0, w: width, h: height };
 
   ctx.fillStyle = "#000";
@@ -660,7 +703,9 @@ function drawVision() {
   addCorner(view.x + view.w, view.y);
   addCorner(view.x + view.w, view.y + view.h);
   addCorner(view.x, view.y + view.h);
-  for (const o of opaque) for (const p of obstacleVertices(o)) addCorner(p.x,p.y);
+  for (const geometry of visionGeometry) {
+    for (const point of geometry.vertices) addCorner(point.x, point.y);
+  }
   angles.sort((a, b) => a - b);
 
   const uniqueAngles = [];
@@ -678,9 +723,13 @@ function drawVision() {
     const dirY = Math.sin(angle);
     let distance = rayViewportDistance(sourceX, sourceY, dirX, dirY, view);
     if (restricted) distance = Math.min(distance, radius);
-    for (const obstacle of opaque) {
-      const hit = rayPolygonDistance(sourceX, sourceY, dirX, dirY, obstacleVertices(obstacle));
-      if (hit < distance) distance = hit;
+    for (const geometry of visionGeometry) {
+      // AABB rejection is conservative; polygon intersection remains authoritative.
+      const boundsHit = rayRectDistance(sourceX, sourceY, dirX, dirY, geometry.bounds);
+      if (boundsHit < distance) {
+        const hit = rayPolygonDistance(sourceX, sourceY, dirX, dirY, geometry.vertices);
+        if (hit < distance) distance = hit;
+      }
     }
     if (!Number.isFinite(distance) || distance < 0) continue;
 
@@ -688,8 +737,8 @@ function drawVision() {
     let hitY = sourceY + dirY * distance;
     let nearestCorner = null;
     let nearestCornerError = 0.75;
-    for (const wall of opaque) {
-      for (const corner of obstacleVertices(wall)) {
+    for (const geometry of visionGeometry) {
+      for (const corner of geometry.vertices) {
         const error = Math.hypot(hitX - corner.x, hitY - corner.y);
         if (error < nearestCornerError) {
           nearestCorner = corner;
@@ -734,11 +783,27 @@ function drawVision() {
   }
 
   const FAR = 4000;
-  const addShadow=(o)=>{
-    const corners=obstacleVertices(o).map(p=>[p.x,p.y]);
-    const projected=corners.map(([x,y])=>{const dx=x-sourceX,dy=y-sourceY,len=Math.hypot(dx,dy)||1;return [x+dx/len*FAR,y+dy/len*FAR];});
-    for(let i=0;i<corners.length;i++){const j=(i+1)%corners.length,poly=[corners[i],corners[j],projected[j],projected[i]];let area=0;for(let k=0;k<poly.length;k++){const p=poly[k],q=poly[(k+1)%poly.length];area+=p[0]*q[1]-q[0]*p[1];}if(area<0)poly.reverse();ctx.moveTo(poly[0][0],poly[0][1]);for(let k=1;k<poly.length;k++)ctx.lineTo(poly[k][0],poly[k][1]);ctx.closePath();}
-  };
+  // Projection coordinates are calculated once per obstacle for this frame.
+  for (const geometry of visionGeometry) {
+    const corners = geometry.vertices.map((point) => [point.x, point.y]);
+    const projected = corners.map(([x, y]) => {
+      const dx = x - sourceX, dy = y - sourceY;
+      const length = Math.hypot(dx, dy) || 1;
+      return [x + dx / length * FAR, y + dy / length * FAR];
+    });
+    geometry.shadowPolygons = [];
+    for (let i = 0; i < corners.length; i++) {
+      const j = (i + 1) % corners.length;
+      const polygon = [corners[i], corners[j], projected[j], projected[i]];
+      let area = 0;
+      for (let k = 0; k < polygon.length; k++) {
+        const p = polygon[k], q = polygon[(k + 1) % polygon.length];
+        area += p[0] * q[1] - q[0] * p[1];
+      }
+      if (area < 0) polygon.reverse();
+      geometry.shadowPolygons.push(polygon);
+    }
+  }
 
   const padX = 1 / scaleX;
   const padY = 1 / scaleY;
@@ -747,13 +812,47 @@ function drawVision() {
   const ceilX = (x) => Math.ceil(x * scaleX) / scaleX;
   const ceilY = (y) => Math.ceil(y * scaleY) / scaleY;
 
-  for(const wall of opaque){
-    const vertices=obstacleVertices(wall);
-    const trace=()=>{ctx.beginPath();ctx.moveTo(vertices[0].x,vertices[0].y);for(let i=1;i<vertices.length;i++)ctx.lineTo(vertices[i].x,vertices[i].y);ctx.closePath();};
-    ctx.globalCompositeOperation="destination-out";ctx.fillStyle="#000";trace();ctx.fill();
-    ctx.save();ctx.globalCompositeOperation="source-over";ctx.shadowColor="rgba(0,0,0,0.38)";ctx.shadowBlur=14;ctx.shadowOffsetX=0;ctx.shadowOffsetY=9;ctx.fillStyle="rgba(0,0,0,0.22)";trace();ctx.fill();ctx.restore();
-    ctx.globalCompositeOperation="destination-out";trace();ctx.fill();
-    ctx.save();trace();ctx.clip();ctx.globalCompositeOperation="source-over";ctx.beginPath();for(const other of opaque)if(other!==wall)addShadow(other);ctx.fill();ctx.restore();
+  for (const geometry of visionGeometry) {
+    const wall = geometry.obstacle;
+    const vertices = geometry.vertices;
+    const trace = () => {
+      ctx.beginPath();
+      ctx.moveTo(vertices[0].x, vertices[0].y);
+      for (let i = 1; i < vertices.length; i++) ctx.lineTo(vertices[i].x, vertices[i].y);
+      ctx.closePath();
+    };
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillStyle = "#000";
+    trace();
+    ctx.fill();
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.shadowColor = "rgba(0,0,0,0.38)";
+    ctx.shadowBlur = 14;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 9;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    trace();
+    ctx.fill();
+    ctx.restore();
+    ctx.globalCompositeOperation = "destination-out";
+    trace();
+    ctx.fill();
+    ctx.save();
+    trace();
+    ctx.clip();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.beginPath();
+    for (const other of visionGeometry) {
+      if (other.obstacle === wall) continue;
+      for (const polygon of other.shadowPolygons) {
+        ctx.moveTo(polygon[0][0], polygon[0][1]);
+        for (let i = 1; i < polygon.length; i++) ctx.lineTo(polygon[i][0], polygon[i][1]);
+        ctx.closePath();
+      }
+    }
+    ctx.fill();
+    ctx.restore();
   }
 
   // The player is a sibling of #world and remains above this world-space overlay.
@@ -840,11 +939,26 @@ function updateScene() {
     updateScene.lastQuest = questKey;
     updateQuestUI();
   }
-  const nearest = objects.map((object) => ({ ...object, distance: Math.hypot(object.x - state.x, object.y - (state.y + PLAYER.height / 2)) }))
-    .filter((object) => object.distance <= object.radius && !(object.id === "test_secret_tide_echo" && state.secretFound))
-    .sort((a, b) => a.distance - b.distance)[0] || null;
+  const previousTargetId = state.target?.id || null;
+  let nearest = null;
+  let nearestDistance = Infinity;
+  const interactionY = state.y + PLAYER.height / 2;
+  for (const object of objects) {
+    if (object.id === "test_secret_tide_echo" && state.secretFound) continue;
+    const distance = Math.hypot(object.x - state.x, object.y - interactionY);
+    if (distance <= object.radius && distance < nearestDistance) {
+      nearest = object;
+      nearestDistance = distance;
+    }
+  }
   state.target = nearest;
-  objects.forEach((object) => object.el.classList.toggle("is-near", Boolean(nearest && nearest.id === object.id)));
+  if (previousTargetId !== nearest?.id) {
+    for (const object of objects) {
+      if (object.id === previousTargetId || object.id === nearest?.id) {
+        object.el.classList.toggle("is-near", object === nearest);
+      }
+    }
+  }
 }
 function handlePlayerDeath() {
   if (state.dead) return;
