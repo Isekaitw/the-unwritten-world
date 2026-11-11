@@ -581,11 +581,112 @@ function polygonSetIntersectsRect(rings, rect) {
   }
   return false;
 }
+
+// Parametric PathGeometry collision helpers. These evaluate the source curves
+// directly; flattened polygons remain available for rendering and vision only.
+function pathCurveSegments(path) {
+  const segments=[]; let current=null, start=null;
+  const point=(x,y)=>({x,y});
+  const add=(type, p0, p1, p2=null, p3=null, extra={})=>segments.push({type,p0,p1,p2,p3,...extra});
+  for(const c of path.commands){
+    if(c.type==="moveTo"){current=point(c.x,c.y);start=current;continue;}
+    if(!current)continue;
+    if(c.type==="lineTo"){const end=point(c.x,c.y);add("line",current,end);current=end;}
+    else if(c.type==="quadraticCurveTo"){const end=point(c.x,c.y);add("quad",current,point(c.cpx,c.cpy),end);current=end;}
+    else if(c.type==="bezierCurveTo"){const end=point(c.x,c.y);add("cubic",current,point(c.cp1x,c.cp1y),point(c.cp2x,c.cp2y),end);current=end;}
+    else if(c.type==="arc"||c.type==="ellipse"){
+      const rx=c.type==="arc"?c.radius:c.radiusX, ry=c.type==="arc"?c.radius:c.radiusY;
+      let sweep=c.endAngle-c.startAngle; const tau=Math.PI*2;
+      if(!c.counterclockwise){if(sweep>=tau)sweep=tau;else while(sweep<0)sweep+=tau;}
+      else {if(sweep<=-tau)sweep=-tau;else while(sweep>0)sweep-=tau;}
+      const rot=c.type==="arc"?0:c.rotation;
+      const at=a=>({x:c.x+rx*Math.cos(a)*Math.cos(rot)-ry*Math.sin(a)*Math.sin(rot),
+        y:c.y+rx*Math.cos(a)*Math.sin(rot)+ry*Math.sin(a)*Math.cos(rot)});
+      const first=at(c.startAngle);
+      if(Math.hypot(current.x-first.x,current.y-first.y)>1e-7)add("line",current,first);
+      add("ellipse",point(c.x,c.y),null,null,null,{rx,ry,rotation:rot,startAngle:c.startAngle,sweep});
+      current=at(c.startAngle+sweep);
+    } else if(c.type==="closePath"&&start){add("line",current,start);current=start;}
+  }
+  return segments;
+}
+function curvePoint(seg,t){
+  const u=1-t;
+  if(seg.type==="line")return {x:seg.p0.x+ (seg.p1.x-seg.p0.x)*t,y:seg.p0.y+(seg.p1.y-seg.p0.y)*t};
+  if(seg.type==="quad")return {x:u*u*seg.p0.x+2*u*t*seg.p1.x+t*t*seg.p2.x,y:u*u*seg.p0.y+2*u*t*seg.p1.y+t*t*seg.p2.y};
+  if(seg.type==="cubic")return {x:u*u*u*seg.p0.x+3*u*u*t*seg.p1.x+3*u*t*t*seg.p2.x+t*t*t*seg.p3.x,y:u*u*u*seg.p0.y+3*u*u*t*seg.p1.y+3*u*t*t*seg.p2.y+t*t*t*seg.p3.y};
+  const a=seg.startAngle+seg.sweep*t, cr=Math.cos(seg.rotation),sr=Math.sin(seg.rotation);
+  return {x:seg.p0.x+seg.rx*Math.cos(a)*cr-seg.ry*Math.sin(a)*sr,y:seg.p0.y+seg.rx*Math.cos(a)*sr+seg.ry*Math.sin(a)*cr};
+}
+function curveTangent(seg,t){
+  const u=1-t;
+  if(seg.type==="line")return {x:seg.p1.x-seg.p0.x,y:seg.p1.y-seg.p0.y};
+  if(seg.type==="quad")return {x:2*u*(seg.p1.x-seg.p0.x)+2*t*(seg.p2.x-seg.p1.x),y:2*u*(seg.p1.y-seg.p0.y)+2*t*(seg.p2.y-seg.p1.y)};
+  if(seg.type==="cubic")return {x:3*u*u*(seg.p1.x-seg.p0.x)+6*u*t*(seg.p2.x-seg.p1.x)+3*t*t*(seg.p3.x-seg.p2.x),y:3*u*u*(seg.p1.y-seg.p0.y)+6*u*t*(seg.p2.y-seg.p1.y)+3*t*t*(seg.p3.y-seg.p2.y)};
+  const a=seg.startAngle+seg.sweep*t, cr=Math.cos(seg.rotation),sr=Math.sin(seg.rotation),k=seg.sweep;
+  return {x:k*(-seg.rx*Math.sin(a)*cr-seg.ry*Math.cos(a)*sr),y:k*(-seg.rx*Math.sin(a)*sr+seg.ry*Math.cos(a)*cr)};
+}
+function curveRoots(seg,axis,value){
+  const key=axis==="x"?"x":"y", roots=[], n=96;
+  let ta=0, va=curvePoint(seg,0)[key]-value;
+  for(let i=1;i<=n;i++){
+    const tb=i/n, vb=curvePoint(seg,tb)[key]-value;
+    if(Math.abs(va)<1e-8)roots.push(ta);
+    if((va<0&&vb>0)||(va>0&&vb<0)){
+      let lo=ta,hi=tb,flo=va;
+      for(let j=0;j<36;j++){const mid=(lo+hi)/2,f=curvePoint(seg,mid)[key]-value;if((flo<=0&&f>=0)||(flo>=0&&f<=0))hi=mid;else{lo=mid;flo=f;}}
+      roots.push((lo+hi)/2);
+    }
+    ta=tb;va=vb;
+  }
+  if(Math.abs(va)<1e-8)roots.push(1);
+  return roots.filter((t,i,a)=>a.findIndex(v=>Math.abs(v-t)<1e-6)===i);
+}
+function pointInCurvePath(point,segments){
+  let inside=false;
+  for(const seg of segments)for(const t of curveRoots(seg,"y",point.y)){
+    if(t>=1-1e-8)continue;
+    const p=curvePoint(seg,t), tangent=curveTangent(seg,t);
+    if(p.x>point.x&&Math.abs(tangent.y)>1e-8)inside=!inside;
+  }
+  return inside;
+}
+function curvePathIntersectsRect(segments,r){
+  const corners=[{x:r.x,y:r.y},{x:r.x+r.w,y:r.y},{x:r.x+r.w,y:r.y+r.h},{x:r.x,y:r.y+r.h}];
+  if(corners.some(p=>pointInCurvePath(p,segments)))return true;
+  for(const seg of segments){
+    for(let i=0;i<=96;i++){const p=curvePoint(seg,i/96);if(p.x>=r.x-1e-7&&p.x<=r.x+r.w+1e-7&&p.y>=r.y-1e-7&&p.y<=r.y+r.h+1e-7)return true;}
+    for(const y of [r.y,r.y+r.h])for(const t of curveRoots(seg,"y",y)){const p=curvePoint(seg,t);if(p.x>=r.x-1e-7&&p.x<=r.x+r.w+1e-7)return true;}
+    for(const x of [r.x,r.x+r.w])for(const t of curveRoots(seg,"x",x)){const p=curvePoint(seg,t);if(p.y>=r.y-1e-7&&p.y<=r.y+r.h+1e-7)return true;}
+  }
+  return false;
+}
+function closestPointOnCurvePath(segments,point){
+  let best=null,bestD=Infinity;
+  for(const seg of segments){
+    const samples=64;let bestT=0,localD=Infinity;
+    for(let i=0;i<=samples;i++){const t=i/samples,p=curvePoint(seg,t),d=(p.x-point.x)**2+(p.y-point.y)**2;if(d<localD){localD=d;bestT=t;}}
+    let lo=Math.max(0,bestT-1/samples),hi=Math.min(1,bestT+1/samples);
+    const ratio=(Math.sqrt(5)-1)/2;let a=hi-ratio*(hi-lo),b=lo+ratio*(hi-lo);
+    const dist=t=>{const p=curvePoint(seg,t);return (p.x-point.x)**2+(p.y-point.y)**2;};
+    for(let i=0;i<28;i++){if(dist(a)<dist(b)){hi=b;b=a;a=hi-ratio*(hi-lo);}else{lo=a;a=b;b=lo+ratio*(hi-lo);}}
+    const t=(lo+hi)/2,p=curvePoint(seg,t),d=dist(t);
+    if(d<bestD){bestD=d;best={point:p,tangent:curveTangent(seg,t),distanceSquared:d};}
+  }
+  return best;
+}
+const curveCollisionCache=new WeakMap();
+function obstacleCurveSegments(obstacle){
+  if(!obstacle.path)return null;
+  let cached=curveCollisionCache.get(obstacle);
+  if(!cached){cached=pathCurveSegments(obstacle.path);curveCollisionCache.set(obstacle,cached);}
+  return cached;
+}
+
 function obstacleIntersectsRect(o,r) {
   if (!rectsOverlap(r,o)) return false;
-  if (o.collisionPolygons || o.path || Array.isArray(o.points) || o.verts) {
-    return polygonSetIntersectsRect(obstacleCollisionPolygons(o),r);
-  }
+  if (o.path) return curvePathIntersectsRect(obstacleCurveSegments(o),r);
+  if (o.collisionPolygons || Array.isArray(o.points) || o.verts) return polygonSetIntersectsRect(obstacleCollisionPolygons(o),r);
   return true;
 }
 function playerHitRect(x, y) {
@@ -606,10 +707,22 @@ function collides(x,y) {
 function collisionNormal(x, y, moveX, moveY) {
   const hit = playerHitRect(x, y);
   const center = { x: hit.x + hit.w / 2, y: hit.y + hit.h / 2 };
-  let nearest = null;
-  let nearestDistanceSquared = Infinity;
+  let nearest = null, nearestDistanceSquared = Infinity;
   for (const obstacle of collisionCandidates(hit)) {
     if ((obstacle.gate && state.gateOpen) || !obstacleIntersectsRect(obstacle, hit)) continue;
+    const segments = obstacleCurveSegments(obstacle);
+    if (segments) {
+      const centerInside = pointInCurvePath(center, segments);
+      const contact = closestPointOnCurvePath(segments, center);
+      if (!contact || contact.distanceSquared >= nearestDistanceSquared) continue;
+      let nx=center.x-contact.point.x, ny=center.y-contact.point.y;
+      if(centerInside){nx=-nx;ny=-ny;}
+      let length=Math.hypot(nx,ny);
+      if(length<1e-7){length=Math.hypot(contact.tangent.x,contact.tangent.y)||1;nx=contact.tangent.y/length;ny=-contact.tangent.x/length;if(nx*moveX+ny*moveY>0){nx=-nx;ny=-ny;}}
+      else {nx/=length;ny/=length;}
+      nearest={x:nx,y:ny};nearestDistanceSquared=contact.distanceSquared;
+      continue;
+    }
     const polygons = obstacleCollisionPolygons(obstacle);
     const centerInside = pointInPolygonSet(center, polygons);
     for (const ring of polygons) {
@@ -619,31 +732,13 @@ function collisionNormal(x, y, moveX, moveY) {
         const edgeX = b.x - a.x, edgeY = b.y - a.y;
         const lengthSquared = edgeX * edgeX + edgeY * edgeY;
         if (lengthSquared < 1e-10) continue;
-        const t = Math.max(0, Math.min(1,
-          ((center.x - a.x) * edgeX + (center.y - a.y) * edgeY) / lengthSquared));
-        const pointX = a.x + edgeX * t, pointY = a.y + edgeY * t;
-        const offsetX = center.x - pointX, offsetY = center.y - pointY;
-        const distanceSquared = offsetX * offsetX + offsetY * offsetY;
-        if (distanceSquared >= nearestDistanceSquared) continue;
-        let normalX = centerInside ? -offsetX : offsetX;
-        let normalY = centerInside ? -offsetY : offsetY;
-        const length = Math.hypot(normalX, normalY);
-        if (length > 1e-7) {
-          normalX /= length;
-          normalY /= length;
-        } else {
-          // Degenerate exact-edge contact: use the segment perpendicular and
-          // orient it against the attempted movement.
-          const edgeLength = Math.sqrt(lengthSquared);
-          normalX = edgeY / edgeLength;
-          normalY = -edgeX / edgeLength;
-          if (normalX * moveX + normalY * moveY > 0) {
-            normalX = -normalX;
-            normalY = -normalY;
-          }
-        }
-        nearest = { x: normalX, y: normalY };
-        nearestDistanceSquared = distanceSquared;
+        const t = Math.max(0, Math.min(1, ((center.x-a.x)*edgeX+(center.y-a.y)*edgeY)/lengthSquared));
+        const pointX=a.x+edgeX*t,pointY=a.y+edgeY*t,offsetX=center.x-pointX,offsetY=center.y-pointY;
+        const distanceSquared=offsetX*offsetX+offsetY*offsetY;
+        if(distanceSquared>=nearestDistanceSquared)continue;
+        let nx=centerInside?-offsetX:offsetX,ny=centerInside?-offsetY:offsetY,length=Math.hypot(nx,ny);
+        if(length>1e-7){nx/=length;ny/=length;}else{length=Math.sqrt(lengthSquared);nx=edgeY/length;ny=-edgeX/length;if(nx*moveX+ny*moveY>0){nx=-nx;ny=-ny;}}
+        nearest={x:nx,y:ny};nearestDistanceSquared=distanceSquared;
       }
     }
   }
