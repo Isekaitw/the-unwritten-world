@@ -8,7 +8,7 @@ const vm = require("node:vm");
 const assert = require("node:assert/strict");
 
 const sceneSource = fs.readFileSync("js/scene-render.js", "utf8")
-  .replace(/\\bexport\\s+/g, "");
+  .replace(/\bexport\s+/g, "");
 const mvpSource = fs.readFileSync("js/mvp.js", "utf8");
 const context = vm.createContext({ console, Math, Number, Object, Array, Map, Set, TypeError, RangeError });
 
