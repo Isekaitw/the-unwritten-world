@@ -28,73 +28,12 @@
   position:absolute;left:0;right:0;bottom:0;height:170px;
   background: #183641;
 }
-.test-water-area {
-  position: absolute;
-  z-index: 2;
-  left: 1040px;
-  top: 790px;
-  width: 430px;
-  height: 150px;
-  box-sizing: border-box;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border: 3px solid rgba(133, 220, 231, .78);
-  border-radius: 42px 28px 36px 30px;
-  background: linear-gradient(145deg, rgba(61, 164, 183, .82), rgba(22, 91, 119, .9) 58%, rgba(12, 57, 82, .94));
-  box-shadow: inset 0 0 28px rgba(180, 245, 245, .2), 0 0 24px rgba(54, 178, 204, .2);
-}
-.test-water-area::before,
-.test-water-area::after {
-  content: "";
-  position: absolute;
-  width: 125%;
-  height: 45%;
-  left: -12%;
-  border-top: 2px solid rgba(205, 249, 245, .32);
-  border-radius: 50%;
-  transform: rotate(-8deg);
-}
-.test-water-area::before { top: 22%; }
-.test-water-area::after { top: 52%; left: -4%; }
-.test-water-area span {
-  position: relative;
-  z-index: 1;
-  padding: 7px 12px;
-  border: 1px solid rgba(208, 247, 245, .4);
-  border-radius: 999px;
-  color: #e2fbfa;
-  background: rgba(6, 39, 55, .58);
-  font-size: 13px;
-  letter-spacing: .12em;
-  text-shadow: 0 1px 4px #082d3a;
-  pointer-events: none;
-}
 .world-landmark {
   position:absolute; padding:20px 28px; border:1px solid rgba(214,244,224,.17);
   color:rgba(224,244,229,.42); letter-spacing:.3em; font-size:20px;
   transform:rotate(-7deg); background:rgba(9,28,33,.15);
 }
 .landmark-one{left:90px;top:330px}.landmark-two{left:1020px;top:400px}
-/* Keep rendered wall bounds identical to the world-space rectangles used by
-   collision and vision casting. Without border-box, borders enlarge each wall
-   beyond the geometry in js/mvp.js and scrolling exposes a mismatched edge. */
-.obstacle, .gate { box-sizing: border-box; }
-.obstacle {
-  position:absolute; z-index:3; border:2px solid #8a9a8d; border-radius:7px;
-  background:linear-gradient(145deg,#62766e,#344d4c 68%,#263e40);
-  /* The vision canvas sits above walls and masks pixels outside each wall face;
-     an outer CSS shadow would be abruptly clipped by that opaque overlay. */
-  box-shadow:inset 0 5px 0 rgba(233,245,218,.12);
-}
-.gate {
-  position:absolute;z-index:4;border:3px solid #d2c7a0;border-radius:5px;
-  background:repeating-linear-gradient(90deg,#8c8165 0 10px,#c0b48b 11px 14px,#655f4e 15px 20px);
-  /* Keep the gate glow inside the gate; the vision overlay masks outer CSS shadows. */
-  box-shadow:inset 0 0 12px rgba(236,212,146,.22);
-  transition:none;
-}
-.gate.is-open { visibility:hidden; pointer-events:none; }
 .player {
   position:absolute;z-index:6;width:30px;height:42px;border-radius:45% 45% 35% 35%;
   background:linear-gradient(145deg,#e1f4dd,#8bbeb2 70%,#507b7c);
@@ -133,10 +72,21 @@
  .interact-button{max-width:54%;padding:8px 12px;font-size:.82rem}
  .scene-overlay{font-size:10px}.world-object span{font-size:11px}
 }
-@media(prefers-reduced-motion:reduce){.gate{transition:none}}
+
+/* Static world layer: water, hazard zone, walls and gate, drawn by js/scene-render.js.
+   Above ground/landmarks, below interactive objects and the vision overlay. */
+.scene-canvas {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 1600px;
+  height: 1000px;
+  pointer-events: none;
+}
 
 /* The canvas clears wall faces before painting cast shadows onto them,
-   so it must sit above wall sprites but below the player sprite. */
+   so it must sit above the scene canvas but below the player sprite. */
 .vision-canvas {
   position: absolute;
   z-index: 6;
@@ -829,30 +779,7 @@ body:has(#game-screen:not([hidden])) { overflow: hidden; }
 }
 
 
-/* Test-only hazard zone and compact health HUD. */
-#game-screen .damage-zone {
-  position: absolute;
-  z-index: 2;
-  left: 1040px;
-  top: 410px;
-  width: 150px;
-  height: 110px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border: 2px dashed rgba(255, 112, 102, .9);
-  border-radius: 10px;
-  background: repeating-linear-gradient(135deg, rgba(130, 30, 35, .68) 0 10px, rgba(70, 20, 27, .76) 10px 20px);
-  color: #fff0e8;
-  text-align: center;
-  text-shadow: 0 1px 4px #26090b;
-  pointer-events: none;
-}
-#game-screen .damage-zone span { font-weight: 800; letter-spacing: .12em; }
-#game-screen .damage-zone small { font-size: 11px; }
+/* Compact health HUD. (The hazard zone itself is drawn on #scene-canvas.) */
 #game-screen .health-hud {
   display: grid;
   grid-template-columns: auto auto;
@@ -1253,5 +1180,3 @@ body:has(#game-screen:not([hidden])) { height:100%; overflow:hidden; }
 }
 
 
-/* Test-only L-shaped stone wall; clip path matches the polygon in mvp.js. */
-#game-screen .obstacle-l { clip-path:polygon(0 0,100% 0,100% 27.2727%,27.2727% 27.2727%,27.2727% 100%,0 100%); border-radius:5px; background:linear-gradient(145deg,#71877a 0%,#3d5a55 58%,#263f40 100%); }
