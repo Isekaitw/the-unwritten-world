@@ -579,6 +579,78 @@ export function drawDamageZone(ctx, zone) {
   }
 }
 
+
+const TERRAIN_STYLES = {
+  sand: {
+    stops: [[0, "#d7c18b"], [0.55, "#c5a976"], [1, "#a98b60"]],
+    edge: "rgba(238,220,168,0.78)"
+  },
+  water: {
+    stops: [[0, "rgba(63,164,183,0.94)"], [0.58, "rgba(24,105,132,0.97)"], [1, "rgba(12,61,88,0.98)"]],
+    edge: "rgba(153,229,230,0.88)"
+  }
+};
+
+/** Draw a semantic terrain region; decoration is visual-only and never collision. */
+export function drawTerrainRegion(ctx, region) {
+  const style = TERRAIN_STYLES[region.surface];
+  if (!style || !region.path) return;
+  const bounds = region.bounds || polygonBounds(
+    pathGeometryToCollisionPolygons(region.path).flatMap((ring) => ring.points)
+  );
+  ctx.save();
+  tracePathGeometry(ctx, region.path);
+  ctx.fillStyle = cssLinearGradient(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 145, style.stops);
+  ctx.fill();
+  if (region.surface === "water") {
+    tracePathGeometry(ctx, region.path);
+    ctx.clip();
+    ctx.lineCap = "round";
+    for (const ripple of (region.ripples || [])) {
+      ctx.save();
+      ctx.translate(ripple.x, ripple.y);
+      ctx.rotate(ripple.rotation || 0);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, ripple.rx, ripple.ry, 0, Math.PI * 1.08, Math.PI * 1.92);
+      ctx.strokeStyle = "rgba(202,246,241,0.34)";
+      ctx.lineWidth = ripple.width || 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.save();
+    tracePathGeometry(ctx, region.path);
+    ctx.strokeStyle = style.edge;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (region.surface === "sand") {
+    for (const pebble of (region.decorations || [])) {
+      ctx.save();
+      ctx.translate(pebble.x, pebble.y);
+      ctx.rotate(pebble.rotation || 0);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, pebble.rx, pebble.ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = pebble.color || "rgba(111,91,65,0.30)";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(-pebble.rx * 0.22, -pebble.ry * 0.28,
+        pebble.rx * 0.42, pebble.ry * 0.24, 0, Math.PI, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,239,195,0.34)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  tracePathGeometry(ctx, region.path);
+  ctx.strokeStyle = style.edge;
+  ctx.lineWidth = region.surface === "sand" ? 2 : 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
 // ----------------------------------------------------------- scene composition
 
 /**
@@ -589,6 +661,7 @@ export function drawDamageZone(ctx, zone) {
 export function drawSceneStatic(ctx, scene) {
   ctx.save();
   ctx.clearRect(0, 0, scene.width, scene.height);
+  for (const terrain of (scene.terrains || [])) drawTerrainRegion(ctx, terrain);
   for (const water of scene.waters) drawWaterArea(ctx, water);
   for (const zone of scene.hazards) drawDamageZone(ctx, zone);
   for (const wall of scene.walls) if (!wall.gate) drawWall(ctx, wall);

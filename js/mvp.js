@@ -1,4 +1,4 @@
-import { buildWall, rectPoints, drawSceneStatic, pathGeometryToCollisionPolygons } from "./scene-render.js";
+import { buildWall, rectPoints, createPathGeometry, drawSceneStatic, pathGeometryToCollisionPolygons } from "./scene-render.js";
 
 const $ = (selector) => document.querySelector(selector);
 const titleScreen = $("#title-screen");
@@ -108,11 +108,54 @@ const damageZones = [
   // Deliberate test-only hazard: each fresh contact removes 25 health.
   { id: "test-damage-zone", x: 1040, y: 410, w: 150, h: 110, damage: 25, label: "危險區", note: "接觸扣除 25 生命" }
 ];
-const waterAreas = [
-  // A shallow, walkable test pool near the lower-right side of the map.
-  // Detection is still the rectangle; radii only shape how it is drawn.
-  { id: "test-water-area", x: 1040, y: 790, w: 430, h: 150, radii: [42, 28, 36, 30], label: "測試水域" }
+// Test-only natural coast slice. Presentation path, traversal semantics and
+// collision geometry are stored separately; surface decoration never collides.
+const beachPath = createPathGeometry([
+  { type: "moveTo", x: 930, y: 680 },
+  { type: "bezierCurveTo", cp1x: 1010, cp1y: 650, cp2x: 1090, cp2y: 662, x: 1165, y: 700 },
+  { type: "bezierCurveTo", cp1x: 1260, cp1y: 748, cp2x: 1360, cp2y: 690, x: 1450, y: 710 },
+  { type: "bezierCurveTo", cp1x: 1490, cp1y: 718, cp2x: 1520, cp2y: 735, x: 1550, y: 760 },
+  { type: "bezierCurveTo", cp1x: 1440, cp1y: 770, cp2x: 1360, cp2y: 800, x: 1300, y: 785 },
+  { type: "bezierCurveTo", cp1x: 1250, cp1y: 805, cp2x: 1210, cp2y: 800, x: 1160, y: 765 },
+  { type: "bezierCurveTo", cp1x: 1100, cp1y: 730, cp2x: 1040, cp2y: 720, x: 980, y: 760 },
+  { type: "bezierCurveTo", cp1x: 960, cp1y: 730, cp2x: 945, cp2y: 700, x: 930, y: 680 },
+  { type: "closePath" }
+]);
+const coastWaterPath = createPathGeometry([
+  { type: "moveTo", x: 980, y: 760 },
+  { type: "bezierCurveTo", cp1x: 1040, cp1y: 720, cp2x: 1100, cp2y: 730, x: 1160, y: 765 },
+  { type: "bezierCurveTo", cp1x: 1210, cp1y: 800, cp2x: 1250, cp2y: 805, x: 1300, y: 785 },
+  { type: "bezierCurveTo", cp1x: 1360, cp1y: 800, cp2x: 1440, cp2y: 770, x: 1510, y: 820 },
+  { type: "lineTo", x: 1570, y: 1000 },
+  { type: "lineTo", x: 950, y: 1000 },
+  { type: "closePath" }
+]);
+const terrainRegions = [
+  {
+    id: "test-natural-sand-beach", regionType: "sand", surface: "sand",
+    path: beachPath, collision: "none", traversal: "walkable",
+    decorations: [
+      { x: 1000, y: 705, rx: 7, ry: 3, rotation: -0.3 },
+      { x: 1060, y: 690, rx: 5, ry: 2.5, rotation: 0.4 },
+      { x: 1125, y: 715, rx: 8, ry: 3, rotation: 0.2 },
+      { x: 1200, y: 755, rx: 6, ry: 2.5, rotation: -0.5 },
+      { x: 1370, y: 744, rx: 7, ry: 3, rotation: 0.25 },
+      { x: 1450, y: 750, rx: 5, ry: 2, rotation: -0.2 }
+    ]
+  },
+  {
+    id: "test-natural-coast-water", regionType: "water", surface: "water",
+    path: coastWaterPath, collision: "none", traversal: "water",
+    ripples: [
+      { x: 1110, y: 840, rx: 42, ry: 9, rotation: -0.12 },
+      { x: 1300, y: 900, rx: 58, ry: 11, rotation: 0.08 },
+      { x: 1460, y: 875, rx: 36, ry: 8, rotation: -0.16 }
+    ]
+  }
 ];
+const waterAreas = terrainRegions
+  .filter((region) => region.traversal === "water")
+  .map((region) => ({ ...region, collisionPolygons: pathGeometryToCollisionPolygons(region.path) }));
 // Every wall is a polygon. buildWall() rounds the corners once and the same
 // vertices are used by collision, vision casting, shadows and drawing.
 const obstacles = [
@@ -120,6 +163,21 @@ const obstacles = [
   buildWall({ points: rectPoints(610, 350, 80, 220), radius: 7 }),
   buildWall({ points: rectPoints(930, 170, 240, 75), radius: 7 }),
   buildWall({ points: rectPoints(1180, 560, 90, 190), radius: 7 }),
+  // Curved C-shaped rock rim; the open mouth faces west into a small cave alcove.
+  buildWall({ id: "test-natural-cave-rim", style: "stoneL", path: createPathGeometry([
+    { type: "moveTo", x: 1150, y: 400 },
+    { type: "bezierCurveTo", cp1x: 1215, cp1y: 340, cp2x: 1335, cp2y: 345, x: 1390, y: 415 },
+    { type: "bezierCurveTo", cp1x: 1435, cp1y: 470, cp2x: 1400, cp2y: 530, x: 1340, y: 550 },
+    { type: "bezierCurveTo", cp1x: 1285, cp1y: 570, cp2x: 1220, cp2y: 545, x: 1180, y: 510 },
+    { type: "lineTo", x: 1140, y: 545 },
+    { type: "bezierCurveTo", cp1x: 1200, cp1y: 615, cp2x: 1320, cp2y: 635, x: 1400, y: 585 },
+    { type: "bezierCurveTo", cp1x: 1490, cp1y: 530, cp2x: 1505, cp2y: 425, x: 1435, y: 345 },
+    { type: "bezierCurveTo", cp1x: 1350, cp1y: 255, cp2x: 1200, cp2y: 270, x: 1100, y: 350 },
+    { type: "bezierCurveTo", cp1x: 1045, cp1y: 395, cp2x: 1035, cp2y: 465, x: 1060, y: 520 },
+    { type: "lineTo", x: 1105, y: 495 },
+    { type: "bezierCurveTo", cp1x: 1085, cp1y: 450, cp2x: 1095, cp2y: 420, x: 1150, y: 400 },
+    { type: "closePath" }
+  ]) }),
   // Test-only concave L-shaped wall; its inner corner is rounded as well.
   buildWall({ id: "test-l-wall", style: "stoneL", radius: 6,
     points: [[820, 350], [1040, 350], [1040, 410], [880, 410], [880, 570], [820, 570]] }),
@@ -720,7 +778,7 @@ function drawSceneLayer() {
   sceneContext.setTransform(pixelWidth / WORLD.width, 0, 0, pixelHeight / WORLD.height, 0, 0);
   drawSceneStatic(sceneContext, {
     width: WORLD.width, height: WORLD.height,
-    walls: obstacles, waters: waterAreas, hazards: damageZones,
+    walls: obstacles, waters: [], terrains: terrainRegions, hazards: damageZones,
     gateOpen: state.gateOpen
   });
   lastSceneKey = key;
@@ -745,7 +803,7 @@ function updateScene() {
   playerEl.style.transform = `scale(${zoom})`;
   playerEl.style.transformOrigin = "top left";
   const playerCenter = { x: px, y: py + PLAYER.height / 2 };
-  const isInWater = waterAreas.some((area) => playerCenter.x >= area.x && playerCenter.x <= area.x + area.w && playerCenter.y >= area.y && playerCenter.y <= area.y + area.h);
+  const isInWater = waterAreas.some((area) => pointInPolygonSet(playerCenter, area.collisionPolygons));
   if (isInWater !== state.diving) {
     setDivingState(isInWater);
     setStatus(isInWater ? "已進入測試水域，角色現在處於潛水狀態。" : "已離開測試水域，角色結束潛水。");

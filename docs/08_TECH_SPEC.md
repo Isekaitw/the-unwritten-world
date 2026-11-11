@@ -1004,3 +1004,11 @@ Canvas、分層 DOM/CSS 或混合渲染尚未定案。先檢查現有程式與�
 - pathGeometryToCollisionPolygons() 保留多個封閉子路徑，提供 even-odd 環集合碰撞。
 - buildWall() 可由封閉 PathGeometry 建立碰撞多邊形與外接範圍；mvp.js 矩形碰撞已整合多環 even-odd 判定。
 - 視野／陰影目前仍只取第一個外環；曲線離散化與碰撞整合不等於多環視覺遮擋已完成。
+
+
+# T3 自然海岸切片實作紀錄（2026-11-11）
+- 測試場景新增曲線沙灘、曲線水域與 C 形洞穴岩壁；海岸路徑與洞穴碰撞均使用 Path Geometry。
+- 地形原型資料將 path、surface、regionType、collision、traversal、decorations、ripples 分開保存；此資料物件尚非最終正式 JSON schema。
+- 水域潛水判定改讀取水域 Path Geometry 的離散化多邊形，不再使用矩形範圍；既有氧氣與狀態規則不變。
+- 沙灘卵石與水面波紋只負責呈現，不加入碰撞。
+- 曲線洞穴的視野與陰影目前仍受既有第一外環限制；完整洞口遮擋另列後續工作。
