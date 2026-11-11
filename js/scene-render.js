@@ -407,8 +407,8 @@ export function drawWall(ctx, wall) {
   ctx.save();
   tracePathGeometry(ctx, wall.path);
   ctx.fillStyle = cssLinearGradient(ctx, wall.x, wall.y, wall.w, wall.h, style.angle, style.stops);
-  ctx.fill();
-  ctx.clip();
+  ctx.fill("evenodd");
+  ctx.clip("evenodd");
   ctx.lineJoin = "round";
   // Inner rim light and border both follow every edge of the polygon,
   // including a concave inner corner, so no edge looks "cut out".
@@ -426,7 +426,7 @@ export function drawWall(ctx, wall) {
 export function drawGate(ctx, gate) {
   ctx.save();
   tracePathGeometry(ctx, gate.path);
-  ctx.clip();
+  ctx.clip("evenodd");
   ctx.fillStyle = "#8c8165";
   ctx.fillRect(gate.x, gate.y, gate.w, gate.h);
   for (let x = gate.x + 3; x < gate.x + gate.w; x += 20) {
