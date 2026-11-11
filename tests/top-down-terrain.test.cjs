@@ -3,8 +3,8 @@
 const fs = require("node:fs");
 const assert = require("node:assert/strict");
 
-const rendererSource = fs.readFileSync("js/scene-render.js", "utf8").replace(/\\bexport\\s+/g, "");
-const renderer = new Function(rendererSource + "\\nreturn { createPathGeometry, flattenPathGeometry, pathGeometryToCollisionPolygons };")();
+const rendererSource = fs.readFileSync("js/scene-render.js", "utf8").replace(/\bexport\s+/g, "");
+const renderer = new Function(rendererSource + "\nreturn { createPathGeometry, flattenPathGeometry, pathGeometryToCollisionPolygons };")();
 const scene = JSON.parse(fs.readFileSync("data/scenes/test-coast-ruins.json", "utf8"));
 const regions = scene.chunks.flatMap((chunk) => chunk.terrainRegions);
 const obstacles = scene.chunks.flatMap((chunk) => chunk.obstacles);
