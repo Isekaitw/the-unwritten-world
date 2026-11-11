@@ -626,52 +626,176 @@ function curveTangent(seg,t){
   const a=seg.startAngle+seg.sweep*t, cr=Math.cos(seg.rotation),sr=Math.sin(seg.rotation),k=seg.sweep;
   return {x:k*(-seg.rx*Math.sin(a)*cr-seg.ry*Math.cos(a)*sr),y:k*(-seg.rx*Math.sin(a)*sr+seg.ry*Math.cos(a)*cr)};
 }
-function curveRoots(seg,axis,value){
-  const key=axis==="x"?"x":"y", roots=[], n=96;
-  let ta=0, va=curvePoint(seg,0)[key]-value;
-  for(let i=1;i<=n;i++){
-    const tb=i/n, vb=curvePoint(seg,tb)[key]-value;
-    if(Math.abs(va)<1e-8)roots.push(ta);
-    if((va<0&&vb>0)||(va>0&&vb<0)){
-      let lo=ta,hi=tb,flo=va;
-      for(let j=0;j<36;j++){const mid=(lo+hi)/2,f=curvePoint(seg,mid)[key]-value;if((flo<=0&&f>=0)||(flo>=0&&f<=0))hi=mid;else{lo=mid;flo=f;}}
-      roots.push((lo+hi)/2);
-    }
-    ta=tb;va=vb;
+function polynomialValue(coefficients,t){
+  let value=0;
+  for(let i=coefficients.length-1;i>=0;i--)value=value*t+coefficients[i];
+  return value;
+}
+function polynomialDerivative(coefficients){
+  return coefficients.slice(1).map((value,index)=>value*(index+1));
+}
+function polynomialAdd(a,b){
+  const result=Array(Math.max(a.length,b.length)).fill(0);
+  for(let i=0;i<a.length;i++)result[i]+=a[i];
+  for(let i=0;i<b.length;i++)result[i]+=b[i];
+  return result;
+}
+function polynomialMultiply(a,b){
+  const result=Array(a.length+b.length-1).fill(0);
+  for(let i=0;i<a.length;i++)for(let j=0;j<b.length;j++)result[i+j]+=a[i]*b[j];
+  return result;
+}
+function curveAxisPolynomial(seg,axis){
+  const p=axis==="x"?"x":"y",a=seg.p0[p];
+  if(seg.type==="line")return [a,seg.p1[p]-a];
+  if(seg.type==="quad")return [a,2*(seg.p1[p]-a),a-2*seg.p1[p]+seg.p2[p]];
+  if(seg.type==="cubic")return [a,3*(seg.p1[p]-a),3*(a-2*seg.p1[p]+seg.p2[p]),-a+3*seg.p1[p]-3*seg.p2[p]+seg.p3[p]];
+  return null;
+}
+// Isolate every real polynomial root in [0,1], including even-multiplicity
+// roots at derivative critical points. PathGeometry Bezier coordinates are <= cubic.
+function polynomialRootsUnit(coefficients){
+  let c=coefficients.slice();
+  while(c.length>1&&Math.abs(c[c.length-1])<1e-13)c.pop();
+  const degree=c.length-1;
+  if(degree<=0)return [];
+  if(degree===1){
+    const t=-c[0]/c[1];
+    return t>=-1e-10&&t<=1+1e-10?[Math.max(0,Math.min(1,t))]:[];
   }
-  if(Math.abs(va)<1e-8)roots.push(1);
-  return roots.filter((t,i,a)=>a.findIndex(v=>Math.abs(v-t)<1e-6)===i);
+  const critical=polynomialRootsUnit(polynomialDerivative(c)).filter(t=>t>1e-10&&t<1-1e-10);
+  const cuts=[0,...critical,1],scale=Math.max(1,...c.map(Math.abs)),tol=1e-10*scale,roots=[];
+  for(const t of cuts)if(Math.abs(polynomialValue(c,t))<=tol)roots.push(t);
+  for(let i=0;i<cuts.length-1;i++){
+    let lo=cuts[i],hi=cuts[i+1],flo=polynomialValue(c,lo),fhi=polynomialValue(c,hi);
+    if(flo===0||fhi===0||flo*fhi>0)continue;
+    for(let n=0;n<64;n++){
+      const mid=(lo+hi)/2,fmid=polynomialValue(c,mid);
+      if(Math.abs(fmid)<=tol*0.01){lo=hi=mid;break;}
+      if((flo<0&&fmid>0)||(flo>0&&fmid<0)){hi=mid;fhi=fmid;}
+      else{lo=mid;flo=fmid;}
+    }
+    roots.push((lo+hi)/2);
+  }
+  return roots.sort((a,b)=>a-b).filter((t,i,list)=>i===0||Math.abs(t-list[i-1])>1e-7);
+}
+function ellipseAxisTerms(seg,axis){
+  const cr=Math.cos(seg.rotation),sr=Math.sin(seg.rotation);
+  return axis==="x"
+    ? {center:seg.p0.x,A:seg.rx*cr,B:-seg.ry*sr}
+    : {center:seg.p0.y,A:seg.rx*sr,B:seg.ry*cr};
+}
+function ellipseAnglesToTs(seg,angles){
+  const tau=Math.PI*2,low=Math.min(seg.startAngle,seg.startAngle+seg.sweep),high=Math.max(seg.startAngle,seg.startAngle+seg.sweep),roots=[];
+  if(Math.abs(seg.sweep)<1e-14)return [0];
+  for(const base of angles){
+    const first=Math.floor((low-base)/tau)-1,last=Math.ceil((high-base)/tau)+1;
+    for(let k=first;k<=last;k++){
+      const angle=base+k*tau,t=(angle-seg.startAngle)/seg.sweep;
+      if(t>=-1e-9&&t<=1+1e-9)roots.push(Math.max(0,Math.min(1,t)));
+    }
+  }
+  return roots.sort((a,b)=>a-b).filter((t,i,list)=>i===0||Math.abs(t-list[i-1])>1e-7);
+}
+function curveRoots(seg,axis,value){
+  const polynomial=curveAxisPolynomial(seg,axis);
+  if(polynomial)return polynomialRootsUnit([polynomial[0]-value,...polynomial.slice(1)]);
+  const terms=ellipseAxisTerms(seg,axis),target=value-terms.center,radius=Math.hypot(terms.A,terms.B);
+  if(radius<1e-14)return Math.abs(target)<1e-9?[0,1]:[];
+  const ratio=target/radius;
+  if(ratio>1+1e-10||ratio< -1-1e-10)return [];
+  const phase=Math.atan2(terms.B,terms.A),offset=Math.acos(Math.max(-1,Math.min(1,ratio)));
+  return ellipseAnglesToTs(seg,[phase+offset,phase-offset]);
+}
+function curveCriticalTs(seg,axis){
+  const polynomial=curveAxisPolynomial(seg,axis);
+  if(polynomial)return polynomialRootsUnit(polynomialDerivative(polynomial));
+  const terms=ellipseAxisTerms(seg,axis);
+  if(Math.hypot(terms.A,terms.B)<1e-14)return [];
+  const base=Math.atan2(terms.B,terms.A);
+  return ellipseAnglesToTs(seg,[base,base+Math.PI]).filter(t=>t>1e-9&&t<1-1e-9);
 }
 function pointInCurvePath(point,segments){
+  // Split each segment at its Y extrema. Half-open monotone intervals count
+  // crossings once and discard tangencies instead of relying on sampled signs.
+  const rayY=point.y+1e-8;
   let inside=false;
-  for(const seg of segments)for(const t of curveRoots(seg,"y",point.y)){
-    if(t>=1-1e-8)continue;
-    const p=curvePoint(seg,t), tangent=curveTangent(seg,t);
-    if(p.x>point.x&&Math.abs(tangent.y)>1e-8)inside=!inside;
+  for(const seg of segments){
+    const cuts=[0,...curveCriticalTs(seg,"y"),1].sort((a,b)=>a-b);
+    for(let i=0;i<cuts.length-1;i++){
+      const ta=cuts[i],tb=cuts[i+1],ya=curvePoint(seg,ta).y,yb=curvePoint(seg,tb).y;
+      if(!((ya<=rayY&&rayY<yb)||(yb<=rayY&&rayY<ya)))continue;
+      const roots=curveRoots(seg,"y",rayY);
+      const t=roots.find(value=>value>=ta-1e-8&&value<=tb+1e-8);
+      if(t===undefined)continue;
+      if(curvePoint(seg,t).x>point.x)inside=!inside;
+    }
   }
   return inside;
 }
 function curvePathIntersectsRect(segments,r){
-  const corners=[{x:r.x,y:r.y},{x:r.x+r.w,y:r.y},{x:r.x+r.w,y:r.y+r.h},{x:r.x,y:r.y+r.h}];
+  const left=r.x,right=r.x+r.w,top=r.y,bottom=r.y+r.h;
+  const corners=[{x:left,y:top},{x:right,y:top},{x:right,y:bottom},{x:left,y:bottom}];
   if(corners.some(p=>pointInCurvePath(p,segments)))return true;
   for(const seg of segments){
-    for(let i=0;i<=96;i++){const p=curvePoint(seg,i/96);if(p.x>=r.x-1e-7&&p.x<=r.x+r.w+1e-7&&p.y>=r.y-1e-7&&p.y<=r.y+r.h+1e-7)return true;}
-    for(const y of [r.y,r.y+r.h])for(const t of curveRoots(seg,"y",y)){const p=curvePoint(seg,t);if(p.x>=r.x-1e-7&&p.x<=r.x+r.w+1e-7)return true;}
-    for(const x of [r.x,r.x+r.w])for(const t of curveRoots(seg,"x",x)){const p=curvePoint(seg,t);if(p.y>=r.y-1e-7&&p.y<=r.y+r.h+1e-7)return true;}
+    const candidates=[0,1,...curveCriticalTs(seg,"x"),...curveCriticalTs(seg,"y")];
+    if(candidates.some(t=>{const p=curvePoint(seg,t);return p.x>=left-1e-8&&p.x<=right+1e-8&&p.y>=top-1e-8&&p.y<=bottom+1e-8;}))return true;
+    for(const y of [top,bottom])for(const t of curveRoots(seg,"y",y)){
+      const p=curvePoint(seg,t);if(p.x>=left-1e-8&&p.x<=right+1e-8)return true;
+    }
+    for(const x of [left,right])for(const t of curveRoots(seg,"x",x)){
+      const p=curvePoint(seg,t);if(p.y>=top-1e-8&&p.y<=bottom+1e-8)return true;
+    }
   }
   return false;
 }
-function closestPointOnCurvePath(segments,point){
+function closestPointOnCurvePath(segments,rect){
   let best=null,bestD=Infinity;
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   for(const seg of segments){
-    const samples=64;let bestT=0,localD=Infinity;
-    for(let i=0;i<=samples;i++){const t=i/samples,p=curvePoint(seg,t),d=(p.x-point.x)**2+(p.y-point.y)**2;if(d<localD){localD=d;bestT=t;}}
-    let lo=Math.max(0,bestT-1/samples),hi=Math.min(1,bestT+1/samples);
-    const ratio=(Math.sqrt(5)-1)/2;let a=hi-ratio*(hi-lo),b=lo+ratio*(hi-lo);
-    const dist=t=>{const p=curvePoint(seg,t);return (p.x-point.x)**2+(p.y-point.y)**2;};
-    for(let i=0;i<28;i++){if(dist(a)<dist(b)){hi=b;b=a;a=hi-ratio*(hi-lo);}else{lo=a;a=b;b=lo+ratio*(hi-lo);}}
-    const t=(lo+hi)/2,p=curvePoint(seg,t),d=dist(t);
-    if(d<bestD){bestD=d;best={point:p,tangent:curveTangent(seg,t),distanceSquared:d};}
+    const cuts=[0,1,...curveRoots(seg,"x",rect.x),...curveRoots(seg,"x",rect.x+rect.w),
+      ...curveRoots(seg,"y",rect.y),...curveRoots(seg,"y",rect.y+rect.h)].sort((a,b)=>a-b)
+      .filter((t,i,list)=>i===0||Math.abs(t-list[i-1])>1e-8);
+    const consider=t=>{
+      const p=curvePoint(seg,t),q={x:clamp(p.x,rect.x,rect.x+rect.w),y:clamp(p.y,rect.y,rect.y+rect.h)};
+      const dx=q.x-p.x,dy=q.y-p.y,d=dx*dx+dy*dy;
+      if(d<bestD){bestD=d;best={point:p,rectPoint:q,tangent:curveTangent(seg,t),distanceSquared:d};}
+    };
+    for(const t of cuts)consider(t);
+    for(let i=0;i<cuts.length-1;i++){
+      const lo=cuts[i],hi=cuts[i+1],mid=(lo+hi)/2,pm=curvePoint(seg,mid);
+      const useX=pm.x<rect.x||pm.x>rect.x+rect.w,useY=pm.y<rect.y||pm.y>rect.y+rect.h;
+      if(!useX&&!useY){consider(mid);continue;}
+      const px=curveAxisPolynomial(seg,"x"),py=curveAxisPolynomial(seg,"y");
+      let derivative=[];
+      if(useX){
+        const boundary=pm.x<rect.x?rect.x:rect.x+rect.w;
+        derivative=polynomialAdd(derivative,polynomialMultiply(
+          [px[0]-boundary,...px.slice(1)],polynomialDerivative(px)));
+      }
+      if(useY){
+        const boundary=pm.y<rect.y?rect.y:rect.y+rect.h;
+        derivative=polynomialAdd(derivative,polynomialMultiply(
+          [py[0]-boundary,...py.slice(1)],polynomialDerivative(py)));
+      }
+      if(px&&py){
+        const stationary=polynomialRootsUnit(derivative).filter(t=>t>lo+1e-9&&t<hi-1e-9);
+        for(const t of stationary)consider(t);
+      }else{
+        // Ellipse distance is trigonometric; isolate every sampled local basin
+        // within each boundary-stable interval, then refine each independently.
+        const count=96,values=[];
+        const distance=t=>{const p=curvePoint(seg,t),dx=p.x-clamp(p.x,rect.x,rect.x+rect.w),dy=p.y-clamp(p.y,rect.y,rect.y+rect.h);return dx*dx+dy*dy;};
+        for(let j=0;j<=count;j++)values.push(distance(lo+(hi-lo)*j/count));
+        const ratio=(Math.sqrt(5)-1)/2;
+        for(let j=1;j<count;j++)if(values[j]<=values[j-1]&&values[j]<=values[j+1]){
+          let a=lo+(hi-lo)*(j-1)/count,b=lo+(hi-lo)*(j+1)/count;
+          let u=b-ratio*(b-a),v=a+ratio*(b-a);
+          for(let n=0;n<40;n++){if(distance(u)<distance(v)){b=v;v=u;u=b-ratio*(b-a);}else{a=u;u=v;v=a+ratio*(b-a);}}
+          consider((a+b)/2);
+        }
+      }
+    }
   }
   return best;
 }
@@ -713,13 +837,17 @@ function collisionNormal(x, y, moveX, moveY) {
     const segments = obstacleCurveSegments(obstacle);
     if (segments) {
       const centerInside = pointInCurvePath(center, segments);
-      const contact = closestPointOnCurvePath(segments, center);
+      const contact = closestPointOnCurvePath(segments, hit);
       if (!contact || contact.distanceSquared >= nearestDistanceSquared) continue;
-      let nx=center.x-contact.point.x, ny=center.y-contact.point.y;
+      let nx=contact.rectPoint.x-contact.point.x,ny=contact.rectPoint.y-contact.point.y;
       if(centerInside){nx=-nx;ny=-ny;}
       let length=Math.hypot(nx,ny);
-      if(length<1e-7){length=Math.hypot(contact.tangent.x,contact.tangent.y)||1;nx=contact.tangent.y/length;ny=-contact.tangent.x/length;if(nx*moveX+ny*moveY>0){nx=-nx;ny=-ny;}}
-      else {nx/=length;ny/=length;}
+      if(length<1e-7){
+        length=Math.hypot(contact.tangent.x,contact.tangent.y)||1;
+        nx=contact.tangent.y/length;ny=-contact.tangent.x/length;
+        if((center.x-contact.point.x)*nx+(center.y-contact.point.y)*ny<0){nx=-nx;ny=-ny;}
+        if(nx*moveX+ny*moveY>0){nx=-nx;ny=-ny;}
+      }else{nx/=length;ny/=length;}
       nearest={x:nx,y:ny};nearestDistanceSquared=contact.distanceSquared;
       continue;
     }
