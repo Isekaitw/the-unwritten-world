@@ -2284,3 +2284,10 @@
 跨文件基準見 `docs/12_SPEC_AUTHORITY_AND_STATUS.md`。本文件較早章節中已被劇情、事件或存檔引用的 ID、第一章旗標表、事件白名單及既有內容資料結構，仍是相應內容系統的規格基準；本文件開頭新增的 2.5D 空間／碰撞／出生點 JSON 範例則是**提案，不是已核准的 schema v2，也不是現有程式已支援的資料格式**。
 
 在將新空間模型定為正式契約前，必須先盤點現有 JS 和資料，整理一份欄位／ID 對照表，確認相容性、版本策略與驗證方式；不可以把兩種不同用途的 schema 直接合併，也不可因新增原型而改名或重用已被故事、事件、任務或存檔引用的 ID。正式第一章存檔欄位要求屬第一章整合／發布階段，不是技術 MVP 的前置條件。
+
+## 12. 俯視 2D 場景資料契約 v1（T4，2026-11-11）
+- 機器可讀結構基準：`data/schemas/scene-v1.schema.json`；目前測試場景：`data/scenes/test-coast-ruins.json`。
+- 根節點包含 schemaVersion、穩定 id、name、world、chunks；chunk bounds 位於 world 範圍內，地形及障礙 ID 全場景唯一。
+- 地形明確分開 regionType、surface、path、collision、traversal；裝飾／水紋只屬呈現資料，不參與碰撞。
+- 路徑使用 PathGeometry v1 JSON commands；assetId/materialId 必須引用 `data/asset-manifest.json`，檔案資產只能使用專案內 `./assets/` 相對路徑。
+- `js/scene-data.js` 負責執行時載入與驗證；本契約不代表角色、對話、事件、任務、物品等所有第一章內容 loader 已完成。

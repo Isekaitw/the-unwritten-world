@@ -327,3 +327,10 @@
 - 新增 `tests/top-down-terrain.test.cjs`，從目前 `js/mvp.js` 及 `js/scene-render.js` 讀取實際 T3 PathGeometry，避免測試資料與遊戲資料漂移。
 - 執行：`node tests/top-down-terrain.test.cjs`。涵蓋沙灘、水域閉合與樣本點、材質／通行語義、裝飾數量及 C 形洞穴岩壁／洞內／洞口樣本點。
 - 自動測試通過仍不等於 T3 完成驗收；桌面瀏覽器視覺、原始曲線移動滑動、視野陰影、resize/DPR 與效能仍須實際驗收。T4 正式 schema 與資產管理實作仍受 T3 切片驗收門檻約束。
+
+
+## T4 場景資料系統第一版（2026-11-11）
+- 場景資料：`data/scenes/test-coast-ruins.json`；結構契約：`data/schemas/scene-v1.schema.json`；資產索引：`data/asset-manifest.json`；載入器：`js/scene-data.js`。
+- `js/mvp.js` 在開始探索前載入 JSON，建立地形、牆體、水域碰撞與原有碰撞網格；測試區原有幾何資料已遷移。
+- 自動測試：`node tests/scene-data.test.cjs` 與 `node tests/top-down-terrain.test.cjs`。
+- T4 第一版資料／資產管理基礎已建立；正式美術、第一章資料、大型多 chunk 場景及瀏覽器驗收仍未完成。

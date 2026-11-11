@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "assets": [],
+  "proceduralMaterials": [
+    {
+      "id": "sand",
+      "renderer": "terrain-sand"
+    },
+    {
+      "id": "water",
+      "renderer": "terrain-water"
+    },
+    {
+      "id": "stone",
+      "renderer": "wall-stone"
+    },
+    {
+      "id": "stoneL",
+      "renderer": "wall-stone"
+    }
+  ]
+}

@@ -132,3 +132,12 @@ Canvas 2D 負責主要世界場景與路徑繪製；HTML/CSS 繼續負責選單�
 - 新增 `tests/top-down-terrain.test.cjs`，直接讀取遊戲目前使用的 PathGeometry 與 T3 地形定義，不複製一份獨立測試幾何。
 - 測試沙灘／水域輪廓閉合與細分、水域語義、固定裝飾數量、水域內外樣本點，以及 C 形洞穴岩壁、洞內與西側洞口可通行樣本點。
 - 執行方式：`node tests/top-down-terrain.test.cjs`。此測試只驗證靜態幾何資料與離散碰撞輪廓，不代替 Canvas 視覺、原始參數曲線移動、視野陰影、相機/DPR 或瀏覽器效能驗收。
+
+
+## 14. T4 正式場景資料與資產基礎（2026-11-11）
+- 新增 `data/scenes/test-coast-ruins.json`，將測試區 2 個地形區域及 7 個牆／閘門障礙由 JavaScript 常數遷移至 JSON，保留原有 PathGeometry、座標、地形語義及閘門狀態。
+- 新增 `data/schemas/scene-v1.schema.json`；場景以 world/chunks 分區，使用全域穩定 ID。
+- 新增 `data/asset-manifest.json` 與 `js/scene-data.js`，負責 schemaVersion、ID、chunk bounds、PathGeometry、地形語義及資產引用驗證，再轉換成既有 renderer/collision runtime objects。
+- 資產 manifest 支援專案內 `./assets/` 相對路徑及來源尺寸；目前沒有正式點陣素材，沙、水、石材仍由既有程序化 Canvas renderer 呈現。
+- `js/mvp.js` 在開始探索前載入場景資料並重建原有碰撞網格；不改玩家速度、碰撞箱、輸入、互動、視野或材質繪製。
+- 這是 T4 資料／資產管理基礎，不代表第一章正式場景、實際美術資產或大型多 chunk 地圖已完成。

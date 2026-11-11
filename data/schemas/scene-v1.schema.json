@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://isekaitw.github.io/the-unwritten-world/schemas/scene-v1.schema.json",
+  "title": "Unwritten World Scene Data v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "world",
+    "chunks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "world": {
+      "type": "object",
+      "required": [
+        "width",
+        "height"
+      ],
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "chunks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "bounds",
+          "terrainRegions",
+          "obstacles"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]*$"
+          },
+          "bounds": {
+            "type": "object",
+            "required": [
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "height": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "additionalProperties": false
+          },
+          "terrainRegions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/terrainRegion"
+            }
+          },
+          "obstacles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/obstacle"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "object",
+      "required": [
+        "type",
+        "version",
+        "commands"
+      ],
+      "properties": {
+        "type": {
+          "const": "PathGeometry"
+        },
+        "version": {
+          "const": 1
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "moveTo",
+                  "lineTo",
+                  "quadraticCurveTo",
+                  "bezierCurveTo",
+                  "arc",
+                  "ellipse",
+                  "closePath"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "terrainRegion": {
+      "type": "object",
+      "required": [
+        "id",
+        "regionType",
+        "surface",
+        "path",
+        "collision",
+        "traversal"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "regionType": {
+          "type": "string"
+        },
+        "surface": {
+          "enum": [
+            "sand",
+            "water",
+            "grass",
+            "rock",
+            "soil",
+            "stone"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "collision": {
+          "enum": [
+            "none",
+            "solid",
+            "water",
+            "hazard"
+          ]
+        },
+        "traversal": {
+          "enum": [
+            "walkable",
+            "water",
+            "blocked",
+            "restricted"
+          ]
+        },
+        "assetId": {
+          "type": "string"
+        },
+        "materialId": {
+          "type": "string"
+        },
+        "decorations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "ripples": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "obstacle": {
+      "type": "object",
+      "required": [
+        "id",
+        "style",
+        "gate",
+        "path"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "style": {
+          "enum": [
+            "stone",
+            "stoneL"
+          ]
+        },
+        "gate": {
+          "type": "boolean"
+        },
+        "assetId": {
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/$defs/path"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
