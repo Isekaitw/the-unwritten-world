@@ -996,3 +996,11 @@ Canvas、分層 DOM/CSS 或混合渲染尚未定案。先檢查現有程式與�
 - 命令支援 moveTo、lineTo、quadraticCurveTo、bezierCurveTo、arc、ellipse、closePath。
 - 現有 buildWall() 會同時輸出不可變 path 與既有 verts；牆壁／閘門繪製使用 path，碰撞／視野／陰影仍使用 verts，避免本階段改變模擬結果。
 - 此為 T1 第一版，不代表碰撞端已支援曲線。T2 才實作曲線離散化及碰撞幾何。
+
+
+# T2 曲線離散化與碰撞補遺（2026-11-11）
+- scene-render.js 新增 flattenPathGeometry()，對二次／三次貝茲曲線遞迴細分，對圓弧／橢圓弧按弦高誤差取樣。
+- 預設離散化 tolerance = 0.75 世界單位、maxDepth = 12；弧線最多 4096 線段。這是原型初始值，需由場景切片與效能測試校準。
+- pathGeometryToCollisionPolygons() 保留多個封閉子路徑，提供 even-odd 環集合碰撞。
+- buildWall() 可由封閉 PathGeometry 建立碰撞多邊形與外接範圍；mvp.js 矩形碰撞已整合多環 even-odd 判定。
+- 視野／陰影目前仍只取第一個外環；曲線離散化與碰撞整合不等於多環視覺遮擋已完成。

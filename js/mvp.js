@@ -1,4 +1,4 @@
-import { buildWall, rectPoints, drawSceneStatic } from "./scene-render.js";
+import { buildWall, rectPoints, drawSceneStatic, pathGeometryToCollisionPolygons } from "./scene-render.js";
 
 const $ = (selector) => document.querySelector(selector);
 const titleScreen = $("#title-screen");
@@ -431,10 +431,17 @@ function getInput() {
 function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
+function obstacleCollisionPolygons(obstacle) {
+  if (Array.isArray(obstacle.collisionPolygons)) return obstacle.collisionPolygons;
+  if (obstacle.path) return pathGeometryToCollisionPolygons(obstacle.path);
+  return [{ points: obstacle.verts || (Array.isArray(obstacle.points)
+    ? obstacle.points.map(([x,y])=>({x:obstacle.x+x,y:obstacle.y+y}))
+    : [{x:obstacle.x,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y},
+       {x:obstacle.x+obstacle.w,y:obstacle.y+obstacle.h},{x:obstacle.x,y:obstacle.y+obstacle.h}]),
+    closed: true }];
+}
 function obstacleVertices(obstacle) {
-  if (obstacle.verts) return obstacle.verts;
-  if (Array.isArray(obstacle.points)) return obstacle.points.map(([x,y])=>({x:obstacle.x+x,y:obstacle.y+y}));
-  return [{x:obstacle.x,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y+obstacle.h},{x:obstacle.x,y:obstacle.y+obstacle.h}];
+  return obstacleCollisionPolygons(obstacle)[0]?.points || [];
 }
 function pointInPolygon(p,poly) {
   let inside=false;
@@ -455,7 +462,34 @@ function polygonIntersectsRect(poly,r) {
   for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length];for(let j=0;j<4;j++)if(segmentsIntersect(a,b,corners[j],corners[(j+1)%4]))return true;}
   return false;
 }
-function obstacleIntersectsRect(o,r) {if(!rectsOverlap(r,o))return false;return Array.isArray(o.points)?polygonIntersectsRect(obstacleVertices(o),r):true;}
+function pointInPolygonSet(point, rings) {
+  let inside = false;
+  for (const ring of rings) {
+    if (pointInPolygon(point, ring.points)) inside = !inside;
+  }
+  return inside;
+}
+function polygonSetIntersectsRect(rings, rect) {
+  const corners = [{x:rect.x,y:rect.y},{x:rect.x+rect.w,y:rect.y},
+    {x:rect.x+rect.w,y:rect.y+rect.h},{x:rect.x,y:rect.y+rect.h}];
+  if (corners.some((corner) => pointInPolygonSet(corner, rings))) return true;
+  for (const ring of rings) {
+    const poly = ring.points;
+    if (poly.some(p=>p.x>=rect.x&&p.x<=rect.x+rect.w&&p.y>=rect.y&&p.y<=rect.y+rect.h)) return true;
+    for (let i=0;i<poly.length;i++) {
+      const a=poly[i], b=poly[(i+1)%poly.length];
+      for (let j=0;j<4;j++) if (segmentsIntersect(a,b,corners[j],corners[(j+1)%4])) return true;
+    }
+  }
+  return false;
+}
+function obstacleIntersectsRect(o,r) {
+  if (!rectsOverlap(r,o)) return false;
+  if (o.collisionPolygons || o.path || Array.isArray(o.points) || o.verts) {
+    return polygonSetIntersectsRect(obstacleCollisionPolygons(o),r);
+  }
+  return true;
+}
 function collides(x,y) {
   const hit={x:x-PLAYER.hitWidth/2,y:y+PLAYER.height-PLAYER.hitHeight,w:PLAYER.hitWidth,h:PLAYER.hitHeight};
   if(hit.x<0||hit.y<0||hit.x+hit.w>WORLD.width||hit.y+hit.h>WORLD.height)return true;

@@ -156,6 +156,155 @@ export function tracePathGeometry(ctx, geometry) {
   appendPathGeometry(ctx, geometry);
 }
 
+/**
+ * Flatten a PathGeometry into world-coordinate subpaths.
+ * tolerance is the maximum control-point deviation used for Bezier subdivision
+ * and the maximum radial sagitta used for arc sampling.
+ */
+export function flattenPathGeometry(geometry, { tolerance = 0.75, maxDepth = 12 } = {}) {
+  if (!geometry || geometry.type !== "PathGeometry" || geometry.version !== 1 ||
+      !Array.isArray(geometry.commands)) {
+    throw new TypeError("Expected PathGeometry version 1.");
+  }
+  if (!Number.isFinite(tolerance) || tolerance <= 0) {
+    throw new RangeError("Flattening tolerance must be a positive finite number.");
+  }
+  if (!Number.isInteger(maxDepth) || maxDepth < 1 || maxDepth > 20) {
+    throw new RangeError("maxDepth must be an integer from 1 to 20.");
+  }
+
+  const result = [];
+  let points = null;
+  let current = null;
+  let start = null;
+  let closed = false;
+  const epsilon = 1e-7;
+  const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  const pointLineDistance = (p, a, b) => {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const length = Math.hypot(dx, dy);
+    if (length < epsilon) return distance(p, a);
+    return Math.abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / length;
+  };
+  const push = (point) => {
+    const next = { x: point.x, y: point.y };
+    if (!points) {
+      points = [next];
+      start = next;
+    } else if (distance(points[points.length - 1], next) > epsilon) {
+      points.push(next);
+    }
+    current = next;
+  };
+  const finish = () => {
+    if (points?.length) result.push({ points, closed });
+    points = null;
+    current = null;
+    start = null;
+    closed = false;
+  };
+  const flattenQuadratic = (p0, p1, p2, depth = 0) => {
+    if (depth >= maxDepth || pointLineDistance(p1, p0, p2) <= tolerance) {
+      push(p2);
+      return;
+    }
+    const p01 = midpoint(p0, p1), p12 = midpoint(p1, p2), p012 = midpoint(p01, p12);
+    flattenQuadratic(p0, p01, p012, depth + 1);
+    flattenQuadratic(p012, p12, p2, depth + 1);
+  };
+  const flattenCubic = (p0, p1, p2, p3, depth = 0) => {
+    const flatness = Math.max(pointLineDistance(p1, p0, p3), pointLineDistance(p2, p0, p3));
+    if (depth >= maxDepth || flatness <= tolerance) {
+      push(p3);
+      return;
+    }
+    const p01 = midpoint(p0, p1), p12 = midpoint(p1, p2), p23 = midpoint(p2, p3);
+    const p012 = midpoint(p01, p12), p123 = midpoint(p12, p23);
+    const p0123 = midpoint(p012, p123);
+    flattenCubic(p0, p01, p012, p0123, depth + 1);
+    flattenCubic(p0123, p123, p23, p3, depth + 1);
+  };
+  const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const appendArc = (command, ellipse = false) => {
+    const cx = command.x, cy = command.y;
+    const rx = ellipse ? command.radiusX : command.radius;
+    const ry = ellipse ? command.radiusY : command.radius;
+    const rotation = ellipse ? command.rotation : 0;
+    const ccw = Boolean(command.counterclockwise);
+    const tau = Math.PI * 2;
+    let sweep = command.endAngle - command.startAngle;
+    if (!ccw) {
+      if (sweep >= tau) sweep = tau;
+      else { while (sweep < 0) sweep += tau; }
+    } else {
+      if (sweep <= -tau) sweep = -tau;
+      else { while (sweep > 0) sweep -= tau; }
+    }
+    const pointAt = (angle) => {
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const cr = Math.cos(rotation), sr = Math.sin(rotation);
+      return {
+        x: cx + rx * cos * cr - ry * sin * sr,
+        y: cy + rx * cos * sr + ry * sin * cr
+      };
+    };
+    const arcStart = pointAt(command.startAngle);
+    if (!current) push(arcStart);
+    else if (distance(current, arcStart) > epsilon) push(arcStart);
+    const radius = Math.max(rx, ry);
+    const maxAngle = radius <= tolerance ? Math.PI / 2 :
+      Math.max(0.01, 2 * Math.acos(Math.max(-1, Math.min(1, 1 - tolerance / radius))));
+    const segments = Math.max(1, Math.min(4096, Math.ceil(Math.abs(sweep) / maxAngle)));
+    for (let i = 1; i <= segments; i++) {
+      push(pointAt(command.startAngle + sweep * i / segments));
+    }
+  };
+
+  for (const command of geometry.commands) {
+    switch (command.type) {
+      case "moveTo":
+        finish();
+        push({ x: command.x, y: command.y });
+        break;
+      case "lineTo":
+        if (!current) throw new TypeError("lineTo requires a current point.");
+        push({ x: command.x, y: command.y });
+        break;
+      case "quadraticCurveTo":
+        if (!current) throw new TypeError("quadraticCurveTo requires a current point.");
+        flattenQuadratic(current, { x: command.cpx, y: command.cpy }, { x: command.x, y: command.y });
+        break;
+      case "bezierCurveTo":
+        if (!current) throw new TypeError("bezierCurveTo requires a current point.");
+        flattenCubic(current, { x: command.cp1x, y: command.cp1y },
+          { x: command.cp2x, y: command.cp2y }, { x: command.x, y: command.y });
+        break;
+      case "arc":
+      case "ellipse":
+        appendArc(command, command.type === "ellipse");
+        break;
+      case "closePath":
+        if (points?.length) {
+          if (distance(current, start) > epsilon) points.push({ x: start.x, y: start.y });
+          current = start;
+          closed = true;
+        }
+        break;
+      default:
+        throw new TypeError(`Unsupported path command: ${command.type}`);
+    }
+  }
+  finish();
+  return result;
+}
+
+/** Return only closed subpaths, preserving ring order for even-odd collision tests. */
+export function pathGeometryToCollisionPolygons(geometry, options) {
+  return flattenPathGeometry(geometry, options)
+    .filter((subpath) => subpath.closed && subpath.points.length >= 4)
+    .map((subpath) => ({ points: subpath.points, closed: true }));
+}
+
 /** Convert shared path data to Path2D where the browser supports it. */
 export function pathGeometryToPath2D(geometry) {
   if (typeof Path2D === "undefined") {
@@ -189,15 +338,23 @@ export const rectPoints = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [
  *   verts    absolute vertices, computed once and shared by collision,
  *            vision casting, shadows and drawing
  */
-export function buildWall({ id, points, radius = 0, segments = 2, gate = false, style = "stone" }) {
-  const verts = roundPolygon(points, radius, segments);
-  const box = polygonBounds(verts);
+export function buildWall({ id, points, path: sourcePath = null, radius = 0, segments = 2, gate = false, style = "stone" }) {
+  const legacyVerts = points ? roundPolygon(points, radius, segments) : [];
+  const path = sourcePath || polygonPathGeometry(legacyVerts);
+  const collisionPolygons = pathGeometryToCollisionPolygons(path);
+  if (!collisionPolygons.length) {
+    throw new TypeError("A wall requires at least one closed path subpath.");
+  }
+  const allVertices = collisionPolygons.flatMap((ring) => ring.points);
+  const box = polygonBounds(allVertices);
+  const verts = collisionPolygons[0].points;
   return {
     id, gate, style,
     x: box.x, y: box.y, w: box.w, h: box.h,
     points: verts.map((v) => [v.x - box.x, v.y - box.y]),
     verts,
-    path: polygonPathGeometry(verts)
+    path,
+    collisionPolygons
   };
 }
 

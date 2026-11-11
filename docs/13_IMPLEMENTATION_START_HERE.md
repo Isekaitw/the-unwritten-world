@@ -273,3 +273,11 @@
 - 共用路徑資料命令：moveTo、lineTo、quadraticCurveTo、bezierCurveTo、arc、ellipse、closePath。
 - 既有牆體／閘門繪製已改用 path；既有碰撞、視野、陰影仍使用 verts。
 - 下一步是 T2 曲線離散化與碰撞；不要在 T2 完成前宣稱任意曲線已可安全碰撞。
+
+
+# T2 曲線離散化與碰撞第一版（2026-11-11）
+- `js/scene-render.js`：`flattenPathGeometry`、`pathGeometryToCollisionPolygons`。
+- `js/mvp.js`：障礙物矩形碰撞讀取預先離散化的 collisionPolygons；多環採 even-odd 判斷，保留洞口區域。
+- 建立曲線牆體時以 `buildWall({ path })` 傳入封閉 PathGeometry；不再需要手工預先取樣頂點。
+- 預設 tolerance 0.75 世界單位、最大細分深度 12；這是待量測的初始設定。
+- 陰影／視野遮擋目前仍使用第一個外環，尚未整合洞口多環。
