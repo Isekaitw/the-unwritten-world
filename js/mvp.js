@@ -826,8 +826,8 @@ function collides(x,y) {
   if(hit.x<0||hit.y<0||hit.x+hit.w>WORLD.width||hit.y+hit.h>WORLD.height)return true;
   return collisionCandidates(hit).some(o=>!(o.gate&&state.gateOpen)&&obstacleIntersectsRect(o,hit));
 }
-// Find the contact normal from the nearest real polygon edge, not the wall's
-// bounding box. This lets movement follow curved and diagonal boundaries.
+// Find the contact normal from the nearest source-curve / player-rectangle contact.
+// Polygon edges remain the fallback only for non-PathGeometry obstacles.
 function collisionNormal(x, y, moveX, moveY) {
   const hit = playerHitRect(x, y);
   const center = { x: hit.x + hit.w / 2, y: hit.y + hit.h / 2 };
@@ -845,8 +845,9 @@ function collisionNormal(x, y, moveX, moveY) {
       if(length<1e-7){
         length=Math.hypot(contact.tangent.x,contact.tangent.y)||1;
         nx=contact.tangent.y/length;ny=-contact.tangent.x/length;
-        if((center.x-contact.point.x)*nx+(center.y-contact.point.y)*ny<0){nx=-nx;ny=-ny;}
-        if(nx*moveX+ny*moveY>0){nx=-nx;ny=-ny;}
+        const centerSide=(center.x-contact.point.x)*nx+(center.y-contact.point.y)*ny;
+        if((!centerInside&&centerSide<0)||(centerInside&&centerSide>0)){nx=-nx;ny=-ny;}
+        if(Math.abs(centerSide)<1e-7&&nx*moveX+ny*moveY>0){nx=-nx;ny=-ny;}
       }else{nx/=length;ny/=length;}
       nearest={x:nx,y:ny};nearestDistanceSquared=contact.distanceSquared;
       continue;
