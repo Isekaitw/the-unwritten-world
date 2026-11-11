@@ -351,3 +351,10 @@
 ## T3 自然地貌自動幾何測試（2026-11-11）
 - [ ] 執行 `node tests/top-down-terrain.test.cjs`，確認沙灘、水域、C 形洞穴幾何回歸通過。
 - [ ] 另行完成本清單上方 T3 桌面瀏覽器視覺／移動／視野陰影／resize-DPR／效能測試；自動幾何測試不可代替人工瀏覽器驗收。
+
+
+## T4 場景資料與資產載入驗收
+- [ ] 執行 `node tests/scene-data.test.cjs`，確認 scene v1、chunk bounds、穩定 ID、PathGeometry、地形與牆體資料、asset manifest 通過。
+- [ ] 執行 `node tests/top-down-terrain.test.cjs`，確認 JSON 遷移後 T3 地形幾何樣本不變。
+- [ ] 在 GitHub Pages 桌面瀏覽器確認 JSON 正常載入，場景外觀、牆體／洞穴碰撞、水域判定、閘門及原有操作一致。
+- [ ] 阻斷或破壞 JSON 請求時，確認顯示載入錯誤且不進入空場景。
