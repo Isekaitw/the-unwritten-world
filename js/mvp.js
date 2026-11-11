@@ -78,7 +78,7 @@ const sceneEffects = new Set();
 const WORLD = { width: 1600, height: 1000 };
 const PLAYER = { width: 30, height: 42, speed: 180, hitWidth: 22, hitHeight: 12 };
 // Temporary vision settings: brightness/fog are independent knobs for future systems.
-const VISION = { baseRadius: 720, brightness: 1, fog: 0, darkness: 0.94, edgeSoftness: 0.38, shadowBlur: 12, shadowOpacity: 0.82 };
+const VISION = { baseRadius: 720, brightness: 1, fog: 0, darkness: 0.94, edgeSoftness: 0.38, shadowBlur: 12, shadowOpacity: 0.82, shadowEdgeSoftness: 2.5 };
 const state = {
   started: false,
   x: 180, y: 180,
@@ -536,7 +536,7 @@ function drawVision() {
   }
   // The vision mask is world-space. Reuse the exact previous frame when its
   // origin, occluder state and backing resolution have not changed.
-  const cacheKey = [state.x, state.y, state.gateOpen, pixelWidth, pixelHeight, VISION.baseRadius, VISION.brightness, VISION.fog].join("|");
+  const cacheKey = [state.x, state.y, state.gateOpen, pixelWidth, pixelHeight, VISION.baseRadius, VISION.brightness, VISION.fog, VISION.shadowEdgeSoftness].join("|");
   if (cacheKey === lastVisionCacheKey) { if (PERF_ENABLED) perfCounters.visionCacheHits += 1; return; }
 
   const ctx = visionContext;
@@ -612,17 +612,18 @@ function drawVision() {
     points.push({ x: hitX, y: hitY });
   }
 
-  if (points.length >= 3) {
-    const S = 0.5;
-    const mw = Math.max(1, Math.round(width * S));
-    const mh = Math.max(1, Math.round(height * S));
-    for (const c of [maskCanvas, featherCanvas]) {
-      if (c.width !== mw || c.height !== mh) {
-        c.width = mw;
-        c.height = mh;
-      }
+  const MASK_SCALE = 0.5;
+  const mw = Math.max(1, Math.round(width * MASK_SCALE));
+  const mh = Math.max(1, Math.round(height * MASK_SCALE));
+  for (const c of [maskCanvas, featherCanvas]) {
+    if (c.width !== mw || c.height !== mh) {
+      c.width = mw;
+      c.height = mh;
     }
-    maskCtx.setTransform(S, 0, 0, S, 0, 0);
+  }
+
+  if (points.length >= 3) {
+    maskCtx.setTransform(MASK_SCALE, 0, 0, MASK_SCALE, 0, 0);
     maskCtx.clearRect(0, 0, width, height);
     maskCtx.fillStyle = "#fff";
     maskCtx.beginPath();
@@ -642,10 +643,13 @@ function drawVision() {
   }
 
   const FAR = 4000;
-  const addShadow=(o)=>{
+  // Build projected shadows in a reusable half-resolution mask. Blurring this
+  // mask softens shadow boundaries; clipping the result to the receiving wall
+  // keeps the wall's own silhouette crisp and prevents light/shadow bleed.
+  const addShadow=(o,targetCtx)=>{
     const corners=obstacleVertices(o).map(p=>[p.x,p.y]);
     const projected=corners.map(([x,y])=>{const dx=x-sourceX,dy=y-sourceY,len=Math.hypot(dx,dy)||1;return [x+dx/len*FAR,y+dy/len*FAR];});
-    for(let i=0;i<corners.length;i++){const j=(i+1)%corners.length,poly=[corners[i],corners[j],projected[j],projected[i]];let area=0;for(let k=0;k<poly.length;k++){const p=poly[k],q=poly[(k+1)%poly.length];area+=p[0]*q[1]-q[0]*p[1];}if(area<0)poly.reverse();ctx.moveTo(poly[0][0],poly[0][1]);for(let k=1;k<poly.length;k++)ctx.lineTo(poly[k][0],poly[k][1]);ctx.closePath();}
+    for(let i=0;i<corners.length;i++){const j=(i+1)%corners.length,poly=[corners[i],corners[j],projected[j],projected[i]];let area=0;for(let k=0;k<poly.length;k++){const p=poly[k],q=poly[(k+1)%poly.length];area+=p[0]*q[1]-q[0]*p[1];}if(area<0)poly.reverse();targetCtx.moveTo(poly[0][0],poly[0][1]);for(let k=1;k<poly.length;k++)targetCtx.lineTo(poly[k][0],poly[k][1]);targetCtx.closePath();}
   };
 
   const padX = 1 / scaleX;
@@ -661,7 +665,31 @@ function drawVision() {
     ctx.globalCompositeOperation="destination-out";ctx.fillStyle="#000";trace();ctx.fill();
     ctx.save();ctx.globalCompositeOperation="source-over";ctx.shadowColor="rgba(0,0,0,0.38)";ctx.shadowBlur=14;ctx.shadowOffsetX=0;ctx.shadowOffsetY=9;ctx.fillStyle="rgba(0,0,0,0.22)";trace();ctx.fill();ctx.restore();
     ctx.globalCompositeOperation="destination-out";trace();ctx.fill();
-    ctx.save();trace();ctx.clip();ctx.globalCompositeOperation="source-over";ctx.beginPath();for(const other of opaque)if(other!==wall)addShadow(other);ctx.fill();ctx.restore();
+
+    // Render other walls' projected shadows to an offscreen mask, then soften
+    // only that mask. The receiving wall remains a hard clip boundary.
+    maskCtx.setTransform(1,0,0,1,0,0);
+    maskCtx.globalCompositeOperation="source-over";
+    maskCtx.clearRect(0,0,mw,mh);
+    maskCtx.setTransform(MASK_SCALE,0,0,MASK_SCALE,0,0);
+    maskCtx.beginPath();
+    for(const other of opaque)if(other!==wall)addShadow(other,maskCtx);
+    maskCtx.fillStyle="#000";
+    maskCtx.fill();
+
+    featherCtx.setTransform(1,0,0,1,0,0);
+    featherCtx.globalCompositeOperation="source-over";
+    featherCtx.clearRect(0,0,mw,mh);
+    featherCtx.filter=`blur(${VISION.shadowEdgeSoftness}px)`;
+    featherCtx.drawImage(maskCanvas,0,0);
+    featherCtx.filter="none";
+
+    ctx.save();
+    trace();
+    ctx.clip();
+    ctx.globalCompositeOperation="source-over";
+    ctx.drawImage(featherCanvas,0,0,mw,mh,0,0,width,height);
+    ctx.restore();
   }
 
   // The player is a sibling of #world and remains above this world-space overlay.
