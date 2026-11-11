@@ -180,11 +180,13 @@ export function flattenPathGeometry(geometry, { tolerance = 0.75, maxDepth = 12 
   let closed = false;
   const epsilon = 1e-7;
   const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
-  const pointLineDistance = (p, a, b) => {
+  const pointSegmentDistance = (p, a, b) => {
     const dx = b.x - a.x, dy = b.y - a.y;
-    const length = Math.hypot(dx, dy);
-    if (length < epsilon) return distance(p, a);
-    return Math.abs(dy * p.x - dx * p.y + b.x * a.y - b.y * a.x) / length;
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared < epsilon * epsilon) return distance(p, a);
+    const projection = Math.max(0, Math.min(1,
+      ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared));
+    return Math.hypot(p.x - (a.x + projection * dx), p.y - (a.y + projection * dy));
   };
   const push = (point) => {
     const next = { x: point.x, y: point.y };
@@ -204,7 +206,7 @@ export function flattenPathGeometry(geometry, { tolerance = 0.75, maxDepth = 12 
     closed = false;
   };
   const flattenQuadratic = (p0, p1, p2, depth = 0) => {
-    if (depth >= maxDepth || pointLineDistance(p1, p0, p2) <= tolerance) {
+    if (depth >= maxDepth || pointSegmentDistance(p1, p0, p2) <= tolerance) {
       push(p2);
       return;
     }
@@ -213,7 +215,7 @@ export function flattenPathGeometry(geometry, { tolerance = 0.75, maxDepth = 12 
     flattenQuadratic(p012, p12, p2, depth + 1);
   };
   const flattenCubic = (p0, p1, p2, p3, depth = 0) => {
-    const flatness = Math.max(pointLineDistance(p1, p0, p3), pointLineDistance(p2, p0, p3));
+    const flatness = Math.max(pointSegmentDistance(p1, p0, p3), pointSegmentDistance(p2, p0, p3));
     if (depth >= maxDepth || flatness <= tolerance) {
       push(p3);
       return;
