@@ -24,10 +24,6 @@
   /* Flat fill avoids overlapping gradient bands that can shimmer at fractional DPR. */
   background: #29494b;
 }
-.world-water {
-  position:absolute;left:0;right:0;bottom:0;height:170px;
-  background: #183641;
-}
 .world-landmark {
   position:absolute; padding:20px 28px; border:1px solid rgba(214,244,224,.17);
   color:rgba(224,244,229,.42); letter-spacing:.3em; font-size:20px;
