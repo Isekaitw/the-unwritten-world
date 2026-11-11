@@ -588,24 +588,103 @@ function obstacleIntersectsRect(o,r) {
   }
   return true;
 }
+function playerHitRect(x, y) {
+  return {
+    x: x - PLAYER.hitWidth / 2,
+    y: y + PLAYER.height - PLAYER.hitHeight,
+    w: PLAYER.hitWidth,
+    h: PLAYER.hitHeight
+  };
+}
 function collides(x,y) {
-  const hit={x:x-PLAYER.hitWidth/2,y:y+PLAYER.height-PLAYER.hitHeight,w:PLAYER.hitWidth,h:PLAYER.hitHeight};
+  const hit = playerHitRect(x, y);
   if(hit.x<0||hit.y<0||hit.x+hit.w>WORLD.width||hit.y+hit.h>WORLD.height)return true;
   return collisionCandidates(hit).some(o=>!(o.gate&&state.gateOpen)&&obstacleIntersectsRect(o,hit));
 }
+// Find the contact normal from the nearest real polygon edge, not the wall's
+// bounding box. This lets movement follow curved and diagonal boundaries.
+function collisionNormal(x, y, moveX, moveY) {
+  const hit = playerHitRect(x, y);
+  const center = { x: hit.x + hit.w / 2, y: hit.y + hit.h / 2 };
+  let nearest = null;
+  let nearestDistanceSquared = Infinity;
+  for (const obstacle of collisionCandidates(hit)) {
+    if ((obstacle.gate && state.gateOpen) || !obstacleIntersectsRect(obstacle, hit)) continue;
+    const polygons = obstacleCollisionPolygons(obstacle);
+    const centerInside = pointInPolygonSet(center, polygons);
+    for (const ring of polygons) {
+      const points = ring.points;
+      for (let i = 0; i < points.length; i++) {
+        const a = points[i], b = points[(i + 1) % points.length];
+        const edgeX = b.x - a.x, edgeY = b.y - a.y;
+        const lengthSquared = edgeX * edgeX + edgeY * edgeY;
+        if (lengthSquared < 1e-10) continue;
+        const t = Math.max(0, Math.min(1,
+          ((center.x - a.x) * edgeX + (center.y - a.y) * edgeY) / lengthSquared));
+        const pointX = a.x + edgeX * t, pointY = a.y + edgeY * t;
+        const offsetX = center.x - pointX, offsetY = center.y - pointY;
+        const distanceSquared = offsetX * offsetX + offsetY * offsetY;
+        if (distanceSquared >= nearestDistanceSquared) continue;
+        let normalX = centerInside ? -offsetX : offsetX;
+        let normalY = centerInside ? -offsetY : offsetY;
+        const length = Math.hypot(normalX, normalY);
+        if (length > 1e-7) {
+          normalX /= length;
+          normalY /= length;
+        } else {
+          // Degenerate exact-edge contact: use the segment perpendicular and
+          // orient it against the attempted movement.
+          const edgeLength = Math.sqrt(lengthSquared);
+          normalX = edgeY / edgeLength;
+          normalY = -edgeX / edgeLength;
+          if (normalX * moveX + normalY * moveY > 0) {
+            normalX = -normalX;
+            normalY = -normalY;
+          }
+        }
+        nearest = { x: normalX, y: normalY };
+        nearestDistanceSquared = distanceSquared;
+      }
+    }
+  }
+  return nearest;
+}
 function movePlayer(dx, dy) {
-  // Resolve axes independently so diagonal movement remains stable against
-  // world boundaries and wall corners; clamp using the sprite's full bounds.
+  // Keep the original speed and substep size. Resolve a blocked step along the
+  // actual contact tangent so curved walls do not behave like solid rectangles.
   const minX = PLAYER.width / 2;
   const maxX = WORLD.width - PLAYER.width / 2;
   const minY = 0;
   const maxY = WORLD.height - PLAYER.height;
-  // Substep larger frame deltas so collision resolution cannot skip across a
-  // thin wall after a dropped frame. This does not change the intended speed.
   const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4));
   const stepX = dx / steps;
   const stepY = dy / steps;
   for (let i = 0; i < steps; i++) {
+    let moveX = stepX;
+    let moveY = stepY;
+    let moved = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const nextX = Math.max(minX, Math.min(maxX, state.x + moveX));
+      const nextY = Math.max(minY, Math.min(maxY, state.y + moveY));
+      if (!collides(nextX, nextY)) {
+        state.x = nextX;
+        state.y = nextY;
+        moved = true;
+        break;
+      }
+      const normal = collisionNormal(nextX, nextY, moveX, moveY);
+      if (!normal) break;
+      const intoWall = moveX * normal.x + moveY * normal.y;
+      if (intoWall >= -1e-7) break;
+      const slideX = moveX - intoWall * normal.x;
+      const slideY = moveY - intoWall * normal.y;
+      if (Math.hypot(slideX, slideY) < 1e-7) break;
+      moveX = slideX;
+      moveY = slideY;
+    }
+    if (moved) continue;
+    // Preserve the established axis fallback for world edges, flat walls and
+    // tight corners when no safe tangent step is available.
     const nextX = Math.max(minX, Math.min(maxX, state.x + stepX));
     if (!collides(nextX, state.y)) state.x = nextX;
     const nextY = Math.max(minY, Math.min(maxY, state.y + stepY));
