@@ -106,7 +106,7 @@ const state = {
 
 const damageZones = [
   // Deliberate test-only hazard: each fresh contact removes 25 health.
-  { id: "test-damage-zone", x: 1040, y: 410, w: 150, h: 110, damage: 25, label: "危險區", note: "接觸扣除 25 生命" }
+  { id: "test-damage-zone", x: 420, y: 500, w: 120, h: 100, damage: 25, label: "危險區", note: "接觸扣除 25 生命" }
 ];
 // Test-only natural coast slice. Presentation path, traversal semantics and
 // collision geometry are stored separately; surface decoration never collides.
@@ -162,7 +162,7 @@ const obstacles = [
   buildWall({ points: rectPoints(330, 220, 210, 65), radius: 7 }),
   buildWall({ points: rectPoints(610, 350, 80, 220), radius: 7 }),
   buildWall({ points: rectPoints(930, 170, 240, 75), radius: 7 }),
-  buildWall({ points: rectPoints(1180, 560, 90, 190), radius: 7 }),
+  buildWall({ points: rectPoints(580, 650, 90, 160), radius: 7 }),
   // Curved C-shaped rock rim; the open mouth faces west into a small cave alcove.
   buildWall({ id: "test-natural-cave-rim", style: "stoneL", path: createPathGeometry([
     { type: "moveTo", x: 1150, y: 400 },
@@ -185,10 +185,10 @@ const obstacles = [
 ];
 const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 80, title: "潮痕標記" },
-  { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 300, radius: 80, title: "微弱回聲" },
+  { id: "test_secret_tide_echo", el: $("#secret"), x: 1320, y: 460, radius: 80, title: "微弱回聲" },
   { id: "test_puzzle_measurement_device", el: $("#switch"), x: 830, y: 760, radius: 80, title: "測量機關" },
   { id: "test_checkpoint", el: checkpointEl, x: 180, y: 300, radius: 80, title: "存檔點" },
-  { id: "test_merchant_market", el: $("#merchant"), x: 480, y: 720, radius: 80, title: "商人" }
+  { id: "test_merchant_market", el: $("#merchant"), x: 430, y: 760, radius: 80, title: "商人" }
 ];
 const keyMap = {
   ArrowUp: "up", w: "up", W: "up",

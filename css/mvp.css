@@ -24,12 +24,21 @@
   /* Flat fill avoids overlapping gradient bands that can shimmer at fractional DPR. */
   background: #29494b;
 }
-.world-landmark {
-  position:absolute; padding:20px 28px; border:1px solid rgba(214,244,224,.17);
-  color:rgba(224,244,229,.42); letter-spacing:.3em; font-size:20px;
-  transform:rotate(-7deg); background:rgba(9,28,33,.15);
+.world-zone-label {
+  position:absolute; z-index:2; padding:7px 11px; border:1px solid rgba(214,244,224,.2);
+  border-radius:999px; color:rgba(231,244,233,.86); background:rgba(7,20,24,.62);
+  font-size:12px; line-height:1.2; letter-spacing:.1em; white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.72); box-shadow:0 4px 14px rgba(0,0,0,.16);
+  pointer-events:none; user-select:none; -webkit-user-select:none;
+  backdrop-filter:blur(4px);
 }
-.landmark-one{left:90px;top:330px}.landmark-two{left:1020px;top:400px}
+.world-zone-label.zone-start { border-color:rgba(183,224,194,.38); }
+.world-zone-label.zone-geometry { border-color:rgba(174,204,219,.42); }
+.world-zone-label.zone-hazard { border-color:rgba(231,154,125,.52); color:#f0c5b0; }
+.world-zone-label.zone-market { border-color:rgba(224,197,133,.48); color:#f1dfb8; }
+.world-zone-label.zone-gate { border-color:rgba(187,177,231,.48); }
+.world-zone-label.zone-cave { border-color:rgba(172,184,205,.48); }
+.world-zone-label.zone-coast { border-color:rgba(133,198,207,.5); color:#c4e5e6; }
 .player {
   position:absolute;z-index:6;width:30px;height:42px;border-radius:45% 45% 35% 35%;
   background:linear-gradient(145deg,#e1f4dd,#8bbeb2 70%,#507b7c);
