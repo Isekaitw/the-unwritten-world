@@ -725,8 +725,13 @@ function drawVision() {
     if (restricted) distance = Math.min(distance, radius);
     for (const geometry of visionGeometry) {
       // AABB rejection is conservative; polygon intersection remains authoritative.
-      const boundsHit = rayRectDistance(sourceX, sourceY, dirX, dirY, geometry.bounds);
-      if (boundsHit < distance) {
+      const bounds = geometry.bounds;
+      const originInsideBounds = sourceX >= bounds.x && sourceX <= bounds.x + bounds.w &&
+        sourceY >= bounds.y && sourceY <= bounds.y + bounds.h;
+      const boundsHit = rayRectDistance(sourceX, sourceY, dirX, dirY, bounds);
+      // If the origin is inside a concave polygon's AABB, its first polygon
+      // edge can occur before the AABB exit; always keep the exact test.
+      if (originInsideBounds || boundsHit < distance) {
         const hit = rayPolygonDistance(sourceX, sourceY, dirX, dirY, geometry.vertices);
         if (hit < distance) distance = hit;
       }
