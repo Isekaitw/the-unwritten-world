@@ -238,3 +238,10 @@
 ## T3 自然地貌自動測試補遺（2026-11-11）
 - 新增 `tests/top-down-terrain.test.cjs`，對照遊戲實際 PathGeometry 原始資料測試沙灘、水域與 C 形洞穴岩壁幾何及代表性內外點。
 - 此測試不代表桌面瀏覽器視覺／操作驗收；T3 的視野陰影、內外弧滑動、相機/DPR 對齊及效能仍待實測。T4 仍受 T3 驗收門檻約束。
+
+
+## T4 正式場景資料基礎（2026-11-11）
+- 測試區地形及障礙已遷移至 `data/scenes/test-coast-ruins.json`，使用 PathGeometry v1、world/chunks 分區與全場景穩定 ID。
+- `data/asset-manifest.json` 管理檔案資產與程序化材質 ID；目前沒有新增點陣美術檔，沙、水、石材仍沿用既有 Canvas renderer。
+- `js/scene-data.js` 驗證並載入 JSON，產生 renderer／碰撞可用 runtime objects；載入完成後重建既有碰撞網格。
+- 這是 T4 第一版資料／資產管理基礎，不代表第一章正式內容或大型多 chunk 地圖已完成。
