@@ -1,3 +1,5 @@
+import { buildWall, rectPoints, drawSceneStatic } from "./scene-render.js";
+
 const $ = (selector) => document.querySelector(selector);
 const titleScreen = $("#title-screen");
 const gameScreen = $("#game-screen");
@@ -60,7 +62,9 @@ const oxygenIndicator = $("#oxygen-indicator");
 const oxygenBar = $("#oxygen-bar");
 const healthHudValue = $("#health-hud-value");
 const healthHudBar = $("#health-hud-bar");
-const gate = $("#gate");
+const sceneCanvas = $("#scene-canvas");
+const sceneContext = sceneCanvas.getContext("2d");
+let lastSceneKey = "";
 
 // 離屏 canvas 只建立一次，每幀重複使用（避免每幀配置兩張全解析度 canvas）
 const maskCanvas = document.createElement("canvas");
@@ -102,20 +106,24 @@ const state = {
 
 const damageZones = [
   // Deliberate test-only hazard: each fresh contact removes 25 health.
-  { id: "test-damage-zone", x: 1040, y: 410, w: 150, h: 110, damage: 25 }
+  { id: "test-damage-zone", x: 1040, y: 410, w: 150, h: 110, damage: 25, label: "危險區", note: "接觸扣除 25 生命" }
 ];
 const waterAreas = [
   // A shallow, walkable test pool near the lower-right side of the map.
-  { id: "test-water-area", x: 1040, y: 790, w: 430, h: 150 }
+  // Detection is still the rectangle; radii only shape how it is drawn.
+  { id: "test-water-area", x: 1040, y: 790, w: 430, h: 150, radii: [42, 28, 36, 30], label: "測試水域" }
 ];
+// Every wall is a polygon. buildWall() rounds the corners once and the same
+// vertices are used by collision, vision casting, shadows and drawing.
 const obstacles = [
-  { x: 330, y: 220, w: 210, h: 65 },
-  { x: 610, y: 350, w: 80, h: 220 },
-  { x: 930, y: 170, w: 240, h: 75 },
-  { x: 1180, y: 560, w: 90, h: 190 },
-  // Test-only concave L-shaped wall. One polygon is shared by collision and vision.
-  { id: "test-l-wall", x: 820, y: 350, w: 220, h: 220, points: [[0,0],[220,0],[220,60],[60,60],[60,220],[0,220]] },
-  { x: 760, y: 600, w: 180, h: 44, gate: true }
+  buildWall({ points: rectPoints(330, 220, 210, 65), radius: 7 }),
+  buildWall({ points: rectPoints(610, 350, 80, 220), radius: 7 }),
+  buildWall({ points: rectPoints(930, 170, 240, 75), radius: 7 }),
+  buildWall({ points: rectPoints(1180, 560, 90, 190), radius: 7 }),
+  // Test-only concave L-shaped wall; its inner corner is rounded as well.
+  buildWall({ id: "test-l-wall", style: "stoneL", radius: 6,
+    points: [[820, 350], [1040, 350], [1040, 410], [880, 410], [880, 570], [820, 570]] }),
+  buildWall({ id: "test-gate", gate: true, radius: 5, points: rectPoints(760, 600, 180, 44) })
 ];
 const objects = [
   { id: "test_interactable_tide_marker", el: $("#marker"), x: 250, y: 460, radius: 80, title: "潮痕標記" },
@@ -372,7 +380,7 @@ function startExploration() {
   state.target = null;
   state.started = true;
   state.lastTime = 0;
-  gate.classList.toggle("is-open", state.gateOpen);
+  lastSceneKey = "";
   $("#secret").classList.toggle("is-found", state.secretFound);
   $("#switch").classList.toggle("is-active", state.gateOpen);
   statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關未啟動";
@@ -424,6 +432,7 @@ function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 function obstacleVertices(obstacle) {
+  if (obstacle.verts) return obstacle.verts;
   if (Array.isArray(obstacle.points)) return obstacle.points.map(([x,y])=>({x:obstacle.x+x,y:obstacle.y+y}));
   return [{x:obstacle.x,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y},{x:obstacle.x+obstacle.w,y:obstacle.y+obstacle.h},{x:obstacle.x,y:obstacle.y+obstacle.h}];
 }
@@ -659,6 +668,29 @@ function drawVision() {
   ctx.globalCompositeOperation = "source-over";
   lastVisionCacheKey = cacheKey;
 }
+// Static world layer (water, hazard, walls, gate) drawn on one canvas. It is
+// redrawn only when its backing resolution or the gate state changes, so
+// dynamic effects never depend on this cache.
+function drawSceneLayer() {
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const zoom = viewport.clientWidth / 1200 || 1;
+  const scale = Math.min(2, dpr * Math.max(1, zoom));
+  const pixelWidth = Math.max(1, Math.round(WORLD.width * scale));
+  const pixelHeight = Math.max(1, Math.round(WORLD.height * scale));
+  const key = `${pixelWidth}|${pixelHeight}|${state.gateOpen}`;
+  if (key === lastSceneKey) return;
+  if (sceneCanvas.width !== pixelWidth || sceneCanvas.height !== pixelHeight) {
+    sceneCanvas.width = pixelWidth;
+    sceneCanvas.height = pixelHeight;
+  }
+  sceneContext.setTransform(pixelWidth / WORLD.width, 0, 0, pixelHeight / WORLD.height, 0, 0);
+  drawSceneStatic(sceneContext, {
+    width: WORLD.width, height: WORLD.height,
+    walls: obstacles, waters: waterAreas, hazards: damageZones,
+    gateOpen: state.gateOpen
+  });
+  lastSceneKey = key;
+}
 function updateScene() {
   // Keep the horizontal world-space view fixed while adapting the vertical
   // view to the viewport's actual height. This preserves object proportions
@@ -691,6 +723,7 @@ function updateScene() {
     oxygenIndicator.style.transformOrigin = "top left";
     updateOxygenIndicator();
   }
+  drawSceneLayer();
   drawVision();
   const playerHitbox = { x: px - PLAYER.hitWidth / 2, y: py + PLAYER.height - PLAYER.hitHeight, w: PLAYER.hitWidth, h: PLAYER.hitHeight };
   const touchingDamageZone = damageZones.some((zone) => rectsOverlap(playerHitbox, zone));
@@ -828,7 +861,6 @@ function interact() {
     }
   } else if (target.id === "test_puzzle_measurement_device") {
     state.gateOpen = !state.gateOpen;
-    gate.classList.toggle("is-open", state.gateOpen);
     $("#switch").classList.toggle("is-active", state.gateOpen);
     statusChip.lastChild.textContent = state.gateOpen ? " 機關已啟動 · 通路開啟" : " 機關已關閉 · 通路封閉";
     if (state.gateOpen) {
@@ -1184,7 +1216,6 @@ function respawnAtCheckpoint() {
   state.lastTime = 0;
   deathPanel.hidden = true;
   dialoguePanel.hidden = true;
-  gate.classList.toggle("is-open", state.gateOpen);
   $("#secret").classList.toggle("is-found", state.secretFound);
   $("#switch").classList.toggle("is-active", state.gateOpen);
   checkpointEl.classList.toggle("is-active", Boolean(checkpoint.checkpointActive));
