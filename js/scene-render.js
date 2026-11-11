@@ -61,6 +61,124 @@ export function polygonBounds(verts) {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
+
+/**
+ * Create immutable, renderer-independent path data.
+ * Commands mirror the Canvas 2D path vocabulary and contain plain data only.
+ * Supported types: moveTo, lineTo, quadraticCurveTo, bezierCurveTo,
+ * arc, ellipse and closePath.
+ */
+export function createPathGeometry(commands) {
+  if (!Array.isArray(commands) || commands.length === 0) {
+    throw new TypeError("Path geometry requires a non-empty command array.");
+  }
+  const finite = (command, fields) => {
+    for (const field of fields) {
+      if (!Number.isFinite(command[field])) {
+        throw new TypeError(`Path command ${command.type} requires finite ${field}.`);
+      }
+    }
+  };
+  const schemas = {
+    moveTo: ["x", "y"],
+    lineTo: ["x", "y"],
+    quadraticCurveTo: ["cpx", "cpy", "x", "y"],
+    bezierCurveTo: ["cp1x", "cp1y", "cp2x", "cp2y", "x", "y"],
+    arc: ["x", "y", "radius", "startAngle", "endAngle"],
+    ellipse: ["x", "y", "radiusX", "radiusY", "rotation", "startAngle", "endAngle"]
+  };
+  if (commands[0]?.type !== "moveTo") {
+    throw new TypeError("The first path command must be moveTo.");
+  }
+  const normalized = commands.map((source) => {
+    if (!source || typeof source !== "object" || typeof source.type !== "string") {
+      throw new TypeError("Every path command must have a type.");
+    }
+    if (source.type === "closePath") return Object.freeze({ type: "closePath" });
+    const fields = schemas[source.type];
+    if (!fields) throw new TypeError(`Unsupported path command: ${source.type}`);
+    finite(source, fields);
+    if (source.type === "arc" && source.radius < 0) {
+      throw new RangeError("Arc radius cannot be negative.");
+    }
+    if (source.type === "ellipse" && (source.radiusX < 0 || source.radiusY < 0)) {
+      throw new RangeError("Ellipse radii cannot be negative.");
+    }
+    const command = { type: source.type };
+    for (const field of fields) command[field] = source[field];
+    if (source.type === "arc" || source.type === "ellipse") {
+      command.counterclockwise = Boolean(source.counterclockwise);
+    }
+    return Object.freeze(command);
+  });
+  return Object.freeze({
+    type: "PathGeometry",
+    version: 1,
+    closed: normalized.some((command) => command.type === "closePath"),
+    commands: Object.freeze(normalized)
+  });
+}
+
+function appendPathGeometry(target, geometry) {
+  if (!geometry || geometry.type !== "PathGeometry" || geometry.version !== 1 ||
+      !Array.isArray(geometry.commands)) {
+    throw new TypeError("Expected PathGeometry version 1.");
+  }
+  for (const command of geometry.commands) {
+    switch (command.type) {
+      case "moveTo": target.moveTo(command.x, command.y); break;
+      case "lineTo": target.lineTo(command.x, command.y); break;
+      case "quadraticCurveTo":
+        target.quadraticCurveTo(command.cpx, command.cpy, command.x, command.y);
+        break;
+      case "bezierCurveTo":
+        target.bezierCurveTo(command.cp1x, command.cp1y, command.cp2x, command.cp2y, command.x, command.y);
+        break;
+      case "arc":
+        target.arc(command.x, command.y, command.radius, command.startAngle, command.endAngle, command.counterclockwise);
+        break;
+      case "ellipse":
+        target.ellipse(command.x, command.y, command.radiusX, command.radiusY, command.rotation,
+          command.startAngle, command.endAngle, command.counterclockwise);
+        break;
+      case "closePath": target.closePath(); break;
+      default: throw new TypeError(`Unsupported path command: ${command.type}`);
+    }
+  }
+}
+
+/** Begin a Canvas 2D path and append shared geometry data. */
+export function tracePathGeometry(ctx, geometry) {
+  if (!ctx || typeof ctx.beginPath !== "function") {
+    throw new TypeError("tracePathGeometry requires a Canvas 2D context.");
+  }
+  ctx.beginPath();
+  appendPathGeometry(ctx, geometry);
+}
+
+/** Convert shared path data to Path2D where the browser supports it. */
+export function pathGeometryToPath2D(geometry) {
+  if (typeof Path2D === "undefined") {
+    throw new Error("Path2D is not available in this environment.");
+  }
+  const path = new Path2D();
+  appendPathGeometry(path, geometry);
+  return path;
+}
+
+/** Adapt an existing polygon to the shared path representation. */
+export function polygonPathGeometry(points) {
+  if (!Array.isArray(points) || points.length < 3) {
+    throw new TypeError("A closed polygon path requires at least three points.");
+  }
+  const vertices = points.map(toPoint);
+  return createPathGeometry([
+    { type: "moveTo", x: vertices[0].x, y: vertices[0].y },
+    ...vertices.slice(1).map((point) => ({ type: "lineTo", x: point.x, y: point.y })),
+    { type: "closePath" }
+  ]);
+}
+
 export const rectPoints = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 
 /**
@@ -78,7 +196,8 @@ export function buildWall({ id, points, radius = 0, segments = 2, gate = false, 
     id, gate, style,
     x: box.x, y: box.y, w: box.w, h: box.h,
     points: verts.map((v) => [v.x - box.x, v.y - box.y]),
-    verts
+    verts,
+    path: polygonPathGeometry(verts)
   };
 }
 
@@ -127,7 +246,7 @@ export const WALL_STYLES = {
 export function drawWall(ctx, wall) {
   const style = WALL_STYLES[wall.style] || WALL_STYLES.stone;
   ctx.save();
-  tracePolygon(ctx, wall.verts);
+  tracePathGeometry(ctx, wall.path);
   ctx.fillStyle = cssLinearGradient(ctx, wall.x, wall.y, wall.w, wall.h, style.angle, style.stops);
   ctx.fill();
   ctx.clip();
@@ -147,7 +266,7 @@ export function drawWall(ctx, wall) {
 
 export function drawGate(ctx, gate) {
   ctx.save();
-  tracePolygon(ctx, gate.verts);
+  tracePathGeometry(ctx, gate.path);
   ctx.clip();
   ctx.fillStyle = "#8c8165";
   ctx.fillRect(gate.x, gate.y, gate.w, gate.h);

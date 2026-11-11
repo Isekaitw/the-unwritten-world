@@ -68,3 +68,15 @@ Canvas 2D 負責主要世界場景與路徑繪製；HTML/CSS 繼續負責選單�
 
 ## 11. 待驗證
 曲線離散化誤差門檻、多環路徑與洞口支援範圍、材質貼圖規格、靜態快取更新條件、裝飾密度與繪製成本，均須由第一個自然地貌切片驗證。
+
+## 12. T1 實作紀錄（2026-11-11）
+**已完成第一版 Path Geometry 基礎 API（不代表曲線碰撞已完成）：**
+- `createPathGeometry(commands)`：驗證並建立不可變的純資料路徑。
+- 支援 `moveTo`、`lineTo`、`quadraticCurveTo`、`bezierCurveTo`、`arc`、`ellipse`、`closePath`。
+- `tracePathGeometry(ctx, geometry)`：將共用路徑資料繪入 Canvas 2D 當前路徑。
+- `pathGeometryToPath2D(geometry)`：在瀏覽器提供 Path2D 時轉換為 Path2D。
+- `polygonPathGeometry(points)`：將既有多邊形轉為共用路徑資料。
+- `buildWall()` 現在保留既有 `verts` 碰撞資料，同時產生 `path`；牆與閘門的輪廓繪製改讀取 path，碰撞、視野與陰影仍沿用原本 verts。
+- 此階段不做曲線離散化、曲線碰撞、洞口／多環拓樸、地形 schema 或材質系統；這些仍屬後續階段。
+- 參數驗證會拒絕未知命令、非有限座標、負半徑及非 moveTo 起始路徑。
+- 本次為程式碼實作與靜態檢查；未完成桌面瀏覽器視覺實測。

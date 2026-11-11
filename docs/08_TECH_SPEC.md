@@ -989,3 +989,10 @@ Canvas、分層 DOM/CSS 或混合渲染尚未定案。先檢查現有程式與�
 - 場景素材、角色顯示錨點、碰撞形狀、互動區、遮擋幾何與光影參數分離；需要共用時以穩定 ID／世界座標關聯，不從圖片像素推測碰撞。
 - 先以單一測試區完成一條素材載入、深度排序、前景遮擋與光影驗收路徑，再擴充第一章；不得因目標確立而提前宣稱正式場景 loader 或資產系統已完成。
 - 任何效能調整均需有桌面瀏覽器量測證據；不得先降低視野、陰影、模糊、材質品質或操作反應來換取 FPS。
+
+
+# Path Geometry 第一階段實作補遺（2026-11-11）
+- `js/scene-render.js` 新增版本化純資料 API：`createPathGeometry`、`tracePathGeometry`、`pathGeometryToPath2D`、`polygonPathGeometry`。
+- 命令支援 moveTo、lineTo、quadraticCurveTo、bezierCurveTo、arc、ellipse、closePath。
+- 現有 buildWall() 會同時輸出不可變 path 與既有 verts；牆壁／閘門繪製使用 path，碰撞／視野／陰影仍使用 verts，避免本階段改變模擬結果。
+- 此為 T1 第一版，不代表碰撞端已支援曲線。T2 才實作曲線離散化及碰撞幾何。
