@@ -253,11 +253,11 @@ export function drawWall(ctx, wall) {
   ctx.lineJoin = "round";
   // Inner rim light and border both follow every edge of the polygon,
   // including a concave inner corner, so no edge looks "cut out".
-  tracePolygon(ctx, wall.verts);
+  tracePathGeometry(ctx, wall.path);
   ctx.strokeStyle = "rgba(233,245,218,0.10)";
   ctx.lineWidth = 10;
   ctx.stroke();
-  tracePolygon(ctx, wall.verts);
+  tracePathGeometry(ctx, wall.path);
   ctx.strokeStyle = style.border;
   ctx.lineWidth = 4; // clipped to the polygon: 2px visible inside the edge
   ctx.stroke();
@@ -276,7 +276,7 @@ export function drawGate(ctx, gate) {
     ctx.fillStyle = "#655f4e"; ctx.fillRect(x + 14.5, gate.y, 5.5, gate.h);
   }
   ctx.lineJoin = "round";
-  tracePolygon(ctx, gate.verts);
+  tracePathGeometry(ctx, gate.path);
   ctx.shadowColor = "rgba(236,212,146,0.55)";
   ctx.shadowBlur = 12;
   ctx.strokeStyle = "rgba(236,212,146,0.4)";
@@ -284,7 +284,7 @@ export function drawGate(ctx, gate) {
   ctx.stroke();
   ctx.shadowColor = "transparent";
   ctx.shadowBlur = 0;
-  tracePolygon(ctx, gate.verts);
+  tracePathGeometry(ctx, gate.path);
   ctx.strokeStyle = "#d2c7a0";
   ctx.lineWidth = 6; // 3px visible inside the clip
   ctx.stroke();
