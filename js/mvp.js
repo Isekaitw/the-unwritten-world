@@ -767,18 +767,18 @@ function closestPointOnCurvePath(segments,rect){
       const useX=pm.x<rect.x||pm.x>rect.x+rect.w,useY=pm.y<rect.y||pm.y>rect.y+rect.h;
       if(!useX&&!useY){consider(mid);continue;}
       const px=curveAxisPolynomial(seg,"x"),py=curveAxisPolynomial(seg,"y");
-      let derivative=[];
-      if(useX){
-        const boundary=pm.x<rect.x?rect.x:rect.x+rect.w;
-        derivative=polynomialAdd(derivative,polynomialMultiply(
-          [px[0]-boundary,...px.slice(1)],polynomialDerivative(px)));
-      }
-      if(useY){
-        const boundary=pm.y<rect.y?rect.y:rect.y+rect.h;
-        derivative=polynomialAdd(derivative,polynomialMultiply(
-          [py[0]-boundary,...py.slice(1)],polynomialDerivative(py)));
-      }
       if(px&&py){
+        let derivative=[];
+        if(useX){
+          const boundary=pm.x<rect.x?rect.x:rect.x+rect.w;
+          derivative=polynomialAdd(derivative,polynomialMultiply(
+            [px[0]-boundary,...px.slice(1)],polynomialDerivative(px)));
+        }
+        if(useY){
+          const boundary=pm.y<rect.y?rect.y:rect.y+rect.h;
+          derivative=polynomialAdd(derivative,polynomialMultiply(
+            [py[0]-boundary,...py.slice(1)],polynomialDerivative(py)));
+        }
         const stationary=polynomialRootsUnit(derivative).filter(t=>t>lo+1e-9&&t<hi-1e-9);
         for(const t of stationary)consider(t);
       }else{
