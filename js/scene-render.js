@@ -61,275 +61,6 @@ export function polygonBounds(verts) {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
-
-/**
- * Create immutable, renderer-independent path data.
- * Commands mirror the Canvas 2D path vocabulary and contain plain data only.
- * Supported types: moveTo, lineTo, quadraticCurveTo, bezierCurveTo,
- * arc, ellipse and closePath.
- */
-export function createPathGeometry(commands) {
-  if (!Array.isArray(commands) || commands.length === 0) {
-    throw new TypeError("Path geometry requires a non-empty command array.");
-  }
-  const finite = (command, fields) => {
-    for (const field of fields) {
-      if (!Number.isFinite(command[field])) {
-        throw new TypeError(`Path command ${command.type} requires finite ${field}.`);
-      }
-    }
-  };
-  const schemas = {
-    moveTo: ["x", "y"],
-    lineTo: ["x", "y"],
-    quadraticCurveTo: ["cpx", "cpy", "x", "y"],
-    bezierCurveTo: ["cp1x", "cp1y", "cp2x", "cp2y", "x", "y"],
-    arc: ["x", "y", "radius", "startAngle", "endAngle"],
-    ellipse: ["x", "y", "radiusX", "radiusY", "rotation", "startAngle", "endAngle"]
-  };
-  if (commands[0]?.type !== "moveTo") {
-    throw new TypeError("The first path command must be moveTo.");
-  }
-  const normalized = commands.map((source) => {
-    if (!source || typeof source !== "object" || typeof source.type !== "string") {
-      throw new TypeError("Every path command must have a type.");
-    }
-    if (source.type === "closePath") return Object.freeze({ type: "closePath" });
-    const fields = schemas[source.type];
-    if (!fields) throw new TypeError(`Unsupported path command: ${source.type}`);
-    finite(source, fields);
-    if (source.type === "arc" && source.radius < 0) {
-      throw new RangeError("Arc radius cannot be negative.");
-    }
-    if (source.type === "ellipse" && (source.radiusX < 0 || source.radiusY < 0)) {
-      throw new RangeError("Ellipse radii cannot be negative.");
-    }
-    const command = { type: source.type };
-    for (const field of fields) command[field] = source[field];
-    if (source.type === "arc" || source.type === "ellipse") {
-      command.counterclockwise = Boolean(source.counterclockwise);
-    }
-    return Object.freeze(command);
-  });
-  return Object.freeze({
-    type: "PathGeometry",
-    version: 1,
-    closed: normalized.some((command) => command.type === "closePath"),
-    commands: Object.freeze(normalized)
-  });
-}
-
-function appendPathGeometry(target, geometry) {
-  if (!geometry || geometry.type !== "PathGeometry" || geometry.version !== 1 ||
-      !Array.isArray(geometry.commands)) {
-    throw new TypeError("Expected PathGeometry version 1.");
-  }
-  for (const command of geometry.commands) {
-    switch (command.type) {
-      case "moveTo": target.moveTo(command.x, command.y); break;
-      case "lineTo": target.lineTo(command.x, command.y); break;
-      case "quadraticCurveTo":
-        target.quadraticCurveTo(command.cpx, command.cpy, command.x, command.y);
-        break;
-      case "bezierCurveTo":
-        target.bezierCurveTo(command.cp1x, command.cp1y, command.cp2x, command.cp2y, command.x, command.y);
-        break;
-      case "arc":
-        target.arc(command.x, command.y, command.radius, command.startAngle, command.endAngle, command.counterclockwise);
-        break;
-      case "ellipse":
-        target.ellipse(command.x, command.y, command.radiusX, command.radiusY, command.rotation,
-          command.startAngle, command.endAngle, command.counterclockwise);
-        break;
-      case "closePath": target.closePath(); break;
-      default: throw new TypeError(`Unsupported path command: ${command.type}`);
-    }
-  }
-}
-
-/** Begin a Canvas 2D path and append shared geometry data. */
-export function tracePathGeometry(ctx, geometry) {
-  if (!ctx || typeof ctx.beginPath !== "function") {
-    throw new TypeError("tracePathGeometry requires a Canvas 2D context.");
-  }
-  ctx.beginPath();
-  appendPathGeometry(ctx, geometry);
-}
-
-/**
- * Flatten a PathGeometry into world-coordinate subpaths.
- * tolerance is the maximum control-point deviation used for Bezier subdivision
- * and the maximum radial sagitta used for arc sampling.
- */
-export function flattenPathGeometry(geometry, { tolerance = 0.75, maxDepth = 12 } = {}) {
-  if (!geometry || geometry.type !== "PathGeometry" || geometry.version !== 1 ||
-      !Array.isArray(geometry.commands)) {
-    throw new TypeError("Expected PathGeometry version 1.");
-  }
-  if (!Number.isFinite(tolerance) || tolerance <= 0) {
-    throw new RangeError("Flattening tolerance must be a positive finite number.");
-  }
-  if (!Number.isInteger(maxDepth) || maxDepth < 1 || maxDepth > 20) {
-    throw new RangeError("maxDepth must be an integer from 1 to 20.");
-  }
-
-  const result = [];
-  let points = null;
-  let current = null;
-  let start = null;
-  let closed = false;
-  const epsilon = 1e-7;
-  const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
-  const pointSegmentDistance = (p, a, b) => {
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const lengthSquared = dx * dx + dy * dy;
-    if (lengthSquared < epsilon * epsilon) return distance(p, a);
-    const projection = Math.max(0, Math.min(1,
-      ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared));
-    return Math.hypot(p.x - (a.x + projection * dx), p.y - (a.y + projection * dy));
-  };
-  const push = (point) => {
-    const next = { x: point.x, y: point.y };
-    if (!points) {
-      points = [next];
-      start = next;
-    } else if (distance(points[points.length - 1], next) > epsilon) {
-      points.push(next);
-    }
-    current = next;
-  };
-  const finish = () => {
-    if (points?.length) result.push({ points, closed });
-    points = null;
-    current = null;
-    start = null;
-    closed = false;
-  };
-  const flattenQuadratic = (p0, p1, p2, depth = 0) => {
-    if (depth >= maxDepth || pointSegmentDistance(p1, p0, p2) <= tolerance) {
-      push(p2);
-      return;
-    }
-    const p01 = midpoint(p0, p1), p12 = midpoint(p1, p2), p012 = midpoint(p01, p12);
-    flattenQuadratic(p0, p01, p012, depth + 1);
-    flattenQuadratic(p012, p12, p2, depth + 1);
-  };
-  const flattenCubic = (p0, p1, p2, p3, depth = 0) => {
-    const flatness = Math.max(pointSegmentDistance(p1, p0, p3), pointSegmentDistance(p2, p0, p3));
-    if (depth >= maxDepth || flatness <= tolerance) {
-      push(p3);
-      return;
-    }
-    const p01 = midpoint(p0, p1), p12 = midpoint(p1, p2), p23 = midpoint(p2, p3);
-    const p012 = midpoint(p01, p12), p123 = midpoint(p12, p23);
-    const p0123 = midpoint(p012, p123);
-    flattenCubic(p0, p01, p012, p0123, depth + 1);
-    flattenCubic(p0123, p123, p23, p3, depth + 1);
-  };
-  const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-  const appendArc = (command, ellipse = false) => {
-    const cx = command.x, cy = command.y;
-    const rx = ellipse ? command.radiusX : command.radius;
-    const ry = ellipse ? command.radiusY : command.radius;
-    const rotation = ellipse ? command.rotation : 0;
-    const ccw = Boolean(command.counterclockwise);
-    const tau = Math.PI * 2;
-    let sweep = command.endAngle - command.startAngle;
-    if (!ccw) {
-      if (sweep >= tau) sweep = tau;
-      else { while (sweep < 0) sweep += tau; }
-    } else {
-      if (sweep <= -tau) sweep = -tau;
-      else { while (sweep > 0) sweep -= tau; }
-    }
-    const pointAt = (angle) => {
-      const cos = Math.cos(angle), sin = Math.sin(angle);
-      const cr = Math.cos(rotation), sr = Math.sin(rotation);
-      return {
-        x: cx + rx * cos * cr - ry * sin * sr,
-        y: cy + rx * cos * sr + ry * sin * cr
-      };
-    };
-    const arcStart = pointAt(command.startAngle);
-    if (!current) push(arcStart);
-    else if (distance(current, arcStart) > epsilon) push(arcStart);
-    const radius = Math.max(rx, ry);
-    const maxAngle = radius <= tolerance ? Math.PI / 2 :
-      Math.max(0.01, 2 * Math.acos(Math.max(-1, Math.min(1, 1 - tolerance / radius))));
-    const segments = Math.max(1, Math.min(4096, Math.ceil(Math.abs(sweep) / maxAngle)));
-    for (let i = 1; i <= segments; i++) {
-      push(pointAt(command.startAngle + sweep * i / segments));
-    }
-  };
-
-  for (const command of geometry.commands) {
-    switch (command.type) {
-      case "moveTo":
-        finish();
-        push({ x: command.x, y: command.y });
-        break;
-      case "lineTo":
-        if (!current) throw new TypeError("lineTo requires a current point.");
-        push({ x: command.x, y: command.y });
-        break;
-      case "quadraticCurveTo":
-        if (!current) throw new TypeError("quadraticCurveTo requires a current point.");
-        flattenQuadratic(current, { x: command.cpx, y: command.cpy }, { x: command.x, y: command.y });
-        break;
-      case "bezierCurveTo":
-        if (!current) throw new TypeError("bezierCurveTo requires a current point.");
-        flattenCubic(current, { x: command.cp1x, y: command.cp1y },
-          { x: command.cp2x, y: command.cp2y }, { x: command.x, y: command.y });
-        break;
-      case "arc":
-      case "ellipse":
-        appendArc(command, command.type === "ellipse");
-        break;
-      case "closePath":
-        if (points?.length) {
-          if (distance(current, start) > epsilon) points.push({ x: start.x, y: start.y });
-          current = start;
-          closed = true;
-        }
-        break;
-      default:
-        throw new TypeError(`Unsupported path command: ${command.type}`);
-    }
-  }
-  finish();
-  return result;
-}
-
-/** Return only closed subpaths, preserving ring order for even-odd collision tests. */
-export function pathGeometryToCollisionPolygons(geometry, options) {
-  return flattenPathGeometry(geometry, options)
-    .filter((subpath) => subpath.closed && subpath.points.length >= 4)
-    .map((subpath) => ({ points: subpath.points, closed: true }));
-}
-
-/** Convert shared path data to Path2D where the browser supports it. */
-export function pathGeometryToPath2D(geometry) {
-  if (typeof Path2D === "undefined") {
-    throw new Error("Path2D is not available in this environment.");
-  }
-  const path = new Path2D();
-  appendPathGeometry(path, geometry);
-  return path;
-}
-
-/** Adapt an existing polygon to the shared path representation. */
-export function polygonPathGeometry(points) {
-  if (!Array.isArray(points) || points.length < 3) {
-    throw new TypeError("A closed polygon path requires at least three points.");
-  }
-  const vertices = points.map(toPoint);
-  return createPathGeometry([
-    { type: "moveTo", x: vertices[0].x, y: vertices[0].y },
-    ...vertices.slice(1).map((point) => ({ type: "lineTo", x: point.x, y: point.y })),
-    { type: "closePath" }
-  ]);
-}
-
 export const rectPoints = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 
 /**
@@ -340,23 +71,14 @@ export const rectPoints = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [
  *   verts    absolute vertices, computed once and shared by collision,
  *            vision casting, shadows and drawing
  */
-export function buildWall({ id, points, path: sourcePath = null, radius = 0, segments = 2, gate = false, style = "stone" }) {
-  const legacyVerts = points ? roundPolygon(points, radius, segments) : [];
-  const path = sourcePath || polygonPathGeometry(legacyVerts);
-  const collisionPolygons = pathGeometryToCollisionPolygons(path);
-  if (!collisionPolygons.length) {
-    throw new TypeError("A wall requires at least one closed path subpath.");
-  }
-  const allVertices = collisionPolygons.flatMap((ring) => ring.points);
-  const box = polygonBounds(allVertices);
-  const verts = collisionPolygons[0].points;
+export function buildWall({ id, points, radius = 0, segments = 2, gate = false, style = "stone" }) {
+  const verts = roundPolygon(points, radius, segments);
+  const box = polygonBounds(verts);
   return {
     id, gate, style,
     x: box.x, y: box.y, w: box.w, h: box.h,
     points: verts.map((v) => [v.x - box.x, v.y - box.y]),
-    verts,
-    path,
-    collisionPolygons
+    verts
   };
 }
 
@@ -405,18 +127,18 @@ export const WALL_STYLES = {
 export function drawWall(ctx, wall) {
   const style = WALL_STYLES[wall.style] || WALL_STYLES.stone;
   ctx.save();
-  tracePathGeometry(ctx, wall.path);
+  tracePolygon(ctx, wall.verts);
   ctx.fillStyle = cssLinearGradient(ctx, wall.x, wall.y, wall.w, wall.h, style.angle, style.stops);
-  ctx.fill("evenodd");
-  ctx.clip("evenodd");
+  ctx.fill();
+  ctx.clip();
   ctx.lineJoin = "round";
   // Inner rim light and border both follow every edge of the polygon,
   // including a concave inner corner, so no edge looks "cut out".
-  tracePathGeometry(ctx, wall.path);
+  tracePolygon(ctx, wall.verts);
   ctx.strokeStyle = "rgba(233,245,218,0.10)";
   ctx.lineWidth = 10;
   ctx.stroke();
-  tracePathGeometry(ctx, wall.path);
+  tracePolygon(ctx, wall.verts);
   ctx.strokeStyle = style.border;
   ctx.lineWidth = 4; // clipped to the polygon: 2px visible inside the edge
   ctx.stroke();
@@ -425,8 +147,8 @@ export function drawWall(ctx, wall) {
 
 export function drawGate(ctx, gate) {
   ctx.save();
-  tracePathGeometry(ctx, gate.path);
-  ctx.clip("evenodd");
+  tracePolygon(ctx, gate.verts);
+  ctx.clip();
   ctx.fillStyle = "#8c8165";
   ctx.fillRect(gate.x, gate.y, gate.w, gate.h);
   for (let x = gate.x + 3; x < gate.x + gate.w; x += 20) {
@@ -435,15 +157,15 @@ export function drawGate(ctx, gate) {
     ctx.fillStyle = "#655f4e"; ctx.fillRect(x + 14.5, gate.y, 5.5, gate.h);
   }
   ctx.lineJoin = "round";
-  tracePathGeometry(ctx, gate.path);
-  ctx.shadowColor = "rgba(236,212,146,0.55)";
-  ctx.shadowBlur = 12;
-  ctx.strokeStyle = "rgba(236,212,146,0.4)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.shadowColor = "transparent";
-  ctx.shadowBlur = 0;
-  tracePathGeometry(ctx, gate.path);
+  // Inner glow from stacked translucent strokes (clipped to the gate). No
+  // shadowBlur: a blurred stroke inside a clip wiped earlier drawing in Chromium.
+  for (const [width, alpha] of [[24, 0.05], [16, 0.07], [10, 0.1], [6, 0.14]]) {
+    tracePolygon(ctx, gate.verts);
+    ctx.strokeStyle = `rgba(236,212,146,${alpha})`;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+  tracePolygon(ctx, gate.verts);
   ctx.strokeStyle = "#d2c7a0";
   ctx.lineWidth = 6; // 3px visible inside the clip
   ctx.stroke();
@@ -460,14 +182,14 @@ function waterShape(area) {
 export function drawWaterArea(ctx, area) {
   const verts = waterShape(area);
   ctx.save();
-  // Soft outer halo.
-  tracePolygon(ctx, verts);
-  ctx.shadowColor = "rgba(54,178,204,0.5)";
-  ctx.shadowBlur = 24;
-  ctx.fillStyle = "rgba(54,178,204,0.12)";
-  ctx.fill();
-  ctx.shadowColor = "transparent";
-  ctx.shadowBlur = 0;
+  // Soft outer halo: stacked translucent strokes under the water fill.
+  ctx.lineJoin = "round";
+  for (const [width, alpha] of [[40, 0.025], [28, 0.04], [18, 0.06], [10, 0.08]]) {
+    tracePolygon(ctx, verts);
+    ctx.strokeStyle = `rgba(54,178,204,${alpha})`;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
 
   tracePolygon(ctx, verts);
   ctx.fillStyle = cssLinearGradient(ctx, area.x, area.y, area.w, area.h, 145, [
@@ -478,14 +200,12 @@ export function drawWaterArea(ctx, area) {
 
   // Inner glow and static ripple lines (clipped to the shoreline).
   ctx.lineJoin = "round";
-  tracePolygon(ctx, verts);
-  ctx.shadowColor = "rgba(180,245,245,0.55)";
-  ctx.shadowBlur = 28;
-  ctx.strokeStyle = "rgba(180,245,245,0.25)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.shadowColor = "transparent";
-  ctx.shadowBlur = 0;
+  for (const [width, alpha] of [[56, 0.03], [40, 0.04], [26, 0.05], [14, 0.07], [6, 0.09]]) {
+    tracePolygon(ctx, verts);
+    ctx.strokeStyle = `rgba(180,245,245,${alpha})`;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
 
   for (const rip of [{ left: -0.12, top: 0.22 }, { left: -0.04, top: 0.52 }]) {
     const bw = area.w * 1.25, bh = area.h * 0.45;
@@ -523,9 +243,8 @@ function drawPill(ctx, text, cx, cy) {
   ctx.stroke();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.shadowColor = "#082d3a";
-  ctx.shadowBlur = 4;
-  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = "rgba(8,45,58,0.85)"; // drop shadow drawn as offset text
+  ctx.fillText(text, cx + 0.78, cy + 2);
   ctx.fillStyle = "#e2fbfa";
   ctx.fillText(text, cx + 0.78, cy + 1);
   ctx.restore();
@@ -560,95 +279,26 @@ export function drawDamageZone(ctx, zone) {
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.shadowColor = "#26090b";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetY = 1;
-    ctx.fillStyle = "#fff0e8";
     const cx = zone.x + zone.w / 2, cy = zone.y + zone.h / 2;
+    // Each line: dark offset copy first (drop shadow), then the light text.
+    const line = (text, x, y) => {
+      ctx.fillStyle = "rgba(38,9,11,0.85)";
+      ctx.fillText(text, x, y + 1);
+      ctx.fillStyle = "#fff0e8";
+      ctx.fillText(text, x, y);
+    };
     if (zone.label) {
       ctx.font = `800 13px ${FONT}`;
       setLetterSpacing(ctx, 1.56);
-      ctx.fillText(zone.label, cx + 0.78, cy - 9);
+      line(zone.label, cx + 0.78, cy - 9);
     }
     if (zone.note) {
       ctx.font = `11px ${FONT}`;
       setLetterSpacing(ctx, 0);
-      ctx.fillText(zone.note, cx, cy + 9);
+      line(zone.note, cx, cy + 9);
     }
     ctx.restore();
   }
-}
-
-
-const TERRAIN_STYLES = {
-  sand: {
-    stops: [[0, "#d7c18b"], [0.55, "#c5a976"], [1, "#a98b60"]],
-    edge: "rgba(238,220,168,0.78)"
-  },
-  water: {
-    stops: [[0, "rgba(63,164,183,0.94)"], [0.58, "rgba(24,105,132,0.97)"], [1, "rgba(12,61,88,0.98)"]],
-    edge: "rgba(153,229,230,0.88)"
-  }
-};
-
-/** Draw a semantic terrain region; decoration is visual-only and never collision. */
-export function drawTerrainRegion(ctx, region) {
-  const style = TERRAIN_STYLES[region.surface];
-  if (!style || !region.path) return;
-  const bounds = region.bounds || polygonBounds(
-    pathGeometryToCollisionPolygons(region.path).flatMap((ring) => ring.points)
-  );
-  ctx.save();
-  tracePathGeometry(ctx, region.path);
-  ctx.fillStyle = cssLinearGradient(ctx, bounds.x, bounds.y, bounds.w, bounds.h, 145, style.stops);
-  ctx.fill();
-  if (region.surface === "water") {
-    tracePathGeometry(ctx, region.path);
-    ctx.clip();
-    ctx.lineCap = "round";
-    for (const ripple of (region.ripples || [])) {
-      ctx.save();
-      ctx.translate(ripple.x, ripple.y);
-      ctx.rotate(ripple.rotation || 0);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, ripple.rx, ripple.ry, 0, Math.PI * 1.08, Math.PI * 1.92);
-      ctx.strokeStyle = "rgba(202,246,241,0.34)";
-      ctx.lineWidth = ripple.width || 2;
-      ctx.stroke();
-      ctx.restore();
-    }
-    ctx.restore();
-    ctx.save();
-    tracePathGeometry(ctx, region.path);
-    ctx.strokeStyle = style.edge;
-    ctx.lineWidth = 5;
-    ctx.stroke();
-    ctx.restore();
-    return;
-  }
-  if (region.surface === "sand") {
-    for (const pebble of (region.decorations || [])) {
-      ctx.save();
-      ctx.translate(pebble.x, pebble.y);
-      ctx.rotate(pebble.rotation || 0);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, pebble.rx, pebble.ry, 0, 0, Math.PI * 2);
-      ctx.fillStyle = pebble.color || "rgba(111,91,65,0.30)";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(-pebble.rx * 0.22, -pebble.ry * 0.28,
-        pebble.rx * 0.42, pebble.ry * 0.24, 0, Math.PI, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,239,195,0.34)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-  tracePathGeometry(ctx, region.path);
-  ctx.strokeStyle = style.edge;
-  ctx.lineWidth = region.surface === "sand" ? 2 : 1;
-  ctx.stroke();
-  ctx.restore();
 }
 
 // ----------------------------------------------------------- scene composition
@@ -661,7 +311,6 @@ export function drawTerrainRegion(ctx, region) {
 export function drawSceneStatic(ctx, scene) {
   ctx.save();
   ctx.clearRect(0, 0, scene.width, scene.height);
-  for (const terrain of (scene.terrains || [])) drawTerrainRegion(ctx, terrain);
   for (const water of scene.waters) drawWaterArea(ctx, water);
   for (const zone of scene.hazards) drawDamageZone(ctx, zone);
   for (const wall of scene.walls) if (!wall.gate) drawWall(ctx, wall);
